@@ -136,6 +136,7 @@ Aprovado!  – Com falha: 0, Aprovado:  6, Ignorado: 0, Total:  6 - ProjectManag
 9. Acentos corrompidos na saída da CLI no console do Windows.
 10. Logs do `HttpClient` em nível Information com stack traces completos, muito verbosos.
 11. Artefatos de exemplo dos templates (WeatherForecast, Counter, Weather, Class1, UnitTest1).
+12. **Primeira execução do CI falhou** ([run 42897140748](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897140748)). O teste `--version` esperava `0.1.0`, mas recebeu `0.1.0+af77d2f…`: com o repositório já tendo um commit, o SDK acrescenta o hash à versão informacional. Localmente o teste tinha passado porque ainda não havia commits. A execução também avisou que `actions/upload-artifact@v4` usa Node.js 20, que está descontinuado.
 
 ## 10. Problemas corrigidos
 
@@ -150,11 +151,12 @@ Aprovado!  – Com falha: 0, Aprovado:  6, Ignorado: 0, Total:  6 - ProjectManag
 9. `Console.OutputEncoding = UTF8`.
 10. Categoria `System.Net.Http.HttpClient` ajustada para Warning; o `ApiHealthClient` mantém o próprio log de aviso.
 11. Arquivos de exemplo removidos (justificativa: implementações fictícias proibidas pela fase).
+12. O teste agora compara a saída com a versão informacional completa. Incluir o commit no `--version` foi mantido de propósito, porque ajuda a diagnosticar. O workflow passou a usar `actions/upload-artifact@v7`, que roda em Node.js 24.
 
 ## 11. Pendências
 
-- **CI não executado no GitHub:** o repositório não tem remote. O workflow foi criado e os mesmos passos foram executados localmente, mas a primeira execução no GitHub Actions ainda precisa ser verificada.
-- **Nenhum commit realizado**, conforme o plano aprovado. Todos os arquivos estão não rastreados.
+- **Repositório:** https://github.com/harrisonleandro/Gestalyn (público). Commit inicial `af77d2f` enviado para `main`.
+- **CI:** a correção do item 12 foi validada localmente (18/18) e ainda precisa ser confirmada no GitHub Actions após o próximo push.
 - **Especificação técnica v1.0** ainda precisa ser adicionada.
 - `AllowedHosts: "*"` deve ser restringido ao definir a hospedagem.
 - Detalhes cosméticos conhecidos:

@@ -6,17 +6,17 @@ namespace ProjectManager.UnitTests.Cli;
 public sealed class CliApplicationTests
 {
     [Fact]
-    public async Task Version_PrintsAssemblyVersionAndSucceeds()
+    public async Task Version_PrintsInformationalVersionAndSucceeds()
     {
         var result = await RunAsync("--version");
 
+        // Em um repositório Git, o SDK acrescenta o commit à versão (ex.: "0.1.0+<sha>").
         var informationalVersion = typeof(CliApplication).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
             .InformationalVersion;
-        var expectedVersion = informationalVersion.Split('+')[0];
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(expectedVersion, result.Output.Trim());
+        Assert.Equal(informationalVersion, result.Output.Trim());
         Assert.Empty(result.Error);
     }
 
