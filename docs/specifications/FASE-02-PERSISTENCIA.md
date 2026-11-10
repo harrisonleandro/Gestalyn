@@ -1,6 +1,6 @@
 # Fase 02: Persistência e modelo de domínio
 
-- **Estado:** Planned. Aguarda aprovação das decisões D1 a D4.
+- **Estado:** In Review. Implementada e validada localmente; falta confirmar o CI no GitHub após o push. Decisões D1 a D4 aprovadas pelo responsável em 2026-11-10.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9, Fase 02; seções 2.3 (multi-tenancy) e 6.5 (concorrência)
 - **Branch:** `feature/fase-02-persistencia` (a partir de `develop`)
 
@@ -16,7 +16,7 @@ Construir a base de dados PostgreSQL e o modelo de domínio inicial, com isolame
    - campos de auditoria (`CreatedAt`, `UpdatedAt`, em UTC).
 2. Entidades mínimas para materializar e testar o isolamento (decisão **D1**):
    - `Organization`: raiz do tenant.
-   - `Project`: entidade pertencente à organização, com dados básicos (nome, chave e descrição).
+   - `Project`: entidade pertencente à organização, com dados básicos (nome e descrição).
    - `ProjectPhase`: filha de `Project`. Prova que o banco impede associações entre organizações diferentes.
 3. EF Core + Npgsql: `DbContext`, configurações por entidade, convenção `snake_case`, índices, chaves e restrições.
 4. Mecanismo de isolamento (decisão **D2**):
@@ -41,14 +41,14 @@ Construir a base de dados PostgreSQL e o modelo de domínio inicial, com isolame
 - Row-Level Security do PostgreSQL: avaliada e registrada em ADR, mas não implementada nesta fase.
 - Banco gerenciado em nuvem (Fase 14).
 
-## Decisões que exigem aprovação
+## Decisões
 
 | ID | Decisão proposta | Alternativas |
 |---|---|---|
-| **D1** | Modelar só `Organization`, `Project` (mínimo) e `ProjectPhase` (mínimo). É o menor conjunto que exercita isolamento por consulta e por relacionamento. Os campos completos entram nas Fases 05 e 06. | (a) Só `Organization` + `Project`: não testa relacionamentos filhos entre organizações. (b) Antecipar `User`/`OrganizationMember`: acopla a fase à Identity (Fase 03). |
-| **D2** | Isolamento em três camadas. (1) Filtro global por `OrganizationId` vindo de `ITenantContext` (sem organização ativa, nenhum dado é retornado). (2) Interceptor que rejeita gravação de entidade de outra organização ou sem organização ativa. (3) FKs compostas `(organization_id, project_id)` → `projects (organization_id, id)` no banco. | Somente filtro na aplicação (sem garantia no banco); RLS já nesta fase (maior complexidade e acoplamento à conexão; fica como avaliação). |
-| **D3** | `docker-compose.yml` com PostgreSQL 18; a senha vem de `.env` (não versionado, com `.env.example` versionado); a connection string de desenvolvimento fica em `dotnet user-secrets`. | Senha fixa de desenvolvimento versionada: mais simples, mas contraria a regra de nunca versionar connection strings com credenciais. |
-| **D4** | Testes com **Testcontainers.PostgreSql** (PostgreSQL real e descartável) no projeto IntegrationTests. Exigem Docker local e no CI (`ubuntu-latest` já possui). | SQLite/InMemory: não validam FKs compostas, `xmin`, índices nem SQL do PostgreSQL; não servem para provar isolamento. |
+| **D1** (aprovada) | Modelar só `Organization`, `Project` (mínimo) e `ProjectPhase` (mínimo). É o menor conjunto que exercita isolamento por consulta e por relacionamento. Os campos completos entram nas Fases 05 e 06. | (a) Só `Organization` + `Project`: não testa relacionamentos filhos entre organizações. (b) Antecipar `User`/`OrganizationMember`: acopla a fase à Identity (Fase 03). |
+| **D2** (aprovada) | Isolamento em três camadas. (1) Filtro global por `OrganizationId` vindo de `ITenantContext` (sem organização ativa, nenhum dado é retornado). (2) Validação antes da gravação que rejeita entidade de entidade de outra organização ou sem organização ativa. (3) FKs compostas `(organization_id, project_id)` → `projects (organization_id, id)` no banco. | Somente filtro na aplicação (sem garantia no banco); RLS já nesta fase (maior complexidade e acoplamento à conexão; fica como avaliação). |
+| **D3** (aprovada) | `docker-compose.yml` com PostgreSQL 18; a senha vem de `.env` (não versionado, com `.env.example` versionado); a connection string de desenvolvimento fica em `dotnet user-secrets`. | Senha fixa de desenvolvimento versionada: mais simples, mas contraria a regra de nunca versionar connection strings com credenciais. |
+| **D4** (aprovada) | Testes com **Testcontainers.PostgreSql** (PostgreSQL real e descartável) no projeto IntegrationTests. Exigem Docker local e no CI (`ubuntu-latest` já possui). | SQLite/InMemory: não validam FKs compostas, `xmin`, índices nem SQL do PostgreSQL; não servem para provar isolamento. |
 
 Decisões de baixo risco já tomadas (serão registradas em ADR):
 
@@ -76,13 +76,13 @@ Decisões de baixo risco já tomadas (serão registradas em ADR):
 | F02-001 | Projetar entidades | Documentar o modelo das 3 entidades, campos e invariantes; diagrama ER em ARCHITECTURE.md |
 | F02-002 | Definir identificadores | Entidade base com `Guid` v7; `OrganizationId` obrigatório nas entidades da organização |
 | F02-003 | Definir relacionamentos | `Organization 1–N Project 1–N ProjectPhase`; FKs compostas com `OrganizationId` |
-| F02-004 | Implementar entidades | Construtores e métodos que garantem invariantes (nome obrigatório, limites de tamanho, chave do projeto em formato válido) |
+| F02-004 | Implementar entidades | Construtores e métodos que garantem invariantes (nome obrigatório, limites de tamanho, posição sequencial das fases) |
 | F02-005 | Configurações EF Core | `IEntityTypeConfiguration` por entidade; chaves alternativas; `snake_case` |
 | F02-006 | Configurar PostgreSQL | `docker-compose.yml`, `.env.example`, user-secrets, Options com validação da connection string |
 | F02-007 | Criar DbContext | `ProjectManagerDbContext` com filtros globais por organização; `ITenantContext` na Application |
 | F02-008 | Migrations | `dotnet-ef` local; migration inicial; teste de modelo sem alterações pendentes |
 | F02-009 | Auditoria de persistência | Interceptor `CreatedAt`/`UpdatedAt` (UTC via `TimeProvider`) |
-| F02-010 | Índices | Únicos: `organizations.slug`, `(organization_id, key)` em projetos, `(project_id, position)` em fases; índices das FKs |
+| F02-010 | Índices | Único `(project_id, position)` em fases; chave alternativa única `(organization_id, id)` em projetos; índices das FKs |
 | F02-011 | Restrições de integridade | NOT NULL, tamanhos, FKs compostas, `ON DELETE RESTRICT`, `xmin` |
 | F02-012 | Testar persistência | Gravação, leitura, auditoria, unicidade, concorrência otimista, migrations aplicáveis em banco vazio |
 | F02-013 | Testar isolamento | Leitura filtrada entre organizações; gravação bloqueada sem organização ativa ou de outra organização; FK composta rejeita fase ligada a projeto de outra organização mesmo contornando a aplicação (SQL direto) |
@@ -91,7 +91,7 @@ Decisões de baixo risco já tomadas (serão registradas em ADR):
 ## Arquivos previstos
 
 ```
-docker-compose.yml, .env.example, .config/dotnet-tools.json
+docker-compose.yml, .env.example, dotnet-tools.json
 src/ProjectManager.Domain/Common/            Entity, IOrganizationOwned, IAuditable
 src/ProjectManager.Domain/Organizations/     Organization
 src/ProjectManager.Domain/Projects/          Project, ProjectPhase
@@ -141,3 +141,30 @@ docs/decisions/ADR-004-TESTES-COM-POSTGRESQL.md
 ## Definição de conclusão
 
 Todos os critérios de aceitação verificados com evidência (local e CI), testes de isolamento comprovadamente sensíveis por mutação, ADRs 002 a 004 registrados, documentação, `PROJECT_STATUS.md` e relatório da Fase 02 atualizados, e alterações versionadas em `feature/fase-02-persistencia`.
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F02-001 | Completed | Modelo documentado em [ARCHITECTURE.md §3.2](../architecture/ARCHITECTURE.md) (diagrama ER) |
+| F02-002 | Completed | `Entity` com `Guid.CreateVersion7()`; teste `Constructor_TrimsNameAndAssignsVersion7Id` |
+| F02-003 | Completed | Migration com `fk_projects_organizations_organization_id` e FK composta `fk_project_phases_projects_organization_id_project_id` |
+| F02-004 | Completed | 11 testes unitários de invariantes |
+| F02-005 | Completed | `Persistence/Configurations/*` |
+| F02-006 | Completed | `docker-compose.yml` (PostgreSQL 18), `.env.example`, user-secrets; API conectada ao banco local |
+| F02-007 | Completed | `ProjectManagerDbContext` com filtros globais; `ITenantContext` |
+| F02-008 | Completed | `InitialCreate` aplicada no banco local (`dotnet ef database update`) e no contêiner de testes; teste de modelo sem mudanças pendentes |
+| F02-009 | Completed | Teste `Auditing_SetsTimestampsOnInsertAndOnlyUpdatedAtOnUpdate` |
+| F02-010 | Completed | Índice único `(project_id, position)` e chave alternativa `(organization_id, id)`; teste de unicidade |
+| F02-011 | Completed | Testes de `RESTRICT` (23001), unicidade (23505), `CHECK` (23514), FK composta (23503) e concorrência (`xmin`) |
+| F02-012 | Completed | `PersistenceTests`: 7 testes |
+| F02-013 | Completed | `TenantIsolationTests`: 8 testes, sensíveis às mutações (veja o relatório) |
+| Health check | Completed | `/health` com `database`: 200 com o banco no ar, 503 com o banco parado; 3 testes de API |
+| CI | **In Review** | Depende do push de `feature/fase-02-persistencia` |
+
+Ajustes feitos durante a implementação, todos dentro das decisões aprovadas:
+
+1. **Sem `slug` nem `key`:** o plano citava `organizations.slug` e uma chave para projetos. Esses campos não estão na especificação mestre e foram retirados para não inventar regras de negócio. Os índices únicos ficaram restritos aos estruturais.
+2. **Validação de gravação no `SaveChanges`:** a validação de gravação (D2, camada 2) ficou no `SaveChanges` do `DbContext`, e não em um interceptor separado, porque o contexto já possui a organização ativa e o relógio. O efeito é o mesmo.
+3. **Manifesto de ferramentas na raiz:** o .NET 10 gerou o manifesto em `dotnet-tools.json`, na raiz, e não em `.config/dotnet-tools.json`.
+4. **`127.0.0.1` em vez de `localhost`:** a connection string local usa `127.0.0.1`. No Windows, `localhost` tenta IPv6 primeiro e atrasava o health check em cerca de 2 s.

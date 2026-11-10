@@ -4,7 +4,7 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 01 (fundação técnica) concluída.** A solução compila, é testada e possui API, interface Web e CLI funcionais no nível de infraestrutura. Nenhuma funcionalidade de negócio (organizações, projetos, tarefas, autenticação, permissões) foi implementada ainda. O progresso de todas as fases está em [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+**Estado atual: Fase 02 (persistência e modelo de domínio) concluída.** A solução tem API, interface Web e CLI funcionais no nível de infraestrutura, e persistência em PostgreSQL com isolamento multi-tenant testado. Ainda não há funcionalidades de negócio expostas (cadastro, autenticação, organizações, projetos e tarefas pela API ou pela interface). O progresso de todas as fases está em [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
 
 A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 
@@ -18,8 +18,9 @@ A referência funcional e técnica é a [especificação mestre](docs/specificat
 | CLI | `projectctl` · System.CommandLine |
 | Testes | xUnit v3 · `WebApplicationFactory` (Microsoft.AspNetCore.Mvc.Testing) |
 | CI | GitHub Actions |
-| Planejado (fases futuras) | PostgreSQL + Npgsql · Entity Framework Core · ASP.NET Core Identity · SignalR · servidor MCP · object storage compatível com S3 · integração com GitHub |
-| Multi-tenancy | Banco e schema compartilhados com isolamento lógico por `OrganizationId` (a partir da Fase 02) |
+| Persistência | PostgreSQL 18 · Entity Framework Core 10 + Npgsql · migrations · Testcontainers nos testes |
+| Multi-tenancy | Banco e schema compartilhados com isolamento lógico por `OrganizationId`: filtro de leitura, bloqueio de gravação e FKs compostas no banco ([ADR-003](docs/decisions/ADR-003-ISOLAMENTO-MULTI-TENANT.md)) |
+| Planejado (fases futuras) | ASP.NET Core Identity · SignalR · servidor MCP · object storage compatível com S3 · integração com GitHub |
 
 ## Arquitetura
 
@@ -66,9 +67,46 @@ Descrição completa em [docs/architecture/PROJECT_STRUCTURE.md](docs/architectu
 
 - [.NET SDK 10.0.404](https://dotnet.microsoft.com/download/dotnet/10.0) ou superior na linha 10.0 (fixado em `global.json` com `rollForward: latestFeature`).
 - Git.
+- **Docker em execução** (Docker Desktop no Windows/macOS): PostgreSQL local e testes de integração.
 - Opcional: certificado HTTPS de desenvolvimento confiável (`dotnet dev-certs https --trust`) para usar os perfis `https`.
 
-Nenhum banco de dados ou serviço externo é necessário nesta fase.
+## Banco de dados local
+
+1. Crie o arquivo `.env` a partir do exemplo e defina uma senha local. O `.env` não é versionado.
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Suba o PostgreSQL 18, exposto apenas em `127.0.0.1:5432`:
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Guarde a connection string da API em user-secrets, com a mesma senha do `.env`:
+
+   ```bash
+   dotnet user-secrets set "ConnectionStrings:ProjectManager" "Host=127.0.0.1;Port=5432;Database=projectmanager;Username=projectmanager;Password=<senha do .env>" --project src/ProjectManager.API
+   ```
+
+   Use `127.0.0.1` em vez de `localhost`: no Windows, `localhost` tenta IPv6 primeiro e atrasa a conexão em cerca de 2 s.
+
+4. Restaure as ferramentas locais e aplique as migrations:
+
+   ```bash
+   dotnet tool restore
+   ```
+
+   ```bash
+   dotnet ef database update --project src/ProjectManager.Infrastructure --startup-project src/ProjectManager.API --connection "Host=127.0.0.1;Port=5432;Database=projectmanager;Username=projectmanager;Password=<senha do .env>"
+   ```
+
+As migrations nunca são aplicadas automaticamente pela aplicação ([ADR-002](docs/decisions/ADR-002-PERSISTENCIA-EF-CORE-POSTGRESQL.md)). Para criar uma migration depois de alterar o modelo:
+
+```bash
+dotnet ef migrations add <Nome> --project src/ProjectManager.Infrastructure --startup-project src/ProjectManager.API --output-dir Persistence/Migrations
+```
 
 ## Como compilar
 
@@ -84,6 +122,8 @@ O build trata avisos como erros e executa os analisadores .NET no modo `Recommen
 
 ## Como executar a API
 
+Requer o banco local configurado (seção anterior). Sem `ConnectionStrings:ProjectManager`, a API não inicia.
+
 ```bash
 dotnet run --project src/ProjectManager.API
 ```
@@ -95,7 +135,7 @@ dotnet run --project src/ProjectManager.API
 
 Perfil HTTPS: `dotnet run --project src/ProjectManager.API --launch-profile https` (https://localhost:7100).
 
-O endpoint `/health` reporta somente as verificações de componentes que existem. Atualmente apenas `self` (processo da API); banco de dados e serviços externos serão incluídos quando forem configurados.
+O endpoint `/health` reporta somente as verificações de componentes que existem: `self` (processo da API) e `database` (conexão com o PostgreSQL). Com o banco indisponível, responde 503.
 
 ## Como executar a Web
 
@@ -131,8 +171,8 @@ O executável compilado chama-se `projectctl` (`src/ProjectManager.CLI/bin/<Conf
 dotnet test
 ```
 
-- **UnitTests**: regras de dependência entre projetos e comportamento da CLI.
-- **IntegrationTests**: API hospedada em memória: health check, OpenAPI por ambiente e respostas de erro padronizadas.
+- **UnitTests**: regras de dependência entre projetos, invariantes do domínio e comportamento da CLI.
+- **IntegrationTests** (**requer Docker**): sobem um PostgreSQL descartável com Testcontainers e aplicam as migrations. Cobrem persistência, isolamento multi-tenant e a API hospedada em memória (health check, OpenAPI por ambiente e respostas de erro padronizadas).
 
 ## Integração contínua
 

@@ -4,7 +4,7 @@
 |---|---|
 | [ESPECIFICACAO-MESTRE.md](ESPECIFICACAO-MESTRE.md) | **Especificação funcional e técnica aprovada.** Decisões arquiteturais, modelo funcional, contratos da API, roadmap das 14 fases e processo obrigatório. É a fonte de verdade do projeto. |
 | [FASE-01-FUNDACAO.md](FASE-01-FUNDACAO.md) | Especificação da Fase 01: fundação da solução .NET. |
-| [FASE-02-PERSISTENCIA.md](FASE-02-PERSISTENCIA.md) | Especificação da Fase 02: persistência e modelo de domínio (Planned). |
+| [FASE-02-PERSISTENCIA.md](FASE-02-PERSISTENCIA.md) | Especificação da Fase 02: persistência e modelo de domínio (In Review). |
 
 Cada fase recebe um documento próprio (`FASE-NN-<TEMA>.md`) antes da implementação, com objetivo, escopo, fora de escopo, dependências, tarefas, arquivos previstos, critérios de aceitação, estratégia de testes, riscos e definição de conclusão (seção 12, etapa B, da especificação mestre).
 

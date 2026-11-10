@@ -1,6 +1,6 @@
 # Estrutura do projeto
 
-> Estado: Fase 01. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
+> Estado: Fase 02. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
 
 ## Raiz
 
@@ -16,34 +16,56 @@
 | `AGENTS.md` | Regras permanentes para agentes de IA. |
 | `.github/workflows/ci.yml` | CI: restore, build (Release) e testes. |
 | `.claude/launch.json` | Configuração para iniciar API e Web pelo Claude Code (ferramenta de desenvolvimento). |
+| `dotnet-tools.json` | Ferramentas locais da solução (`dotnet-ef` 10.0.15), restauradas com `dotnet tool restore`. |
+| `docker-compose.yml` | PostgreSQL 18 de desenvolvimento, exposto só em `127.0.0.1`. |
+| `.env.example` | Modelo do `.env` local (senha do PostgreSQL). O `.env` real não é versionado. |
 
 ## `src/`
 
 ### ProjectManager.Domain
 
-Núcleo do negócio, sem dependências. **Vazio na Fase 01**, sem entidades artificiais.
+Núcleo do negócio, sem dependências de outros projetos nem de frameworks.
 
 ```
 ProjectManager.Domain/
-├── <Modulo>/            (futuro) Entidades, objetos de valor, enums e eventos de cada módulo
-└── Common/              (futuro) Tipos base compartilhados (Entity, DomainEvent etc.)
+├── Common/
+│   ├── Entity.cs                 Base com Id UUID v7
+│   ├── IOrganizationOwned.cs     Entidade pertencente a uma organização
+│   ├── IAuditable.cs             CreatedAt/UpdatedAt (UTC)
+│   └── Guard.cs                  Validações de invariantes (interno)
+├── Organizations/Organization.cs Raiz do tenant
+├── Projects/Project.cs           Projeto (mínimo; completo na Fase 05)
+├── Projects/ProjectPhase.cs      Fase do projeto (mínima; completa na Fase 06)
+└── <Modulo>/                     (futuro) Demais entidades por fase
 ```
 
 ### ProjectManager.Application
 
 ```
 ProjectManager.Application/
-├── DependencyInjection.cs   AddApplication(): ponto de composição da camada
-└── <Modulo>/                (futuro) Casos de uso, DTOs, validadores, interfaces de serviços
+├── DependencyInjection.cs        AddApplication(): ponto de composição da camada
+├── Abstractions/MultiTenancy/
+│   ├── ITenantContext.cs         Organização ativa (resolvida no backend)
+│   └── CrossTenantAccessException.cs
+└── <Modulo>/                     (futuro) Casos de uso, DTOs, validadores, interfaces de serviços
 ```
 
 ### ProjectManager.Infrastructure
 
 ```
 ProjectManager.Infrastructure/
-├── DependencyInjection.cs   AddInfrastructure(): registra TimeProvider.System; futuramente EF Core, Identity etc.
-├── Persistence/             (futuro) DbContext, configurações EF, migrações
-└── Integrations/            (futuro) GitHub, provedores de IA
+├── DependencyInjection.cs        AddInfrastructure(): TimeProvider, ITenantContext padrão, DbContext, health check "database"
+├── MultiTenancy/
+│   └── UnresolvedTenantContext.cs Sem organização ativa (padrão até a Fase 04)
+├── Persistence/
+│   ├── ProjectManagerDbContext.cs Filtros por organização; validação antes de gravar
+│   ├── ProjectManagerDatabase.cs  Configuração única do provedor (Npgsql + snake_case)
+│   ├── DatabaseOptions.cs         ConnectionStrings:ProjectManager (validada na inicialização)
+│   ├── DesignTimeDbContextFactory.cs Para dotnet ef
+│   ├── ChangeTracking/            TenantIsolationRules, AuditingRules
+│   ├── Configurations/            Mapeamento por entidade (chaves, FKs compostas, índices, xmin)
+│   └── Migrations/                Migrations do EF Core (código gerado)
+└── Integrations/                  (futuro) GitHub, provedores de IA
 ```
 
 ### ProjectManager.API
@@ -98,8 +120,8 @@ ProjectManager.CLI/
 
 | Projeto | Referencia | Cobertura atual |
 |---|---|---|
-| `ProjectManager.UnitTests` | `CLI` | `Architecture/ProjectReferenceRulesTests`: regras de dependência entre projetos. `Cli/CliApplicationTests`: `--version`, `--help`/`-h`, execução sem argumentos e comando desconhecido. |
-| `ProjectManager.IntegrationTests` | `API` | `HealthEndpointTests`, `OpenApiDocumentTests` (Development × Production), `ErrorHandlingTests` (404 e 500 em Problem Details, sem vazar detalhes internos). |
+| `ProjectManager.UnitTests` | `CLI`, `Domain` | `Architecture/ProjectReferenceRulesTests`: regras de dependência entre projetos. `Domain/*Tests`: invariantes das entidades. `Cli/CliApplicationTests`: `--version`, `--help`/`-h`, execução sem argumentos e comando desconhecido. |
+| `ProjectManager.IntegrationTests` | `API`, `Infrastructure` | **Requer Docker.** `Infrastructure/PostgresDatabaseFixture` sobe o PostgreSQL 18 (Testcontainers) e aplica as migrations. `Persistence/PersistenceTests` e `Persistence/TenantIsolationTests` cobrem persistência e isolamento. `Api/*` cobre health check (com e sem banco), OpenAPI por ambiente e Problem Details. |
 
 ## `docs/`
 
@@ -122,7 +144,7 @@ Os itens previstos na seção 3 da especificação mestre são criados **quando 
 | `docs/api` | 03/04, com os primeiros endpoints `/api/v1` |
 | `docs/security` | 03, com a estratégia de autenticação |
 | `docs/deployment`, `docs/operations`, `infrastructure/` | 14 |
-| `scripts/` | Quando houver um script útil (por exemplo, PostgreSQL local na Fase 02) |
+| `scripts/` | Quando houver um script útil. Na Fase 02, o `docker-compose.yml` e os comandos do README foram suficientes. |
 
 ## Branches
 

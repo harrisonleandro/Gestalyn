@@ -61,7 +61,7 @@ flowchart LR
 
 ## 3. Multi-tenancy (decisão aprovada)
 
-Conforme a seção 2.3 da especificação mestre, a implementação começa na Fase 02:
+Conforme a seção 2.3 da especificação mestre, implementado a partir da Fase 02 ([ADR-003](../decisions/ADR-003-ISOLAMENTO-MULTI-TENANT.md)):
 
 - Banco PostgreSQL e schema **compartilhados**, com isolamento lógico.
 - Identificadores **UUID**.
@@ -69,7 +69,53 @@ Conforme a seção 2.3 da especificação mestre, a implementação começa na F
 - Relacionamentos que impedem associações entre organizações diferentes.
 - A organização ativa é validada no backend a partir da identidade e das permissões do usuário ou agente autenticado. **Nunca** se confia apenas no `OrganizationId` enviado pelo cliente.
 - Testes automatizados de isolamento cross-tenant.
-- Row-Level Security do PostgreSQL pode ser adotado como camada adicional, após avaliação técnica registrada em ADR.
+- Row-Level Security do PostgreSQL pode ser adotado como camada adicional, após avaliação técnica registrada em ADR (avaliado no ADR-003; reavaliação na Fase 04 ou 13).
+
+### 3.1 Como o isolamento é garantido
+
+| Camada | Mecanismo | Onde |
+|---|---|---|
+| Leitura | Filtro global `OrganizationId == organização ativa` em toda entidade `IOrganizationOwned`, e `Id == organização ativa` em `Organization`. Sem organização ativa, nada é retornado. | `ProjectManagerDbContext.OnModelCreating` |
+| Gravação | Inserção, alteração ou exclusão fora da organização ativa lança `CrossTenantAccessException`. `OrganizationId` é imutável. | `Persistence/ChangeTracking/TenantIsolationRules` |
+| Banco | FK composta `(organization_id, <pai>_id)` → `(organization_id, id)` | Configurações EF e migration |
+
+A organização ativa vem de `ITenantContext` (Application). Até a Fase 04, o padrão é `UnresolvedTenantContext` (nenhuma organização ativa).
+
+### 3.2 Modelo persistido (Fase 02)
+
+```mermaid
+erDiagram
+    organizations ||--o{ projects : "organization_id (RESTRICT)"
+    projects ||--o{ project_phases : "(organization_id, project_id) (RESTRICT)"
+
+    organizations {
+        uuid id PK
+        varchar_200 name
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    projects {
+        uuid id PK
+        uuid organization_id FK
+        varchar_200 name
+        varchar_4000 description "nullable"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    project_phases {
+        uuid id PK
+        uuid organization_id FK
+        uuid project_id FK
+        varchar_200 name
+        int position "CHECK > 0; único por projeto"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+- `projects` tem a chave alternativa única `(organization_id, id)`, alvo das FKs compostas.
+- Todas as tabelas usam `xmin` como token de concorrência otimista ([ADR-002](../decisions/ADR-002-PERSISTENCIA-EF-CORE-POSTGRESQL.md)).
+- Entidades mínimas: os demais atributos de projetos e fases entram nas Fases 05 e 06.
 
 ## 4. Módulos (evolução prevista)
 
@@ -84,7 +130,8 @@ Módulos previstos (especificação mestre, seção 4): identidade e organizaç�
 - **Composição:** `Program.cs` registra `AddApplication()` e `AddInfrastructure()`, os pontos de composição de cada camada.
 - **Erros:** `AddProblemDetails()` + `GlobalExceptionHandler` (`IExceptionHandler`). Exceções não tratadas viram `500 application/problem+json` com `traceId`, sem mensagem ou tipo da exceção. Requisições canceladas pelo cliente retornam `499` e não são registradas como erro. Respostas sem corpo (como 404) também viram Problem Details via `UseStatusCodePages()`.
 - **OpenAPI:** documento nativo do .NET 10 (OpenAPI 3.1) em `/openapi/v1.json`, exposto **somente em Development**.
-- **Health check:** `/health` com resposta JSON (`status`, `version`, `checkedAt`, `checks[]`). Registra apenas `self` (processo em execução); dependências (PostgreSQL etc.) serão adicionadas quando existirem. Retorna 200 para Healthy/Degraded e 503 para Unhealthy.
+- **Health check:** `/health` com resposta JSON (`status`, `version`, `checkedAt`, `checks[]`). Registra `self` (processo em execução) e, desde a Fase 02, `database` (conexão com o PostgreSQL, registrada pela Infrastructure). Retorna 200 para Healthy/Degraded e 503 para Unhealthy, sem expor detalhes de exceções ou da conexão.
+- **Banco:** connection string `ConnectionStrings:ProjectManager` obrigatória, validada na inicialização; a API não sobe sem ela.
 - **HTTPS/HSTS:** aplicados fora de Development.
 
 ### 5.2 Web
@@ -116,7 +163,8 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 
 | Tema | Fase |
 |---|---|
-| Modelo de domínio inicial, PostgreSQL + EF Core, migrations, auditoria de persistência, health check do banco | 02 |
+| ~~Modelo de domínio inicial, PostgreSQL + EF Core, migrations, auditoria de persistência, health check do banco~~ (ADR-002, 003 e 004) | 02 (concluída) |
+| Autor das alterações (`CreatedBy`/`UpdatedBy`) e reavaliação de RLS | 03/04 |
 | Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity) | 03 |
 | Papéis, permissões e organização ativa | 04 |
 | Credenciais de agentes, escopos e idempotência | 10 |
