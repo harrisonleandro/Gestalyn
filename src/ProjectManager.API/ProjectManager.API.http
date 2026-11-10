@@ -1,0 +1,9 @@
+@ApiHostAddress = http://localhost:5100
+
+### Estado da aplicação
+GET {{ApiHostAddress}}/health
+Accept: application/json
+
+### Documento OpenAPI (somente em Development)
+GET {{ApiHostAddress}}/openapi/v1.json
+Accept: application/json

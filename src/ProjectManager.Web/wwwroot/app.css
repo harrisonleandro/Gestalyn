@@ -1,0 +1,85 @@
+/* Tokens visuais do ProjectManager (tema escuro sobre Bootstrap 5.3 data-bs-theme="dark"). */
+:root {
+    --pm-bg: #0d1117;
+    --pm-surface: #161b22;
+    --pm-surface-sunken: #010409;
+    --pm-border: #30363d;
+    --pm-text: #c9d1d9;
+    --pm-text-muted: #8b949e;
+    --pm-text-strong: #f0f6fc;
+    --pm-accent: #4f8cff;
+    --pm-accent-soft: rgba(79, 140, 255, 0.18);
+    --pm-success: #3fb950;
+    --pm-warning: #d29922;
+    --pm-danger: #f85149;
+}
+
+[data-bs-theme="dark"] {
+    --bs-body-bg: var(--pm-bg);
+    --bs-body-color: var(--pm-text);
+    --bs-border-color: var(--pm-border);
+    --bs-link-color: var(--pm-accent);
+    --bs-link-color-rgb: 79, 140, 255;
+    --bs-link-hover-color: #79a8ff;
+}
+
+html, body {
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+h1, h2, h3, h4 {
+    color: var(--pm-text-strong);
+}
+
+h1:focus {
+    outline: none;
+}
+
+.content {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--pm-accent);
+    --bs-btn-border-color: var(--pm-accent);
+    --bs-btn-hover-bg: #3b74e0;
+    --bs-btn-hover-border-color: #3b74e0;
+}
+
+.btn:focus-visible, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem var(--pm-accent-soft);
+}
+
+.pm-card {
+    background-color: var(--pm-surface);
+    border: 1px solid var(--pm-border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+}
+
+.pm-muted {
+    color: var(--pm-text-muted);
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid var(--pm-success);
+}
+
+.invalid {
+    outline: 1px solid var(--pm-danger);
+}
+
+.validation-message {
+    color: var(--pm-danger);
+}
+
+.blazor-error-boundary {
+    background-color: #5c1d1d;
+    padding: 1rem 1rem 1rem 1.5rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "Ocorreu um erro ao exibir este componente.";
+    }

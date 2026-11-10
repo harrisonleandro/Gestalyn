@@ -1,0 +1,20 @@
+@page "/"
+@inject IHostEnvironment HostEnvironment
+
+<PageTitle>ProjectManager</PageTitle>
+
+<h1 class="mb-2">ProjectManager</h1>
+<p class="lead pm-muted mb-4">
+    Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades,
+    com participação de pessoas e agentes de inteligência artificial.
+</p>
+
+@if (!HostEnvironment.IsProduction())
+{
+    <div class="alert alert-warning" role="status">
+        Ambiente de <strong>@HostEnvironment.EnvironmentName</strong>. As funcionalidades de negócio
+        ainda não foram implementadas; esta interface contém apenas a fundação técnica.
+    </div>
+}
+
+<a href="status" class="btn btn-primary">Ver status do sistema</a>

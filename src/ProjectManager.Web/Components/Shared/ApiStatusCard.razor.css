@@ -1,0 +1,19 @@
+.status-dot {
+    display: inline-block;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    margin-right: 0.35rem;
+}
+
+.status-up {
+    background-color: var(--pm-success);
+}
+
+.status-degraded {
+    background-color: var(--pm-warning);
+}
+
+.status-down {
+    background-color: var(--pm-danger);
+}

@@ -1,0 +1,13 @@
+<span class="badge env-badge @CssClass" title="Ambiente de execução">@EnvironmentName</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string EnvironmentName { get; set; }
+
+    private string CssClass => EnvironmentName switch
+    {
+        "Production" => "env-production",
+        "Development" => "env-development",
+        _ => "env-other",
+    };
+}

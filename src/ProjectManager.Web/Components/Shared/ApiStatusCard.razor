@@ -1,0 +1,68 @@
+@implements IDisposable
+@inject ApiHealthClient ApiHealthClient
+
+<div class="pm-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">API</h2>
+        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync" disabled="@_isLoading">
+            @(_isLoading ? "Verificando…" : "Verificar novamente")
+        </button>
+    </div>
+
+    @if (_result is null)
+    {
+        <p class="pm-muted mb-0">Consultando o endpoint de saúde da API…</p>
+    }
+    else if (!_result.IsReachable)
+    {
+        <p class="mb-1"><span class="status-dot status-down"></span> Indisponível</p>
+        <p class="pm-muted mb-0">@_result.Error</p>
+    }
+    else
+    {
+        <dl class="row mb-0">
+            <dt class="col-sm-4 pm-muted fw-normal">Estado</dt>
+            <dd class="col-sm-8"><span class="status-dot @StatusCssClass(_result.Status)"></span> @_result.Status</dd>
+            <dt class="col-sm-4 pm-muted fw-normal">Versão</dt>
+            <dd class="col-sm-8 mb-0"><code>@(_result.Version ?? "—")</code></dd>
+        </dl>
+    }
+</div>
+
+@code {
+    private readonly CancellationTokenSource _disposalTokenSource = new();
+    private ApiHealthResult? _result;
+    private bool _isLoading;
+
+    protected override Task OnInitializedAsync() => RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _result = await ApiHealthClient.GetHealthAsync(_disposalTokenSource.Token);
+        }
+        catch (OperationCanceledException) when (_disposalTokenSource.IsCancellationRequested)
+        {
+            // O circuito foi encerrado durante a consulta; não há interface para atualizar.
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string StatusCssClass(string? status) => status switch
+    {
+        "Healthy" => "status-up",
+        "Degraded" => "status-degraded",
+        _ => "status-down",
+    };
+
+    public void Dispose()
+    {
+        _disposalTokenSource.Cancel();
+        _disposalTokenSource.Dispose();
+    }
+}

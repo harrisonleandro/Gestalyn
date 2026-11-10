@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ProjectManager.CLI</RootNamespace>
+    <AssemblyName>projectctl</AssemblyName>
+  </PropertyGroup>
+
+  <!-- A CLI acessa a API exclusivamente por HTTP: não há referências a outros projetos da solução. -->
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+</Project>

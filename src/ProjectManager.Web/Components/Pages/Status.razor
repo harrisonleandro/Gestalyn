@@ -1,0 +1,27 @@
+@page "/status"
+@using Microsoft.Extensions.Options
+@inject IHostEnvironment HostEnvironment
+@inject IOptions<ApiOptions> ApiOptions
+
+<PageTitle>Status do sistema · ProjectManager</PageTitle>
+
+<h1 class="mb-4">Status do sistema</h1>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="pm-card h-100">
+            <h2 class="h5 mb-3">Web</h2>
+            <dl class="row mb-0">
+                <dt class="col-sm-4 pm-muted fw-normal">Ambiente</dt>
+                <dd class="col-sm-8">@HostEnvironment.EnvironmentName</dd>
+                <dt class="col-sm-4 pm-muted fw-normal">Versão</dt>
+                <dd class="col-sm-8"><code>@AppInfo.Version</code></dd>
+                <dt class="col-sm-4 pm-muted fw-normal">URL da API</dt>
+                <dd class="col-sm-8 mb-0"><code>@ApiOptions.Value.BaseUrl</code></dd>
+            </dl>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <ApiStatusCard @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+    </div>
+</div>

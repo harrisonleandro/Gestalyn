@@ -1,0 +1,26 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Erro · ProjectManager</PageTitle>
+
+<h1 class="text-danger">Erro</h1>
+<p>Ocorreu um erro ao processar a requisição.</p>
+
+@if (ShowRequestId)
+{
+    <p>
+        <strong>ID da requisição:</strong> <code>@RequestId</code>
+    </p>
+}
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

@@ -1,0 +1,23 @@
+<div class="top-row ps-3 navbar">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">ProjectManager</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Menu de navegação" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Início
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="status">
+                <span class="bi bi-activity-nav-menu" aria-hidden="true"></span> Status do sistema
+            </NavLink>
+        </div>
+    </nav>
+</div>
