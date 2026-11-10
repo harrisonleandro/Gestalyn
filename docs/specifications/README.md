@@ -1,20 +1,13 @@
 # Especificações
 
-Este diretório deve conter a **Especificação Técnica v1.0** do ProjectManager, que é a referência funcional e arquitetural do projeto.
+| Documento | Conteúdo |
+|---|---|
+| [ESPECIFICACAO-MESTRE.md](ESPECIFICACAO-MESTRE.md) | **Especificação funcional e técnica aprovada.** Decisões arquiteturais, modelo funcional, contratos da API, roadmap das 14 fases e processo obrigatório. É a fonte de verdade do projeto. |
+| [FASE-01-FUNDACAO.md](FASE-01-FUNDACAO.md) | Especificação da Fase 01: fundação da solução .NET. |
 
-## Situação em 2026-11-10 (Fase 01)
+Cada fase recebe um documento próprio (`FASE-NN-<TEMA>.md`) antes da implementação, com objetivo, escopo, fora de escopo, dependências, tarefas, arquivos previstos, critérios de aceitação, estratégia de testes, riscos e definição de conclusão (seção 12, etapa B, da especificação mestre).
 
-A especificação técnica v1.0 **não estava disponível no repositório** durante a execução da Fase 01. A fundação técnica foi construída usando apenas as decisões fornecidas no prompt da Fase 01:
+## Histórico
 
-- C# / .NET 10 LTS, ASP.NET Core Web API, Blazor Web App, PostgreSQL, EF Core, ASP.NET Core Identity, SignalR, xUnit, Git e GitHub Actions.
-- Arquitetura em monólito modular, plataforma multiusuário, multi-organização (multi-tenant), hospedada em nuvem.
-- Integrações futuras: REST API, CLI `projectctl`, MCP para agentes e GitHub.
-
-Decisões que dependem da especificação foram **deliberadamente adiadas** e não foram presumidas:
-
-- Modelo de multi-tenancy (banco único com discriminador, schema por tenant ou banco por tenant).
-- Estratégia de autenticação da API para Web, CLI e agentes (cookies, JWT, tokens pessoais, OAuth).
-- Modelo de permissões e papéis.
-- Modelo de domínio (organizações, projetos, tarefas, fases, atividades, agentes).
-
-**Ação necessária:** adicionar a especificação v1.0 neste diretório antes do início da Fase 02.
+- **2026-11-10, Fase 01 (primeira execução):** nenhuma especificação estava disponível no repositório. A fundação foi construída com as decisões do prompt da Fase 01, e modelo de multi-tenancy, autenticação e modelo de domínio foram adiados.
+- **2026-11-10, especificação mestre recebida:** registrada em `ESPECIFICACAO-MESTRE.md`. A estratégia de multi-tenancy passa a estar definida (banco e schema compartilhados, `OrganizationId`, UUID, isolamento validado no backend). A estratégia detalhada de autenticação (sessão da Web, tokens da API e credenciais de agentes) continua a ser definida nas Fases 03 e 10.

@@ -1,195 +1,243 @@
-# Relatório de execução: Fase 01, Fundação .NET
+# Relatório final: Fase 01, Fundação da solução .NET
 
 - **Data:** 2026-11-10
-- **Ambiente:** Windows 11 Pro 10.0.26200 · .NET SDK 10.0.404 (runtime 10.0.15) · Git 2.55.0
+- **Ambiente:** Windows 11 Pro 10.0.26200 · .NET SDK 10.0.404 (runtime 10.0.15) · Git 2.55.0 · GitHub Actions `ubuntu-latest`
+- **Estado:** Completed
+- **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
-## 1. Resumo do que foi implementado
+## 1. Nome e número da fase
 
-- Solução `ProjectManager.sln` com 6 projetos de código e 2 de testes, com as referências exigidas pela arquitetura. As regras de dependência são verificadas por teste.
-- Configuração comum: `global.json`, `Directory.Build.props` (nullable, implicit usings, analisadores `Recommended`, avisos como erros), `Directory.Packages.props` (Central Package Management) e `.editorconfig` com convenções de nomenclatura.
-- **API:** DI com pontos de composição por camada, OpenAPI só em Development, `/health` reportando apenas o que existe, Problem Details para 404/500 com `GlobalExceptionHandler`, logs estruturados (JSON fora de Development), HTTPS/HSTS fora de Development.
-- **Web:** Blazor Web App em tema escuro, com layout, navegação (Início, Status do sistema), selo de ambiente e página de status que consulta a API por HTTP via `HttpClient` tipado. A configuração `Api:BaseUrl` é validada na inicialização.
-- **CLI:** executável `projectctl` com `--help`, `--version`, ajuda quando chamado sem argumentos e código de saída ≠ 0 para comandos desconhecidos. A estrutura está preparada para os grupos futuros, sem comandos falsos.
+Fase 01: Fundação da solução .NET. A especificação da fase está em [FASE-01-FUNDACAO.md](../specifications/FASE-01-FUNDACAO.md).
+
+## 2. Objetivo
+
+Criar a estrutura inicial da solução e configurar o ambiente (build, padrões de código, testes, CI e documentação), sem funcionalidades de negócio.
+
+## 3. Resumo das implementações
+
+- **Solução:** `ProjectManager.sln` com 6 projetos de código e 2 de testes. As referências seguem a seção 3.1 da especificação mestre e são verificadas por teste.
+- **Configuração comum:**
+  - `global.json`, fixando o SDK 10.0.404.
+  - `Directory.Build.props`: nullable, implicit usings, analisadores `Recommended`, avisos como erros e versão única do produto.
+  - `Directory.Packages.props` (Central Package Management).
+  - `.editorconfig` com convenções de nomenclatura.
+- **API:**
+  - Pontos de composição de DI por camada.
+  - OpenAPI 3.1 nativo, exposto somente em Development.
+  - `/health` reportando apenas componentes existentes.
+  - Problem Details (RFC 9457) para 404 e 500 via `GlobalExceptionHandler`, sem expor detalhes internos.
+  - Logs estruturados com `[LoggerMessage]`: JSON fora de Development, texto simples em Development.
+  - HTTPS e HSTS fora de Development.
+- **Web:**
+  - Blazor Web App em tema escuro, com layout, navegação (Início, Status do sistema) e selo de ambiente.
+  - Página de status que consulta a API por HTTP com `HttpClient` tipado.
+  - `Api:BaseUrl` validada na inicialização.
+- **CLI:** `projectctl` com `--help` e `--version`. Sem argumentos, exibe a ajuda; com comando desconhecido, sai com código ≠ 0. Os grupos futuros têm convenção definida, mas nenhum comando falso foi registrado.
 - **Testes:** 12 unitários e 6 de integração.
-- **CI:** workflow do GitHub Actions (restore, build Release, testes, publicação dos `.trx`).
-- **Documentação:** README, AGENTS.md, ARCHITECTURE.md, PROJECT_STRUCTURE.md, ADR-001, nota de ausência da especificação e este relatório.
+- **CI:** GitHub Actions com restore, build Release, testes e publicação dos `.trx`, em push para `main`/`develop` e em pull requests.
+- **Processo e documentação:**
+  - README e AGENTS.md.
+  - Arquitetura, estrutura e ADR-001 (com a revisão de alinhamento).
+  - Especificação mestre registrada no repositório e especificação da Fase 01.
+  - `PROJECT_STATUS.md` e este relatório.
 
-## 2. Estrutura final do repositório
+## 4. Arquivos criados
 
-```
-ProjectManager/
-├── .claude/launch.json
-├── .github/workflows/ci.yml
-├── docs/
-│   ├── architecture/ARCHITECTURE.md, PROJECT_STRUCTURE.md
-│   ├── decisions/ADR-001-MODULAR-MONOLITH.md
-│   ├── reports/FASE-01-RELATORIO.md
-│   └── specifications/README.md
-├── src/
-│   ├── ProjectManager.Domain/
-│   ├── ProjectManager.Application/       DependencyInjection.cs
-│   ├── ProjectManager.Infrastructure/    DependencyInjection.cs
-│   ├── ProjectManager.API/               Program.cs, ErrorHandling/, Health/
-│   ├── ProjectManager.Web/               Program.cs, Api/, Components/, wwwroot/
-│   └── ProjectManager.CLI/               Program.cs, CliApplication.cs
-├── tests/
-│   ├── ProjectManager.UnitTests/         Architecture/, Cli/
-│   └── ProjectManager.IntegrationTests/  Api/, Infrastructure/
-├── .editorconfig  .gitattributes  .gitignore
-├── Directory.Build.props  Directory.Packages.props  global.json
-├── AGENTS.md  README.md
-└── ProjectManager.sln
-```
+| Área | Arquivos |
+|---|---|
+| Raiz | `ProjectManager.sln`, `global.json`, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, `.gitattributes`, `.gitignore`, `README.md`, `AGENTS.md` |
+| CI e ferramentas | `.github/workflows/ci.yml`, `.claude/launch.json` |
+| Domain | `ProjectManager.Domain.csproj` |
+| Application | `ProjectManager.Application.csproj`, `DependencyInjection.cs` |
+| Infrastructure | `ProjectManager.Infrastructure.csproj`, `DependencyInjection.cs` |
+| API | `Program.cs`, `ErrorHandling/GlobalExceptionHandler.cs`, `Health/HealthEndpoints.cs`, `Health/HealthCheckResponseWriter.cs`, `appsettings*.json`, `Properties/launchSettings.json`, `ProjectManager.API.http`, `.csproj` |
+| Web | `Program.cs`, `AppInfo.cs`, `Api/ApiOptions.cs`, `Api/ApiHealthClient.cs`, `Api/ApiHealthResult.cs`, `Components/` (App, Routes, Layout, Pages Home/Status/Error/NotFound, Shared EnvironmentBadge/ApiStatusCard), `wwwroot/app.css`, `appsettings*.json`, `Properties/launchSettings.json`, `.csproj`. Bootstrap 5.3 e `ReconnectModal` vêm do template. |
+| CLI | `Program.cs`, `CliApplication.cs`, `.csproj` |
+| UnitTests | `Architecture/ProjectReferenceRulesTests.cs`, `Architecture/RepositoryRoot.cs`, `Cli/CliApplicationTests.cs`, `.csproj` |
+| IntegrationTests | `Infrastructure/ApiFactory.cs`, `Api/HealthEndpointTests.cs`, `Api/OpenApiDocumentTests.cs`, `Api/ErrorHandlingTests.cs`, `Api/ThrowingTestController.cs`, `.csproj` |
+| Documentação | `docs/PROJECT_STATUS.md`, `docs/architecture/ARCHITECTURE.md`, `docs/architecture/PROJECT_STRUCTURE.md`, `docs/decisions/ADR-001-MODULAR-MONOLITH.md`, `docs/specifications/README.md`, `docs/specifications/ESPECIFICACAO-MESTRE.md`, `docs/specifications/FASE-01-FUNDACAO.md`, `docs/reports/FASE-01-RELATORIO.md` |
 
-Detalhes por arquivo em [PROJECT_STRUCTURE.md](../architecture/PROJECT_STRUCTURE.md).
+## 5. Arquivos modificados
 
-## 3. Projetos criados
+O repositório estava vazio no início da fase. Depois do commit inicial, estes arquivos foram modificados:
 
-| Projeto | Tipo | Referências |
+| Arquivo | Motivo |
+|---|---|
+| `tests/ProjectManager.UnitTests/Cli/CliApplicationTests.cs` | Correção do teste de `--version` que falhou no primeiro CI (§12) |
+| `.github/workflows/ci.yml` | `upload-artifact` v4 → v7 (Node.js 24); CI também em `develop` |
+| `AGENTS.md`, `README.md`, `docs/architecture/*`, `docs/decisions/ADR-001-*`, `docs/specifications/README.md` | Alinhamento com a especificação mestre |
+| `docs/reports/FASE-01-RELATORIO.md` | Registro do CI e reescrita no formato de 19 seções |
+
+Arquivos de exemplo dos templates foram removidos (WeatherForecast, Counter, Weather, `Class1.cs`, `UnitTest1.cs`), porque implementações fictícias são proibidas.
+
+## 6. Dependências adicionadas
+
+| Pacote | Versão | Projeto |
 |---|---|---|
-| ProjectManager.Domain | classlib | — |
-| ProjectManager.Application | classlib | Domain |
-| ProjectManager.Infrastructure | classlib | Application, Domain |
-| ProjectManager.API | ASP.NET Core Web API (controllers) | Application, Infrastructure |
-| ProjectManager.Web | Blazor Web App (Interactive Server) | nenhuma (HTTP) |
-| ProjectManager.CLI | console (`projectctl`) | nenhuma (HTTP) |
-| ProjectManager.UnitTests | xUnit v3 | CLI |
-| ProjectManager.IntegrationTests | xUnit v3 | API |
+| Microsoft.AspNetCore.OpenApi | 10.0.15 | API |
+| Microsoft.Extensions.DependencyInjection.Abstractions | 10.0.15 | Application, Infrastructure |
+| System.CommandLine | 2.0.15 | CLI |
+| xunit.v3 | 3.2.2 | testes |
+| xunit.runner.visualstudio | 3.1.5 | testes |
+| Microsoft.NET.Test.Sdk | 18.11.1 | testes |
+| Microsoft.AspNetCore.Mvc.Testing | 10.0.15 | IntegrationTests |
+| Bootstrap 5.3 (arquivos estáticos do template) | — | Web |
+| Ferramenta: .NET SDK 10.0.404 | — | instalado via winget, com autorização |
+| Action: `actions/upload-artifact` | v7 | CI |
 
-## 4. Dependências adicionadas e justificativas
+## 7. Justificativas técnicas
 
-| Pacote | Versão | Projeto | Justificativa |
-|---|---|---|---|
-| Microsoft.AspNetCore.OpenApi | 10.0.15 | API | Documento OpenAPI 3.1 nativo do .NET 10; requisito da fase. |
-| Microsoft.Extensions.DependencyInjection.Abstractions | 10.0.15 | Application, Infrastructure | Métodos `AddApplication`/`AddInfrastructure` sem depender do ASP.NET Core. |
-| System.CommandLine | 2.0.15 | CLI | Parser oficial da Microsoft; fornece `--help`/`--version` padronizados. Linha 2.0.x, alinhada ao .NET 10. |
-| xunit.v3 | 3.2.2 | testes | xUnit obrigatório. A v3 fornece `TestContext.Current.CancellationToken`. |
-| xunit.runner.visualstudio | 3.1.5 | testes | Execução via `dotnet test`. |
-| Microsoft.NET.Test.Sdk | 18.11.1 | testes | Infraestrutura de testes do `dotnet test`. |
-| Microsoft.AspNetCore.Mvc.Testing | 10.0.15 | IntegrationTests | `WebApplicationFactory` para hospedar a API em memória. |
-| Bootstrap 5.3 (arquivos estáticos) | template | Web | Incluído pelo template Blazor; usado para layout e tema escuro. |
+- **OpenAPI nativo** em vez de Swashbuckle: é o suporte oficial do .NET 10 (OpenAPI 3.1) e não exige pacote de terceiros. A interface visual (Scalar ou Swagger UI) não foi incluída, para evitar uma dependência sem necessidade.
+- **DependencyInjection.Abstractions:** permite `AddApplication`/`AddInfrastructure` sem acoplar as camadas ao ASP.NET Core.
+- **System.CommandLine 2.0.x:** parser oficial, estável e alinhado ao .NET 10. A linha 3.0 já existe, mas acompanha o .NET 11.
+- **xUnit v3 3.2.x:** a especificação exige xUnit, e a v3 fornece `TestContext.Current.CancellationToken`. A linha 4.x é mais recente, mas foi evitada para não adotar um major sem necessidade.
+- **Mvc.Testing:** hospeda a API em memória nos testes de integração.
+- **Central Package Management:** evita versões divergentes entre projetos.
+- **Formato `.sln`** em vez de `.slnx` (padrão do .NET 10): segue a estrutura da especificação.
+- **Blazor Interactive Server por componente:** a Web chama a API servidor a servidor, sem precisar de CORS, e é compatível com SignalR.
+- **Health check sem dependências fictícias:** só reporta o que existe, conforme o prompt da fase.
+- **Regras de arquitetura lidas dos `.csproj`:** detectam referências declaradas mesmo quando nenhum tipo é usado.
 
-Já existem versões mais novas (xunit.v3 4.x, System.CommandLine 3.0, pacotes 11.0 do .NET 11), mas foram mantidas as linhas compatíveis e estáveis com o .NET 10 LTS. O pacote `coverlet.collector` do template foi removido porque a cobertura não é requisito desta fase.
+## 8. Testes executados
 
-## 5. Arquivos de configuração
+| Projeto | Teste | Verifica |
+|---|---|---|
+| UnitTests | `ProjectReferenceRulesTests.Project_ReferencesOnlyAllowedProjects` (6 casos) | Referências permitidas de cada projeto em `src/` |
+| UnitTests | `ProjectReferenceRulesTests.SourceProjects_AreAllCoveredByRules` | Todo projeto em `src/` tem regra |
+| UnitTests | `CliApplicationTests` (5) | `--version`, `--help`, `-h`, sem argumentos, comando desconhecido |
+| IntegrationTests | `HealthEndpointTests` (2) | `/health` Healthy, versão e somente a verificação `self` |
+| IntegrationTests | `OpenApiDocumentTests` (2) | OpenAPI em Development e 404 em Production |
+| IntegrationTests | `ErrorHandlingTests` (2) | 404 e 500 em Problem Details, com `traceId` e sem vazar a exceção |
 
-`global.json`, `Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, `.gitattributes`, `.gitignore`, `.github/workflows/ci.yml`, `.claude/launch.json`, `src/*/appsettings*.json`, `src/*/Properties/launchSettings.json`.
+Também foram feitas uma verificação de mutação e a execução real de API, Web e CLI (§11).
 
-## 6. Comandos executados (principais)
-
-```
-winget install --id Microsoft.DotNet.SDK.10 --exact     → SDK 10.0.404 instalado
-git init -b main
-dotnet new sln -n ProjectManager --format sln
-dotnet new classlib|webapi --use-controllers|blazor --interactivity Server|console|xunit ...
-dotnet sln add ... ; dotnet add <proj> reference ...
-dotnet restore                                          → exit 0
-dotnet build                                            → exit 0, 0 avisos, 0 erros
-dotnet build -c Release                                 → exit 0, 0 avisos, 0 erros
-dotnet test                                             → exit 0, 18/18 aprovados
-dotnet run --project src/ProjectManager.CLI -- --version → "0.1.0", exit 0
-projectctl.exe --help                                   → ajuda, exit 0
-```
-
-## 7. Resultado do build
+## 9. Resultado do build
 
 ```
-dotnet build -c Release --no-restore
-    0 Aviso(s)
-    0 Erro(s)
+dotnet restore                       → exit 0
+dotnet build -c Release --no-restore → 0 Aviso(s), 0 Erro(s), exit 0
 ```
 
-Os 8 projetos compilam individualmente: Domain, Application, Infrastructure, API, Web, CLI, UnitTests e IntegrationTests.
+Os 8 projetos compilam. A última validação local foi em 2026-11-10, às 22:15 UTC.
 
-## 8. Resultado dos testes
+## 10. Resultado dos testes
 
 ```
-Aprovado!  – Com falha: 0, Aprovado: 12, Ignorado: 0, Total: 12 - ProjectManager.UnitTests.dll (net10.0)
-Aprovado!  – Com falha: 0, Aprovado:  6, Ignorado: 0, Total:  6 - ProjectManager.IntegrationTests.dll (net10.0)
+Aprovado! – Com falha: 0, Aprovado: 12, Total: 12 - ProjectManager.UnitTests.dll (net10.0)
+Aprovado! – Com falha: 0, Aprovado:  6, Total:  6 - ProjectManager.IntegrationTests.dll (net10.0)
 ```
 
-**Verificação de mutação:** com uma referência proibida (Web → Domain) adicionada temporariamente, `ProjectReferenceRulesTests` falhou (1 falha em 12). A referência foi removida em seguida.
+| Execução no GitHub Actions | Commit | Resultado |
+|---|---|---|
+| [42897140748](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897140748) | `af77d2f` | **failure:** 1 teste falhou (§12) |
+| [42897692133](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897692133) | `53c4d5a` | success: 12/12 e 6/6 |
+| [42901411495](https://github.com/harrisonleandro/Gestalyn/actions/runs/42901411495) | `c6bd32a` | success |
 
-**Validação em execução real:**
+## 11. Evidências
 
 | Verificação | Resultado |
 |---|---|
-| API (Development) `GET /health` | 200, `{"status":"Healthy","version":"0.1.0",...,"checks":[{"name":"self",...}]}` |
-| API (Development) `GET /openapi/v1.json` | 200, `"openapi": "3.1.1"` |
+| API (Development) `GET /health` | 200: `{"status":"Healthy","version":"0.1.0",...,"checks":[{"name":"self",...}]}` |
+| API (Development) `GET /openapi/v1.json` | 200: `"openapi": "3.1.1"` |
 | API `GET /rota-inexistente` | 404 `application/problem+json` com `traceId` |
-| API (Production) `/health` / `/openapi/v1.json` | 200 / 404; logs em JSON |
-| Web (Development) `/` e `/status` | Renderizadas em tema escuro; card da API "Healthy · 0.1.0" via HTTP |
-| Web com a API parada | Card mostra "Indisponível: Não foi possível conectar à API."; aviso estruturado no log |
+| API (Production) `/health` e `/openapi/v1.json` | 200 e 404; logs em JSON |
+| Web (Development) `/` e `/status` | Tema escuro; card da API "Healthy · 0.1.0" obtido por HTTP |
+| Web com a API parada | "Indisponível: Não foi possível conectar à API." e aviso estruturado no log |
 | Web (Production) sem `Api:BaseUrl` | Não inicia: `OptionsValidationException ... 'BaseUrl' ... required` |
-| CLI `--version` / `--help` / sem argumentos / comando inválido | 0 / 0 / 0 (ajuda) / 1 |
+| CLI `--version`, `--help`, sem argumentos, comando inválido | códigos 0, 0, 0 (ajuda) e 1 |
+| Mutação (referência Web → Domain adicionada temporariamente) | `ProjectReferenceRulesTests` falhou (1 de 12); a referência foi revertida |
 
-## 9. Problemas encontrados
+## 12. Problemas encontrados
 
 1. .NET SDK ausente na máquina.
 2. Diretório sem repositório Git.
-3. Especificação técnica v1.0 ausente.
-4. Certificado HTTPS de desenvolvimento presente, mas não confiável.
-5. O .NET 10 cria `.slnx` por padrão; a especificação exige `ProjectManager.sln`.
-6. O template `xunit` gera projetos xUnit v2.
-7. Erros de compilação durante a implementação: escape de `'\\'`, nulabilidade em `Assert.Equal` (CS8631) e CA1822 na ação do controller de teste.
+3. Nenhuma especificação disponível na primeira execução.
+4. Certificado HTTPS de desenvolvimento não confiável.
+5. O .NET 10 cria `.slnx` por padrão.
+6. O template `xunit` gera xUnit v2.
+7. Erros de compilação durante a implementação: escape de `'\\'`, CS8631 em `Assert.Equal` e CA1822 no controller de teste.
 8. A CLI sem argumentos encerrava com código 0 e sem nenhuma saída.
 9. Acentos corrompidos na saída da CLI no console do Windows.
-10. Logs do `HttpClient` em nível Information com stack traces completos, muito verbosos.
-11. Artefatos de exemplo dos templates (WeatherForecast, Counter, Weather, Class1, UnitTest1).
-12. **Primeira execução do CI falhou** ([run 42897140748](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897140748)). O teste `--version` esperava `0.1.0`, mas recebeu `0.1.0+af77d2f…`: com o repositório já tendo um commit, o SDK acrescenta o hash à versão informacional. Localmente o teste tinha passado porque ainda não havia commits. A execução também avisou que `actions/upload-artifact@v4` usa Node.js 20, que está descontinuado.
+10. Logs do `HttpClient` em nível Information com stack traces completos.
+11. Artefatos de exemplo nos templates.
+12. **Primeiro CI falhou:** com histórico Git, o SDK acrescenta o hash do commit à versão (`0.1.0+af77d2f…`), e o teste de `--version` esperava só `0.1.0`. Localmente o teste tinha passado porque ainda não havia commits.
+13. Aviso no CI: `actions/upload-artifact@v4` usa Node.js 20, que está descontinuado.
+14. O push inicial foi negado (403): o GitHub CLI estava autenticado com uma conta sem permissão de escrita.
+15. A documentação divergia da especificação mestre recebida depois: MCP descrito como cliente HTTP, multi-tenancy tratado como "adiado" e ausência de `PROJECT_STATUS.md`, da especificação de fase e da branch `develop`.
 
-## 10. Problemas corrigidos
+## 13. Problemas corrigidos
 
-1. SDK 10.0.404 instalado via winget (autorizado na aprovação do plano).
+1. SDK 10.0.404 instalado via winget, com autorização.
 2. `git init -b main`.
-3. Ausência registrada em `docs/specifications/README.md`; decisões dependentes foram adiadas, não presumidas.
-4. Perfis `http` usados como padrão (API 5100, Web 5200); `https` continua disponível.
+3. Especificação mestre registrada em `docs/specifications/ESPECIFICACAO-MESTRE.md`.
+4. Os perfis `http` são o padrão (API 5100, Web 5200).
 5. `dotnet new sln --format sln`.
-6. Migrado para `xunit.v3` com Central Package Management.
+6. Migração para `xunit.v3`.
 7. Os três erros foram corrigidos; a supressão de CA1822 tem justificativa.
-8. O comando raiz exibe a ajuda.
+8. Sem argumentos, a CLI exibe a ajuda.
 9. `Console.OutputEncoding = UTF8`.
-10. Categoria `System.Net.Http.HttpClient` ajustada para Warning; o `ApiHealthClient` mantém o próprio log de aviso.
-11. Arquivos de exemplo removidos (justificativa: implementações fictícias proibidas pela fase).
-12. O teste agora compara a saída com a versão informacional completa. Incluir o commit no `--version` foi mantido de propósito, porque ajuda a diagnosticar. O workflow passou a usar `actions/upload-artifact@v7`, que roda em Node.js 24.
+10. Categoria `System.Net.Http.HttpClient` ajustada para Warning.
+11. Arquivos de exemplo removidos.
+12. O teste compara com a versão informacional completa. O hash foi mantido na saída porque ajuda a identificar a build (commit `53c4d5a`).
+13. `upload-artifact@v7`.
+14. O responsável autenticou a conta correta, e o push foi feito.
+15. Documentação alinhada:
+    - ADR-001 revisado, ARCHITECTURE.md (MCP/Worker e multi-tenancy), AGENTS.md (processo A–F, branches) e README.
+    - Especificação da fase e `PROJECT_STATUS.md` criados.
+    - Branch `develop` criada e CI estendido a ela.
 
-## 11. Pendências
+## 14. Pendências
 
-- **Especificação técnica v1.0** ainda precisa ser adicionada.
-- `AllowedHosts: "*"` deve ser restringido ao definir a hospedagem.
-- Detalhes cosméticos conhecidos:
-  - O JSON do `/health` escapa caracteres não ASCII (`á`); o JSON continua válido.
-  - Parte dos textos padrão do System.CommandLine aparece em inglês ("Show help and usage information"), porque a localização da biblioteca é parcial.
-  - No Windows, uma conexão recusada em `localhost` leva cerca de 4 s (tentativa IPv6 e depois IPv4) antes de a Web mostrar "Indisponível".
-- Terminais abertos antes da instalação do SDK precisam ser reabertos para enxergar `dotnet` no PATH.
+- Enviar `develop` e o alinhamento documental ao GitHub. Depende de autorização de push, e a execução do CI em `develop` só fica confirmada depois disso.
+- **Nome comercial:** a especificação diz "pendente de definição", e o repositório se chama Gestalyn.
+- `AllowedHosts: "*"` deve ser restringido na Fase 14.
+- Itens cosméticos:
+  - O JSON do `/health` escapa caracteres não ASCII (o JSON continua válido).
+  - Parte da ajuda do System.CommandLine aparece em inglês.
+  - No Windows, uma conexão recusada em `localhost` leva cerca de 4 s antes de a Web mostrar "Indisponível".
+- Terminais abertos antes da instalação do SDK precisam ser reabertos.
 
-## 12. Critérios de aceitação atendidos
+## 15. Critérios atendidos
 
-- [x] Estrutura de diretórios e solução conforme a especificação (sem MCP/Worker).
-- [x] Referências entre projetos conforme a seção 6, verificadas por teste.
-- [x] Nullable, implicit usings, `.editorconfig`, `Directory.Build.props`, convenções de nomenclatura.
-- [x] Domain, Application e Infrastructure compilam, sem entidades artificiais nem banco definitivo.
-- [x] A API inicia, tem DI, OpenAPI (Development), health check honesto, erros padronizados e configuração por ambiente.
-- [x] A Web inicia, com layout, navegação, página inicial identificando o ProjectManager, ambiente identificado, tema escuro e consumo da API por HTTP.
-- [x] A CLI executa `--help` e `--version`, a estrutura está preparada para os grupos futuros e não há comandos falsos.
-- [x] `dotnet restore`, `dotnet build` e `dotnet test` terminam com código 0.
-- [x] Testes unitários e de integração executam; há testes de infraestrutura da API e da CLI.
-- [x] Workflow de CI criado (sem publicação em produção) e aprovado no GitHub Actions: [run 42897692133](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897692133), commit `53c4d5a`, build ok, 12/12 unitários e 6/6 integração.
-- [x] Código publicado em https://github.com/harrisonleandro/Gestalyn (público), branch `main`.
-- [x] README, AGENTS.md, ARCHITECTURE.md, PROJECT_STRUCTURE.md e ADR-001 criados.
-- [x] Nenhum segredo no repositório; nenhuma credencial criada.
+| Critério (especificação mestre, Fase 01) | Evidência |
+|---|---|
+| Solution criada | `ProjectManager.sln` |
+| Projetos compilando | Build Release com 0 avisos e 0 erros, local e no CI |
+| Referências corretas | `ProjectReferenceRulesTests` 7/7 e teste de mutação |
+| API iniciando | `/health` 200 em Development e Production |
+| Web iniciando | `/` e `/status` renderizadas, com a API consultada por HTTP |
+| CLI executando | `projectctl --help` e `--version` com código 0 |
+| Testes executando | 18/18 local e no CI |
+| OpenAPI disponível | `/openapi/v1.json` 200 em Development |
+| CI executando build e testes | Execuções 42897692133 e 42901411495 com sucesso |
+| Documentação inicial criada | README, AGENTS.md, arquitetura, ADR, especificações, status e relatório |
 
-## 13. Critérios não atendidos
+## 16. Critérios não atendidos
 
-Nenhum. Todos os critérios obrigatórios foram atendidos, inclusive a execução do CI no GitHub Actions.
+Nenhum.
 
-## 14. Recomendação para a próxima fase
+## 17. Riscos identificados
 
-1. Adicionar a especificação técnica v1.0 em `docs/specifications/`.
-2. Confirmar se **Gestalyn** (nome do repositório) é o nome comercial e, se for, atualizar a documentação.
-3. Antes de codificar a Fase 02, registrar ADRs para:
-   - (a) o modelo de multi-tenancy;
-   - (b) a estratégia de autenticação para Web, CLI e agentes (Identity com cookies para Web e tokens para CLI/MCP);
-   - (c) a persistência (PostgreSQL + EF Core, migrações).
-4. Para PostgreSQL local, usar Docker Compose (o Docker já está instalado). Para os testes de integração com banco, usar Testcontainers.
-5. Adicionar o health check do PostgreSQL somente quando o banco for configurado.
+| Risco | Impacto | Mitigação |
+|---|---|---|
+| Repositório **público**: código, histórico, especificação mestre e e-mail de autor ficam visíveis | Exposição do plano de produto | O responsável pode tornar o repositório privado; segredos nunca são versionados |
+| Isolamento multi-tenant depende de disciplina em todas as consultas | Vazamento entre organizações | Fase 02: filtros globais por organização, testes cross-tenant obrigatórios e avaliação de Row-Level Security |
+| Testes com PostgreSQL exigem Docker no CI | CI mais lento ou instável | Testcontainers no `ubuntu-latest` (Docker disponível); avaliar na Fase 02 |
+| Regras de arquitetura ainda em `UnitTests` | Divergência com a estrutura alvo | Migrar para `ArchitectureTests` na Fase 13 (F13-004), como a especificação prevê |
+| Autenticação de três tipos de cliente (Web, CLI/API, agentes) | Complexidade e falhas de segurança | ADRs nas Fases 03 e 10, antes da implementação |
+| O `ubuntu-latest` migra para Ubuntu 26 | Mudanças no ambiente de CI | Acompanhar as execuções; fixar a versão do runner se houver quebra |
+
+## 18. Estado do Git
+
+- **Remoto:** `origin` → https://github.com/harrisonleandro/Gestalyn (público).
+- **`main`:** `c6bd32a`, sincronizada com `origin/main`. Histórico: `af77d2f` (fundação), `53c4d5a` (correção do CI), `c6bd32a` (registro do CI).
+- **`develop`:** criada a partir de `main`, com o commit local de alinhamento à especificação mestre. **Ainda não foi enviada** ao remoto.
+
+## 19. Próxima fase recomendada
+
+**Fase 02: Persistência e modelo de domínio**, após autorização. Recomendações:
+
+1. Trabalhar em `feature/fase-02-persistencia` a partir de `develop`.
+2. Criar `docs/specifications/FASE-02-PERSISTENCIA.md`, com o recorte mínimo de entidades da fase (organizações e membros, base para o isolamento). Não criar todas as entidades futuras.
+3. Registrar ADRs de persistência (EF Core + Npgsql, migrations, auditoria `CreatedAt`/`UpdatedAt`/autor) e de testes com PostgreSQL (Docker Compose local e Testcontainers no CI).
+4. Adicionar o health check do PostgreSQL somente quando o banco estiver configurado.
