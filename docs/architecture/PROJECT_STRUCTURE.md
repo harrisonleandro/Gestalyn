@@ -107,8 +107,26 @@ ProjectManager.CLI/
 |---|---|
 | `architecture/` | `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` |
 | `decisions/` | ADRs (`ADR-NNN-TITULO.md`) |
-| `specifications/` | Especificação técnica v1.0 (pendente; veja o README da pasta) |
-| `reports/` | Relatórios de execução de cada fase |
+| `specifications/` | Especificação mestre (fonte de verdade) e especificação de cada fase (`FASE-NN-*.md`) |
+| `reports/` | Relatórios de execução de cada fase (`FASE-NN-RELATORIO.md`) |
+| `PROJECT_STATUS.md` | Controle de progresso: fase atual, estado de cada fase, tarefas, bloqueios e última validação |
+
+Os itens previstos na seção 3 da especificação mestre são criados **quando houver conteúdo real**, porque o Git não versiona pastas vazias e a especificação proíbe projetos vazios:
+
+| Item | Fase em que deve surgir |
+|---|---|
+| `src/ProjectManager.MCP` | 12 |
+| `src/ProjectManager.Worker` | Quando houver processamento em segundo plano |
+| `tests/ProjectManager.ArchitectureTests` | 13 (até lá, as regras ficam em `UnitTests/Architecture`) |
+| `tests/ProjectManager.EndToEndTests` | 13 |
+| `docs/api` | 03/04, com os primeiros endpoints `/api/v1` |
+| `docs/security` | 03, com a estratégia de autenticação |
+| `docs/deployment`, `docs/operations`, `infrastructure/` | 14 |
+| `scripts/` | Quando houver um script útil (por exemplo, PostgreSQL local na Fase 02) |
+
+## Branches
+
+Fluxo da seção 13 da especificação mestre: `main` (estável, protegida por CI), `develop` (integração), `feature/*`, `fix/*` e `hotfix/*`. O CI roda em push para `main` e `develop` e em pull requests.
 
 ## Portas de desenvolvimento
 

@@ -29,7 +29,8 @@ CLI → API (somente HTTP)
 
 - Um único processo de backend (`ProjectManager.API`) com um único banco PostgreSQL (fase futura).
 - Módulos de negócio organizados verticalmente dentro das camadas, sem acesso direto aos dados de outro módulo.
-- Web, CLI e o futuro servidor MCP são **clientes HTTP** da API e não referenciam projetos internos.
+- Web e CLI são **clientes HTTP** da API e não referenciam projetos internos.
+- O futuro servidor MCP acessa os casos de uso pela camada `Application` ou por contratos próprios, sem duplicar regras de negócio (veja a revisão abaixo).
 - As regras de dependência são **verificadas por testes automatizados** (`ProjectReferenceRulesTests`), não apenas documentadas.
 - `ProjectManager.MCP` e `ProjectManager.Worker` serão introduzidos em fases posteriores, seguindo as mesmas regras.
 
@@ -53,6 +54,17 @@ CLI → API (somente HTTP)
 - A Web faz uma chamada HTTP adicional (servidor a servidor) em vez de chamar a camada de aplicação em memória.
 - A disciplina modular depende de convenções e testes; sem eles, o monólito tende a se acoplar.
 - Escala horizontal ocorre pela aplicação inteira, não por módulo.
+
+## Revisão de 2026-11-10: alinhamento com a especificação mestre
+
+A versão original deste ADR foi escrita sem uma especificação e afirmava que o servidor MCP seria um cliente HTTP da API. A [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md), seção 3.1, define:
+
+- **MCP:** utiliza a camada Application ou contratos próprios para acessar os casos de uso, sem duplicar regras de negócio.
+- **Worker:** utiliza abstrações da Application e implementações da Infrastructure.
+
+O ADR foi ajustado para refletir essas regras. A escolha concreta entre referenciar `Application` ou consumir a API (contrato próprio) será registrada em ADR na Fase 12, depois do estudo da especificação MCP vigente. Em qualquer caso, autenticação, autorização e isolamento multi-tenant devem ser os mesmos aplicados pela API.
+
+A especificação mestre também confirma a estratégia de multi-tenancy: banco e schema compartilhados, `OrganizationId`, UUID e validação no backend.
 
 ## Conformidade
 

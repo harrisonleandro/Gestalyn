@@ -4,7 +4,9 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 01 — fundação técnica.** A solução compila, é testada e possui API, interface Web e CLI funcionais no nível de infraestrutura. Nenhuma funcionalidade de negócio (organizações, projetos, tarefas, autenticação, permissões) foi implementada ainda.
+**Estado atual: Fase 01 (fundação técnica) concluída.** A solução compila, é testada e possui API, interface Web e CLI funcionais no nível de infraestrutura. Nenhuma funcionalidade de negócio (organizações, projetos, tarefas, autenticação, permissões) foi implementada ainda. O progresso de todas as fases está em [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+
+A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 
 ## Tecnologias
 
@@ -16,7 +18,8 @@ Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, document
 | CLI | `projectctl` · System.CommandLine |
 | Testes | xUnit v3 · `WebApplicationFactory` (Microsoft.AspNetCore.Mvc.Testing) |
 | CI | GitHub Actions |
-| Planejado (fases futuras) | PostgreSQL · Entity Framework Core · ASP.NET Core Identity · SignalR · servidor MCP · integração com GitHub |
+| Planejado (fases futuras) | PostgreSQL + Npgsql · Entity Framework Core · ASP.NET Core Identity · SignalR · servidor MCP · object storage compatível com S3 · integração com GitHub |
+| Multi-tenancy | Banco e schema compartilhados com isolamento lógico por `OrganizationId` (a partir da Fase 02) |
 
 ## Arquitetura
 
@@ -28,6 +31,8 @@ Infrastructure → Application + Domain
 API → Application + Infrastructure
 Web → API (somente HTTP)
 CLI → API (somente HTTP)
+MCP → Application ou contratos próprios (Fase 12)
+Worker → Application + Infrastructure (quando necessário)
 ```
 
 As regras de dependência são verificadas automaticamente por testes (`ProjectReferenceRulesTests`).
@@ -50,7 +55,8 @@ ProjectManager/
 │   ├── architecture/                   Arquitetura e estrutura do projeto
 │   ├── decisions/                      Architecture Decision Records (ADR)
 │   ├── reports/                        Relatórios de execução das fases
-│   └── specifications/                 Especificações funcionais e técnicas
+│   ├── specifications/                 Especificação mestre e especificação de cada fase
+│   └── PROJECT_STATUS.md               Controle de progresso das fases
 └── .github/workflows/                  CI
 ```
 
@@ -130,7 +136,9 @@ dotnet test
 
 ## Integração contínua
 
-O workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) roda em push para `main`, pull requests e manualmente: configura o .NET pelo `global.json`, restaura, compila em Release e executa os testes. Não há publicação automática.
+Branches: `main` (estável), `develop` (integração), `feature/*`, `fix/*` e `hotfix/*`.
+
+O workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) roda em push para `main` e `develop`, em pull requests e manualmente: configura o .NET pelo `global.json`, restaura, compila em Release e executa os testes. Não há publicação automática.
 
 ## Para agentes de IA
 
