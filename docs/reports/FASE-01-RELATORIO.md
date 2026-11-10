@@ -132,6 +132,7 @@ Aprovado! – Com falha: 0, Aprovado:  6, Total:  6 - ProjectManager.Integration
 | [42897140748](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897140748) | `af77d2f` | **failure:** 1 teste falhou (§12) |
 | [42897692133](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897692133) | `53c4d5a` | success: 12/12 e 6/6 |
 | [42901411495](https://github.com/harrisonleandro/Gestalyn/actions/runs/42901411495) | `c6bd32a` | success |
+| [42913460175](https://github.com/harrisonleandro/Gestalyn/actions/runs/42913460175) | `26e4b5c` (`develop`) | success: 12/12 e 6/6 |
 
 ## 11. Evidências
 
@@ -188,7 +189,6 @@ Aprovado! – Com falha: 0, Aprovado:  6, Total:  6 - ProjectManager.Integration
 
 ## 14. Pendências
 
-- Enviar `develop` e o alinhamento documental ao GitHub. Depende de autorização de push, e a execução do CI em `develop` só fica confirmada depois disso.
 - **Nome comercial:** a especificação diz "pendente de definição", e o repositório se chama Gestalyn.
 - `AllowedHosts: "*"` deve ser restringido na Fase 14.
 - Itens cosméticos:
@@ -209,7 +209,7 @@ Aprovado! – Com falha: 0, Aprovado:  6, Total:  6 - ProjectManager.Integration
 | CLI executando | `projectctl --help` e `--version` com código 0 |
 | Testes executando | 18/18 local e no CI |
 | OpenAPI disponível | `/openapi/v1.json` 200 em Development |
-| CI executando build e testes | Execuções 42897692133 e 42901411495 com sucesso |
+| CI executando build e testes | Execuções 42897692133, 42901411495 (`main`) e 42913460175 (`develop`) com sucesso |
 | Documentação inicial criada | README, AGENTS.md, arquitetura, ADR, especificações, status e relatório |
 
 ## 16. Critérios não atendidos
@@ -231,7 +231,8 @@ Nenhum.
 
 - **Remoto:** `origin` → https://github.com/harrisonleandro/Gestalyn (público).
 - **`main`:** `c6bd32a`, sincronizada com `origin/main`. Histórico: `af77d2f` (fundação), `53c4d5a` (correção do CI), `c6bd32a` (registro do CI).
-- **`develop`:** criada a partir de `main`, com o commit local de alinhamento à especificação mestre. **Ainda não foi enviada** ao remoto.
+- **`develop`:** criada a partir de `main`, com o alinhamento à especificação mestre (`6acb675`, `26e4b5c`) e o registro do CI em `develop`. Sincronizada com `origin/develop`; CI aprovado.
+- **Merge `develop` → `main`:** não realizado; depende de autorização.
 
 ## 19. Próxima fase recomendada
 

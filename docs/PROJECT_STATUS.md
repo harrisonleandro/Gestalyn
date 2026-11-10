@@ -51,7 +51,6 @@ Evidências de cada tarefa estão na [especificação da Fase 01](specifications
 
 ## Tarefas pendentes
 
-- Enviar a branch `develop` e o alinhamento documental ao GitHub (depende de autorização para push).
 - Confirmar se **Gestalyn** (nome do repositório) é o nome comercial; a especificação mestre o mantém como "pendente de definição".
 
 ## Bloqueios
@@ -70,7 +69,8 @@ Nenhum bloqueio técnico. O início da Fase 02 aguarda autorização do respons�
 | Onde | Data (UTC) | Commit | Resultado |
 |---|---|---|---|
 | Local (Windows, SDK 10.0.404) | 2026-11-10 22:15 | `c6bd32a` + alterações documentais em `develop` | restore exit 0 · build Release 0 avisos e 0 erros · testes 18/18 |
-| GitHub Actions (`ubuntu-latest`) | 2026-11-10 | `c6bd32a` | [run 42901411495](https://github.com/harrisonleandro/Gestalyn/actions/runs/42901411495): success |
+| GitHub Actions (`ubuntu-latest`), `main` | 2026-11-10 | `c6bd32a` | [run 42901411495](https://github.com/harrisonleandro/Gestalyn/actions/runs/42901411495): success |
+| GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-10 | `26e4b5c` | [run 42913460175](https://github.com/harrisonleandro/Gestalyn/actions/runs/42913460175): success, 12/12 e 6/6 |
 
 ## Decisões recentes
 
