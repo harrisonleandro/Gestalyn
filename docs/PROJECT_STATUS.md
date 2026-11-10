@@ -8,14 +8,14 @@
 
 ## Fase atual
 
-**Fase 01, Fundação da solução .NET: Completed.** A Fase 02 só começa com autorização explícita do responsável.
+**Fase 02, Persistência e modelo de domínio: Planned.** A especificação aguarda aprovação das decisões D1 a D4 antes da implementação. A Fase 01 está Completed.
 
 ## Estado das fases
 
 | Fase | Nome | Estado | Especificação | Relatório |
 |---|---|---|---|---|
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
-| 02 | Persistência e modelo de domínio | Not Started | — | — |
+| 02 | Persistência e modelo de domínio | Planned | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | — |
 | 03 | Identidade e autenticação | Not Started | — | — |
 | 04 | Organizações e permissões | Not Started | — | — |
 | 05 | Projetos e equipes | Not Started | — | — |
