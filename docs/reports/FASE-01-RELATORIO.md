@@ -155,8 +155,6 @@ Aprovado!  – Com falha: 0, Aprovado:  6, Ignorado: 0, Total:  6 - ProjectManag
 
 ## 11. Pendências
 
-- **Repositório:** https://github.com/harrisonleandro/Gestalyn (público). Commit inicial `af77d2f` enviado para `main`.
-- **CI:** a correção do item 12 foi validada localmente (18/18) e ainda precisa ser confirmada no GitHub Actions após o próximo push.
 - **Especificação técnica v1.0** ainda precisa ser adicionada.
 - `AllowedHosts: "*"` deve ser restringido ao definir a hospedagem.
 - Detalhes cosméticos conhecidos:
@@ -176,19 +174,19 @@ Aprovado!  – Com falha: 0, Aprovado:  6, Ignorado: 0, Total:  6 - ProjectManag
 - [x] A CLI executa `--help` e `--version`, a estrutura está preparada para os grupos futuros e não há comandos falsos.
 - [x] `dotnet restore`, `dotnet build` e `dotnet test` terminam com código 0.
 - [x] Testes unitários e de integração executam; há testes de infraestrutura da API e da CLI.
-- [x] Workflow de CI criado (sem publicação em produção).
+- [x] Workflow de CI criado (sem publicação em produção) e aprovado no GitHub Actions: [run 42897692133](https://github.com/harrisonleandro/Gestalyn/actions/runs/42897692133), commit `53c4d5a`, build ok, 12/12 unitários e 6/6 integração.
+- [x] Código publicado em https://github.com/harrisonleandro/Gestalyn (público), branch `main`.
 - [x] README, AGENTS.md, ARCHITECTURE.md, PROJECT_STRUCTURE.md e ADR-001 criados.
 - [x] Nenhum segredo no repositório; nenhuma credencial criada.
 
 ## 13. Critérios não atendidos
 
-- Nenhum critério obrigatório de implementação ficou pendente.
-- Falta apenas verificar, no GitHub, a execução do workflow de CI; isso depende de configurar o remote e fazer push, que exigem autorização.
+Nenhum. Todos os critérios obrigatórios foram atendidos, inclusive a execução do CI no GitHub Actions.
 
 ## 14. Recomendação para a próxima fase
 
 1. Adicionar a especificação técnica v1.0 em `docs/specifications/`.
-2. Fazer o commit inicial, configurar o remote no GitHub e confirmar a primeira execução do CI.
+2. Confirmar se **Gestalyn** (nome do repositório) é o nome comercial e, se for, atualizar a documentação.
 3. Antes de codificar a Fase 02, registrar ADRs para:
    - (a) o modelo de multi-tenancy;
    - (b) a estratégia de autenticação para Web, CLI e agentes (Identity com cookies para Web e tokens para CLI/MCP);
