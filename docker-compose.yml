@@ -1,0 +1,27 @@
+# PostgreSQL para desenvolvimento local.
+# Pré-requisito: copiar .env.example para .env e definir POSTGRES_PASSWORD (o .env não é versionado).
+#   docker compose up -d
+name: projectmanager
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: projectmanager
+      POSTGRES_USER: projectmanager
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env (veja .env.example)}
+    ports:
+      # Exposto somente na máquina local.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # A partir do PostgreSQL 18, a imagem oficial usa /var/lib/postgresql como raiz dos dados.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U projectmanager -d projectmanager"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
