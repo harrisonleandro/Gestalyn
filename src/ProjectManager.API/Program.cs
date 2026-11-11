@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using ProjectManager.API.Authentication;
@@ -14,7 +15,9 @@ builder.Services
     .AddInfrastructure();
 
 // Seguro por padrão: todo controller exige autenticação, salvo [AllowAnonymous] explícito.
-builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()));
+builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
+    // Enumerações (prioridade, papéis de projeto, provedor) trafegam pelo nome, não pelo número.
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
 {
     document.Info.Title = "Gestalyn API";

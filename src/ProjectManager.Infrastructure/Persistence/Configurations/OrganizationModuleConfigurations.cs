@@ -77,7 +77,9 @@ internal sealed class OrganizationMemberConfiguration : IEntityTypeConfiguration
         builder.ToTable("organization_members");
         builder.ConfigureEntityBase();
 
-        builder.HasIndex(member => new { member.OrganizationId, member.UserId }).IsUnique();
+        // Uma associação por usuário e organização. É também o alvo da FK composta das equipes de
+        // projeto: só membros da organização entram nelas, e saem quando deixam a organização.
+        builder.HasAlternateKey(member => new { member.OrganizationId, member.UserId });
         builder.HasIndex(member => member.UserId);
 
         builder.HasOne<Role>()

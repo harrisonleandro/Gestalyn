@@ -254,15 +254,14 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_organization_members");
 
+                    b.HasAlternateKey("OrganizationId", "UserId")
+                        .HasName("ak_organization_members_organization_id_user_id");
+
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_organization_members_user_id");
 
                     b.HasIndex("OrganizationId", "RoleId")
                         .HasDatabaseName("ix_organization_members_organization_id_role_id");
-
-                    b.HasIndex("OrganizationId", "UserId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_organization_members_organization_id_user_id");
 
                     b.ToTable("organization_members", (string)null);
                 });
@@ -349,6 +348,14 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<Guid?>("ArchivedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("archived_by_user_id");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -357,6 +364,10 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("description");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -367,6 +378,16 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid")
                         .HasColumnName("organization_id");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("priority");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -384,7 +405,76 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.HasAlternateKey("OrganizationId", "Id")
                         .HasName("ak_projects_organization_id_id");
 
-                    b.ToTable("projects", (string)null);
+                    b.HasIndex("OrganizationId", "Name")
+                        .HasDatabaseName("ix_projects_organization_id_name");
+
+                    b.ToTable("projects", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_projects_due_date_after_start", "due_date IS NULL OR start_date IS NULL OR due_date >= start_date");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsResponsible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_responsible");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_members");
+
+                    b.HasIndex("ProjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_members_responsible")
+                        .HasFilter("is_responsible");
+
+                    b.HasIndex("OrganizationId", "ProjectId")
+                        .HasDatabaseName("ix_project_members_organization_id_project_id");
+
+                    b.HasIndex("OrganizationId", "UserId")
+                        .HasDatabaseName("ix_project_members_organization_id_user_id");
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_members_project_id_user_id");
+
+                    b.ToTable("project_members", (string)null);
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectPhase", b =>
@@ -439,6 +529,97 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_project_phases_position_positive", "position > 0");
                         });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectRepository", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("provider");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("url");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_repositories");
+
+                    b.HasIndex("OrganizationId", "ProjectId")
+                        .HasDatabaseName("ix_project_repositories_organization_id_project_id");
+
+                    b.HasIndex("ProjectId", "Url")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_repositories_project_id_url");
+
+                    b.ToTable("project_repositories", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectTag", b =>
+                {
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("ProjectId", "NormalizedName")
+                        .HasName("pk_project_tags");
+
+                    b.HasIndex("OrganizationId", "NormalizedName")
+                        .HasDatabaseName("ix_project_tags_organization_id_normalized_name");
+
+                    b.HasIndex("OrganizationId", "ProjectId")
+                        .HasDatabaseName("ix_project_tags_organization_id_project_id");
+
+                    b.ToTable("project_tags", (string)null);
                 });
 
             modelBuilder.Entity("ProjectManager.Infrastructure.Identity.ApplicationUser", b =>
@@ -681,6 +862,21 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         {
                             Code = "members.remove",
                             Description = "Remover membros"
+                        },
+                        new
+                        {
+                            Code = "projects.create",
+                            Description = "Criar projetos"
+                        },
+                        new
+                        {
+                            Code = "projects.read_all",
+                            Description = "Ver todos os projetos da organização"
+                        },
+                        new
+                        {
+                            Code = "projects.manage_all",
+                            Description = "Administrar todos os projetos da organização"
                         });
                 });
 
@@ -794,6 +990,25 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_projects_organizations_organization_id");
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectMember", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_members_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Organizations.OrganizationMember", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "UserId")
+                        .HasPrincipalKey("OrganizationId", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_members_organization_members_organization_id_user_id");
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectPhase", b =>
                 {
                     b.HasOne("ProjectManager.Domain.Projects.Project", null)
@@ -803,6 +1018,28 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_project_phases_projects_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectRepository", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany("Repositories")
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_repositories_projects_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Projects.ProjectTag", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany("Tags")
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_tags_projects_organization_id_project_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Infrastructure.Identity.UserRefreshToken", b =>
@@ -835,6 +1072,10 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ProjectManager.Domain.Projects.Project", b =>
                 {
                     b.Navigation("Phases");
+
+                    b.Navigation("Repositories");
+
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }

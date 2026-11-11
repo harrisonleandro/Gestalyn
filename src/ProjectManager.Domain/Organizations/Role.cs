@@ -61,19 +61,20 @@ public sealed class Role : Entity, IOrganizationOwned, IAuditable
 
     /// <summary>
     /// Papéis de sistema: Proprietário e Administrador têm todas as permissões (somente proprietários
-    /// promovem ou rebaixam proprietários); Membro e Leitor têm leitura. A distinção entre Membro e
-    /// Leitor ganha efeito com projetos e tarefas (Fases 05 e 06).
+    /// promovem ou rebaixam proprietários); Membro e Leitor têm leitura, e o Membro também cria projetos.
+    /// Quem não vê todos os projetos só vê aqueles em cuja equipe está (ADR-010).
     /// </summary>
     public static IReadOnlyList<Role> CreateSystemRoles(Guid organizationId)
     {
         var all = OrganizationPermissions.Catalog.Keys.ToArray();
         string[] read = [OrganizationPermissions.OrganizationRead, OrganizationPermissions.MembersRead];
+        string[] member = [.. read, OrganizationPermissions.ProjectsCreate];
 
         return
         [
             new Role(organizationId, "Proprietário", Organizations.SystemRole.Owner, all),
             new Role(organizationId, "Administrador", Organizations.SystemRole.Administrator, all),
-            new Role(organizationId, "Membro", Organizations.SystemRole.Member, read),
+            new Role(organizationId, "Membro", Organizations.SystemRole.Member, member),
             new Role(organizationId, "Leitor", Organizations.SystemRole.Viewer, read),
         ];
     }

@@ -14,6 +14,9 @@ public static class OrganizationPermissions
     public const string MembersInvite = "members.invite";
     public const string MembersUpdateRole = "members.update_role";
     public const string MembersRemove = "members.remove";
+    public const string ProjectsCreate = "projects.create";
+    public const string ProjectsReadAll = "projects.read_all";
+    public const string ProjectsManageAll = "projects.manage_all";
 
     public static IReadOnlyDictionary<string, string> Catalog { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -23,5 +26,8 @@ public static class OrganizationPermissions
         [MembersInvite] = "Convidar pessoas e gerenciar convites",
         [MembersUpdateRole] = "Alterar o papel de membros",
         [MembersRemove] = "Remover membros",
+        [ProjectsCreate] = "Criar projetos",
+        [ProjectsReadAll] = "Ver todos os projetos da organização",
+        [ProjectsManageAll] = "Administrar todos os projetos da organização",
     };
 }
