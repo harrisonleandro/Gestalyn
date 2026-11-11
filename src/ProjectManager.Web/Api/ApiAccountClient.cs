@@ -1,17 +1,12 @@
 using System.Net;
-using System.Net.Http.Headers;
-using System.Text.Json;
 
 namespace ProjectManager.Web.Api;
 
 /// <summary>
-/// Cliente HTTP tipado para <c>/api/v1/auth</c>. Converte respostas da API (incluindo Problem Details)
-/// em resultados para a interface; falhas de rede viram uma mensagem de indisponibilidade.
+/// Cliente HTTP tipado para <c>/api/v1/auth</c>.
 /// </summary>
-public sealed partial class ApiAccountClient(HttpClient httpClient, ILogger<ApiAccountClient> logger)
+public sealed class ApiAccountClient(HttpClient httpClient, ILogger<ApiAccountClient> logger)
 {
-    private const string UnavailableMessage = "Não foi possível falar com o serviço agora. Tente novamente em instantes.";
-
     public Task<ApiResult> RegisterAsync(string email, string password, string displayName, CancellationToken cancellationToken) =>
         PostAsync("register", new { email, password, displayName }, cancellationToken);
 
@@ -51,69 +46,11 @@ public sealed partial class ApiAccountClient(HttpClient httpClient, ILogger<ApiA
     private async Task<ApiResult> PostAsync(string action, object body, CancellationToken cancellationToken) =>
         (await SendForValueAsync<object>(HttpMethod.Post, action, body, accessToken: null, cancellationToken)).Result;
 
-    private async Task<ApiResult<T>> SendForValueAsync<T>(
+    private Task<ApiResult<T>> SendForValueAsync<T>(
         HttpMethod method,
         string action,
         object? body,
         string? accessToken,
-        CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(method, new Uri($"api/v1/auth/{action}", UriKind.Relative));
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body);
-        }
-
-        if (accessToken is not null)
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        }
-
-        try
-        {
-            using var response = await httpClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                return new ApiResult<T>(await ReadFailureAsync(response, cancellationToken), default);
-            }
-
-            var value = response.StatusCode == HttpStatusCode.OK && typeof(T) != typeof(object)
-                ? await response.Content.ReadFromJsonAsync<T>(cancellationToken)
-                : default;
-
-            return new ApiResult<T>(ApiResult.Success(response.StatusCode), value);
-        }
-        catch (HttpRequestException exception)
-        {
-            LogApiUnavailable(logger, exception, action);
-        }
-        catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
-        {
-            LogApiUnavailable(logger, exception, action);
-        }
-        catch (JsonException exception)
-        {
-            LogApiUnavailable(logger, exception, action);
-        }
-
-        return new ApiResult<T>(ApiResult.Failure(null, UnavailableMessage), default);
-    }
-
-    private static async Task<ApiResult> ReadFailureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        HttpValidationProblemDetails? problem = null;
-        if (response.Content.Headers.ContentType?.MediaType is "application/problem+json" or "application/json")
-        {
-            problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>(cancellationToken);
-        }
-
-        var message = response.StatusCode == HttpStatusCode.TooManyRequests
-            ? "Muitas tentativas. Aguarde um minuto e tente novamente."
-            : problem?.Detail ?? problem?.Title ?? "Não foi possível concluir a operação.";
-
-        return ApiResult.Failure(response.StatusCode, message, problem?.Errors as IReadOnlyDictionary<string, string[]>);
-    }
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "API indisponível ao chamar auth/{Action}.")]
-    private static partial void LogApiUnavailable(ILogger logger, Exception exception, string action);
+        CancellationToken cancellationToken) =>
+        ApiRequests.SendAsync<T>(httpClient, logger, method, $"api/v1/auth/{action}", body, accessToken, cancellationToken);
 }

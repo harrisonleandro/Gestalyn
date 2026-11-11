@@ -1,0 +1,61 @@
+@page "/convites/aceitar"
+@attribute [Authorize]
+@using System.Security.Claims
+@inject ApiInvitationClient Api
+
+<PageTitle>Aceitar convite · Gestalyn</PageTitle>
+
+<div class="account-card pm-card">
+    <h1 class="h3 mb-4">Convite</h1>
+
+    @if (string.IsNullOrEmpty(Token))
+    {
+        <div class="alert alert-danger" role="alert">Link de convite incompleto.</div>
+    }
+    else if (_accepted is not null)
+    {
+        <div class="alert alert-success" role="status">
+            Você agora participa de <strong>@_accepted.OrganizationName</strong> como @_accepted.RoleName.
+        </div>
+        <a href="" class="btn btn-primary w-100">Ir para o início</a>
+    }
+    else
+    {
+        <p>Você recebeu um convite para participar de uma organização no Gestalyn.</p>
+        <p class="pm-muted">O convite precisa ter sido enviado para o e-mail desta conta: <strong>@_email</strong>.</p>
+        <ApiErrors Result="_result" />
+
+        <form method="post" @onsubmit="AcceptAsync" @formname="accept-invitation">
+            <AntiforgeryToken />
+            <button type="submit" class="btn btn-primary w-100">Aceitar convite</button>
+        </form>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? Token { get; set; }
+
+    private string? _email;
+    private ApiResult? _result;
+    private ApiAcceptedInvitation? _accepted;
+
+    protected override void OnInitialized() => _email = HttpContext.User.FindFirstValue(ClaimTypes.Email);
+
+    private async Task AcceptAsync()
+    {
+        var accessToken = await AccountSession.GetAccessTokenAsync(HttpContext);
+        if (accessToken is null || string.IsNullOrEmpty(Token))
+        {
+            _result = ApiResult.Failure(null, "Sessão não encontrada. Entre novamente.");
+            return;
+        }
+
+        var response = await Api.AcceptAsync(accessToken, Token, HttpContext.RequestAborted);
+        _result = response.Result;
+        _accepted = response.Value;
+    }
+}
