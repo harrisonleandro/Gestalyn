@@ -1,0 +1,48 @@
+@page "/conta/perfil"
+@attribute [Authorize]
+@using System.Globalization
+@inject ApiAccountClient Api
+
+<PageTitle>Perfil · Gestalyn</PageTitle>
+
+<h1 class="mb-4">Perfil</h1>
+
+<div class="pm-card account-profile">
+    @if (_profile is not null)
+    {
+        <dl class="row mb-0">
+            <dt class="col-sm-4 pm-muted fw-normal">Nome</dt>
+            <dd class="col-sm-8">@_profile.DisplayName</dd>
+            <dt class="col-sm-4 pm-muted fw-normal">E-mail</dt>
+            <dd class="col-sm-8">@_profile.Email @(_profile.EmailConfirmed ? "(confirmado)" : "(não confirmado)")</dd>
+            <dt class="col-sm-4 pm-muted fw-normal">Conta criada em</dt>
+            <dd class="col-sm-8 mb-0">@_profile.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.GetCultureInfo("pt-BR"))</dd>
+        </dl>
+    }
+    else
+    {
+        <ApiErrors Result="_result" />
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private ApiUserProfile? _profile;
+    private ApiResult? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var accessToken = await AccountSession.GetAccessTokenAsync(HttpContext);
+        if (accessToken is null)
+        {
+            _result = ApiResult.Failure(null, "Sessão não encontrada. Entre novamente.");
+            return;
+        }
+
+        var response = await Api.GetProfileAsync(accessToken, HttpContext.RequestAborted);
+        _profile = response.Value;
+        _result = response.Result;
+    }
+}

@@ -12,15 +12,48 @@ namespace ProjectManager.IntegrationTests.Authentication;
 /// </summary>
 public sealed class SessionTests : IDisposable
 {
+    private readonly PostgresDatabaseFixture _database;
+    private readonly MailpitFixture _mailpit;
     private readonly ApiFactory _factory;
     private readonly HttpClient _client;
     private readonly AuthTestClient _auth;
 
     public SessionTests(PostgresDatabaseFixture database, MailpitFixture mailpit)
     {
-        _factory = new ApiFactory(database.ConnectionString, mailpit);
+        _database = database;
+        _mailpit = mailpit;
+
+        // Sem janela de tolerância: qualquer reuso de refresh token é tratado como roubo.
+        _factory = new ApiFactory(
+            database.ConnectionString,
+            mailpit,
+            new Dictionary<string, string?> { ["Authentication:Jwt:RefreshReuseGracePeriod"] = "00:00:00" });
         _client = _factory.CreateClient();
         _auth = new AuthTestClient(_client, mailpit);
+    }
+
+    [Fact]
+    public async Task ConcurrentRefreshWithinGracePeriod_DoesNotRevokeTheSession()
+    {
+        using var factory = new ApiFactory(_database.ConnectionString, _mailpit);
+        using var client = factory.CreateClient();
+        var auth = new AuthTestClient(client, _mailpit);
+        var tokens = await auth.CreateConfirmedUserAndLoginAsync(AuthTestClient.NewEmail());
+
+        using var first = await auth.RefreshAsync(tokens.RefreshToken);
+        var renewed = await AuthTestClient.ReadTokensAsync(first);
+
+        // Segunda requisição paralela com o mesmo token, dentro da janela padrão de 30 s.
+        using (var concurrent = await auth.RefreshAsync(tokens.RefreshToken))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, concurrent.StatusCode);
+        }
+
+        using var me = await auth.MeAsync(renewed.AccessToken);
+        using var next = await auth.RefreshAsync(renewed.RefreshToken);
+
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, next.StatusCode);
     }
 
     [Fact]

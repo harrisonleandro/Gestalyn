@@ -19,5 +19,36 @@
                 <span class="bi bi-activity-nav-menu" aria-hidden="true"></span> Status do sistema
             </NavLink>
         </div>
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="conta/perfil">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Perfil
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <form action="@AccountEndpoints.LogoutPath" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="returnUrl" value="/" />
+                        <button type="submit" class="nav-link">
+                            <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span> Sair
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="conta/entrar">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Entrar
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="conta/cadastro">
+                        <span class="bi bi-person-plus-fill-nav-menu" aria-hidden="true"></span> Criar conta
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>

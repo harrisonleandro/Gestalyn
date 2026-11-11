@@ -13,7 +13,6 @@ namespace ProjectManager.API.Controllers;
 [ApiController]
 [Route("api/v1/auth")]
 [EnableRateLimiting(AuthRateLimiting.PolicyName)]
-[Produces("application/json")]
 public sealed class AuthController(IAuthenticationService authentication) : ControllerBase
 {
     /// <summary>Cadastra um usuário e envia o e-mail de confirmação.</summary>

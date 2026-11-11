@@ -37,6 +37,9 @@ public sealed class RegistrationAndLoginTests : IDisposable
         using (var beforeConfirmation = await _auth.LoginAsync(email))
         {
             Assert.Equal(HttpStatusCode.Forbidden, beforeConfirmation.StatusCode);
+            Assert.Equal("application/problem+json", beforeConfirmation.Content.Headers.ContentType?.MediaType);
+            var problem = await beforeConfirmation.Content.ReadFromJsonAsync<ProblemDetails>(CancellationToken);
+            Assert.Contains("Confirme o e-mail", problem!.Detail, StringComparison.Ordinal);
         }
 
         await _auth.ConfirmEmailFromMailAsync(email);

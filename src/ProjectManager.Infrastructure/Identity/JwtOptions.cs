@@ -23,6 +23,12 @@ public sealed class JwtOptions
 
     public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromDays(30);
 
+    /// <summary>
+    /// Janela em que reapresentar um refresh token recém-trocado é tratado como requisição concorrente
+    /// do mesmo cliente (401 sem revogar a sessão). Depois dela, o reuso revoga a sessão.
+    /// </summary>
+    public TimeSpan RefreshReuseGracePeriod { get; set; } = TimeSpan.FromSeconds(30);
+
     public SymmetricSecurityKey CreateSigningKey() => new(Encoding.UTF8.GetBytes(SigningKey));
 
     internal bool IsValid() =>
@@ -30,5 +36,7 @@ public sealed class JwtOptions
         && !string.IsNullOrWhiteSpace(Audience)
         && Encoding.UTF8.GetByteCount(SigningKey) >= MinimumSigningKeyBytes
         && AccessTokenLifetime > TimeSpan.Zero
-        && SessionLifetime > AccessTokenLifetime;
+        && SessionLifetime > AccessTokenLifetime
+        && RefreshReuseGracePeriod >= TimeSpan.Zero
+        && RefreshReuseGracePeriod < AccessTokenLifetime;
 }

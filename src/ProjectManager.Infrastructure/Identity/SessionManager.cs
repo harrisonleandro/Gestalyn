@@ -42,8 +42,14 @@ internal sealed partial class SessionManager(
             return null;
         }
 
-        if (stored.ConsumedAt is not null)
+        if (stored.ConsumedAt is { } consumedAt)
         {
+            if (now - consumedAt <= options.Value.RefreshReuseGracePeriod)
+            {
+                // Requisições paralelas do mesmo cliente com o mesmo token: só a primeira renova.
+                return null;
+            }
+
             // Um token já trocado foi reapresentado: trate a sessão como comprometida.
             stored.Session.Revoke(now, SessionRevocationReason.RefreshTokenReuse);
             await dbContext.SaveChangesAsync(cancellationToken);

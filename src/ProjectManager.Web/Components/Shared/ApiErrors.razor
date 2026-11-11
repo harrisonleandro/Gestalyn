@@ -1,0 +1,21 @@
+@* Mensagem e erros por campo devolvidos pela API. *@
+@if (Result is { Succeeded: false })
+{
+    <div class="alert alert-danger" role="alert">
+        <div>@Result.Message</div>
+        @if (Result.FieldErrors.Count > 0)
+        {
+            <ul class="mb-0 mt-2">
+                @foreach (var message in Result.FieldErrors.SelectMany(field => field.Value))
+                {
+                    <li>@message</li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public ApiResult? Result { get; set; }
+}

@@ -1,0 +1,45 @@
+@page "/conta/reenviar-confirmacao"
+@inject ApiAccountClient Api
+
+<PageTitle>Reenviar confirmação · Gestalyn</PageTitle>
+
+<div class="account-card pm-card">
+    <h1 class="h3 mb-4">Reenviar confirmação</h1>
+
+    @if (_result is { Succeeded: true })
+    {
+        <div class="alert alert-success" role="status">
+            Se houver uma conta pendente de confirmação com este e-mail, enviamos um novo link.
+        </div>
+    }
+    else
+    {
+        <ApiErrors Result="_result" />
+
+        <EditForm Model="Input" FormName="resend-confirmation" OnValidSubmit="SubmitAsync" method="post">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="mb-4">
+                <label for="email" class="form-label">E-mail</label>
+                <InputText id="email" type="email" class="form-control" autocomplete="email" @bind-Value="Input.Email" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Reenviar</button>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private EmailForm Input { get; set; } = default!;
+
+    private ApiResult? _result;
+
+    protected override void OnInitialized() => Input ??= new EmailForm();
+
+    private async Task SubmitAsync() =>
+        _result = await Api.ResendConfirmationAsync(Input.Email, HttpContext.RequestAborted);
+}
