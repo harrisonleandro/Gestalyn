@@ -63,6 +63,12 @@ Worker → Application (abstrações) + Infrastructure (implementações)
 
 - **Nunca** versione segredos, connection strings reais, tokens ou chaves. Use `dotnet user-secrets` em desenvolvimento e variáveis de ambiente ou cofre de segredos nos demais ambientes.
 - A autorização é sempre feita no backend. Esconder elementos na interface não é mecanismo de segurança.
+- **Autenticação** ([ADR-006](docs/decisions/ADR-006-AUTENTICACAO-E-SESSAO.md), [docs/security/AUTENTICACAO.md](docs/security/AUTENTICACAO.md)):
+  - Todo controller da API exige autenticação por padrão (`AuthorizeFilter` global). Endpoints públicos precisam de `[AllowAnonymous]` explícito e justificado.
+  - A identidade do usuário e da sessão vem das claims `sub`/`sid` do token, nunca do corpo da requisição.
+  - Respostas de autenticação não podem revelar se um e-mail está cadastrado.
+  - Tokens nunca vão para o navegador: a Web guarda-os no cookie HttpOnly (BFF).
+  - Nunca registre senhas, tokens, links de e-mail ou endereços de e-mail em logs; use IDs.
 - Agentes têm permissões limitadas e explícitas e não podem ultrapassá-las, mesmo instruídos a isso.
 - Não crie credenciais reais, não contrate serviços, não registre domínios, não assuma custos e não publique em produção sem aprovação explícita.
 

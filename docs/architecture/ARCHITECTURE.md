@@ -157,6 +157,19 @@ Módulos previstos (especificação mestre, seção 4): identidade e organizaç�
 
 A versão é definida uma única vez em `Directory.Build.props` (`VersionPrefix`) e exposta pela API (`/health`), pela Web (página de status) e pela CLI (`--version`).
 
+### 5.6 Identidade e autenticação (Fase 03)
+
+Detalhes no [ADR-006](../decisions/ADR-006-AUTENTICACAO-E-SESSAO.md), no [ADR-007](../decisions/ADR-007-ENVIO-DE-EMAIL.md) e em [docs/security/AUTENTICACAO.md](../security/AUTENTICACAO.md).
+
+| Camada | Responsabilidade |
+|---|---|
+| Application | `IAuthenticationService` (casos de uso), contratos com validação, `IEmailSender`, `AuthClaimTypes` |
+| Infrastructure | `ApplicationUser` (Identity, `Guid`), `UserSession` e `UserRefreshToken`, `SessionManager` (rotação e reuso), `AccessTokenIssuer` (JWT HS256), `SmtpEmailSender` (MailKit), `AuthenticationService` |
+| API | `AuthController` (`/api/v1/auth`), JwtBearer com verificação de sessão ativa a cada requisição, rate limiting por IP, `AuthorizeFilter` global |
+| Web | BFF: cookie HttpOnly com os tokens, renovação automática em navegações, páginas de conta (SSR estático com antiforgery), logout por POST |
+
+Usuários e sessões são **globais**, não pertencem a uma organização; por isso não implementam `IOrganizationOwned`. O vínculo com organizações chega na Fase 04, por membros.
+
 ## 6. Próximas decisões, por fase
 
 Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O detalhamento técnico será registrado em ADR na fase indicada.
@@ -164,8 +177,9 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | Tema | Fase |
 |---|---|
 | ~~Modelo de domínio inicial, PostgreSQL + EF Core, migrations, auditoria de persistência, health check do banco~~ (ADR-002, 003 e 004) | 02 (concluída) |
-| Autor das alterações (`CreatedBy`/`UpdatedBy`) e reavaliação de RLS | 03/04 |
-| Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity) | 03 |
+| Autor das alterações (`CreatedBy`/`UpdatedBy`) | 08 |
+| Reavaliação de RLS e resolução da organização ativa pela identidade | 04 |
+| ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |
 | Papéis, permissões e organização ativa | 04 |
 | Credenciais de agentes, escopos e idempotência | 10 |
 | Armazenamento seguro de credenciais na CLI | 11 |

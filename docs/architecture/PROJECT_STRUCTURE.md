@@ -1,6 +1,6 @@
 # Estrutura do projeto
 
-> Estado: Fase 02. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
+> Estado: Fase 03. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
 
 ## Raiz
 
@@ -17,7 +17,7 @@
 | `.github/workflows/ci.yml` | CI: restore, build (Release) e testes. |
 | `.claude/launch.json` | Configuração para iniciar API e Web pelo Claude Code (ferramenta de desenvolvimento). |
 | `dotnet-tools.json` | Ferramentas locais da solução (`dotnet-ef` 10.0.15), restauradas com `dotnet tool restore`. |
-| `docker-compose.yml` | PostgreSQL 18 de desenvolvimento, exposto só em `127.0.0.1`. |
+| `docker-compose.yml` | PostgreSQL 18 e Mailpit (SMTP de teste, interface em :8025) de desenvolvimento, expostos só em `127.0.0.1`. |
 | `.env.example` | Modelo do `.env` local (senha do PostgreSQL). O `.env` real não é versionado. |
 
 ## `src/`
@@ -47,6 +47,8 @@ ProjectManager.Application/
 ├── Abstractions/MultiTenancy/
 │   ├── ITenantContext.cs         Organização ativa (resolvida no backend)
 │   └── CrossTenantAccessException.cs
+├── Abstractions/Authentication/  IAuthenticationService, contratos com validação, AuthResult, AuthClaimTypes
+├── Abstractions/Email/           IEmailSender, EmailMessage, EmailDeliveryException
 └── <Modulo>/                     (futuro) Casos de uso, DTOs, validadores, interfaces de serviços
 ```
 
@@ -54,7 +56,10 @@ ProjectManager.Application/
 
 ```
 ProjectManager.Infrastructure/
-├── DependencyInjection.cs        AddInfrastructure(): TimeProvider, ITenantContext padrão, DbContext, health check "database"
+├── DependencyInjection.cs        AddInfrastructure(): TimeProvider, ITenantContext padrão, DbContext, health check "database", Identity, e-mail
+├── Identity/                     ApplicationUser, UserSession, UserRefreshToken, SessionManager, AccessTokenIssuer,
+│                                 AuthenticationService, AccountEmails, JwtOptions, AccountLinkOptions, mensagens em pt-BR
+├── Email/                        SmtpEmailSender (MailKit), EmailOptions
 ├── MultiTenancy/
 │   └── UnresolvedTenantContext.cs Sem organização ativa (padrão até a Fase 04)
 ├── Persistence/
@@ -76,12 +81,16 @@ ProjectManager.API/
 ├── ErrorHandling/
 │   └── GlobalExceptionHandler.cs       Exceções → Problem Details 500 (ou 499 em cancelamento)
 ├── Health/
-│   ├── HealthEndpoints.cs              Registro das verificações (somente "self" na Fase 01)
+│   ├── HealthEndpoints.cs              Registro da verificação "self" ("database" vem da Infrastructure)
 │   └── HealthCheckResponseWriter.cs    Resposta JSON do /health
-├── Controllers/                        (futuro) Controllers por módulo
+├── Authentication/
+│   ├── ApiAuthentication.cs            JwtBearer + verificação de sessão ativa; claims sub/sid
+│   └── AuthRateLimiting.cs             Rate limiting por IP em /api/v1/auth (429 Problem Details)
+├── Controllers/
+│   └── AuthController.cs               /api/v1/auth/* (demais controllers por módulo nas próximas fases)
 ├── Properties/launchSettings.json      Perfis http (5100) e https (7100)
-├── appsettings.json                    Produção/base: logs JSON
-├── appsettings.Development.json        Logs simples
+├── appsettings.json                    Produção/base: logs JSON, emissor e público do JWT, limites
+├── appsettings.Development.json        Logs simples, Mailpit e URL da Web para os links de e-mail
 └── ProjectManager.API.http             Requisições de exemplo
 ```
 
@@ -94,12 +103,17 @@ ProjectManager.Web/
 ├── Api/
 │   ├── ApiOptions.cs                   Seção "Api" (BaseUrl, TimeoutSeconds), validada na inicialização
 │   ├── ApiHealthClient.cs              Cliente HTTP do /health
-│   └── ApiHealthResult.cs              Resultado da consulta
+│   ├── ApiHealthResult.cs              Resultado da consulta
+│   └── ApiAccountClient.cs (+ modelos) Cliente HTTP de /api/v1/auth
+├── Authentication/                     BFF: AccountSession (cookie com tokens), TokenRefreshCookieEvents,
+│                                       TokenRefreshCoordinator, AccountEndpoints (logout), ReturnUrls
 ├── Components/
-│   ├── App.razor / Routes.razor        Documento raiz (pt-BR, tema escuro) e roteamento
-│   ├── Layout/                         MainLayout, NavMenu, ReconnectModal
+│   ├── App.razor / Routes.razor        Documento raiz (pt-BR, tema escuro) e roteamento com autorização
+│   ├── Layout/                         MainLayout (usuário logado), NavMenu (ações de conta), ReconnectModal
 │   ├── Pages/                          Home (/), Status (/status), Error, NotFound
-│   └── Shared/                         EnvironmentBadge, ApiStatusCard (Interactive Server)
+│   ├── Pages/Account/                  /conta/cadastro, entrar, confirmar-email, reenviar-confirmacao,
+│   │                                   esqueci-a-senha, redefinir-senha, perfil (protegida)
+│   └── Shared/                         EnvironmentBadge, ApiStatusCard (Interactive Server), ApiErrors
 ├── wwwroot/                            app.css (tokens do tema), Bootstrap 5.3, favicon
 ├── Properties/launchSettings.json      Perfis http (5200) e https (7200)
 └── appsettings*.json                   Logs; Api:BaseUrl em Development
@@ -120,14 +134,16 @@ ProjectManager.CLI/
 
 | Projeto | Referencia | Cobertura atual |
 |---|---|---|
-| `ProjectManager.UnitTests` | `CLI`, `Domain` | `Architecture/ProjectReferenceRulesTests`: regras de dependência entre projetos. `Domain/*Tests`: invariantes das entidades. `Cli/CliApplicationTests`: `--version`, `--help`/`-h`, execução sem argumentos e comando desconhecido. |
-| `ProjectManager.IntegrationTests` | `API`, `Infrastructure` | **Requer Docker.** `Infrastructure/PostgresDatabaseFixture` sobe o PostgreSQL 18 (Testcontainers) e aplica as migrations. `Persistence/PersistenceTests` e `Persistence/TenantIsolationTests` cobrem persistência e isolamento. `Api/*` cobre health check (com e sem banco), OpenAPI por ambiente e Problem Details. |
+| `ProjectManager.UnitTests` | `CLI`, `Domain`, `Infrastructure` | `Architecture/ProjectReferenceRulesTests`: regras de dependência entre projetos. `Domain/*Tests`: invariantes das entidades. `Authentication/TokenTests`: refresh tokens, JWT e validação da chave. `Cli/CliApplicationTests`: `--version`, `--help`/`-h`, execução sem argumentos e comando desconhecido. |
+| `ProjectManager.IntegrationTests` | `API`, `Infrastructure` | **Requer Docker.** `Infrastructure/PostgresDatabaseFixture` e `MailpitFixture` sobem PostgreSQL 18 e Mailpit (Testcontainers). `Authentication/*` cobre cadastro, login, sessão, recuperação de senha e proteções. `Persistence/PersistenceTests` e `Persistence/TenantIsolationTests` cobrem persistência e isolamento. `Api/*` cobre health check (com e sem banco), OpenAPI por ambiente e Problem Details. |
 
 ## `docs/`
 
 | Pasta | Conteúdo |
 |---|---|
 | `architecture/` | `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` |
+| `api/` | Contratos da API por área (`AUTH.md`) |
+| `security/` | Modelo de segurança (`AUTENTICACAO.md`) |
 | `decisions/` | ADRs (`ADR-NNN-TITULO.md`) |
 | `specifications/` | Especificação mestre (fonte de verdade) e especificação de cada fase (`FASE-NN-*.md`) |
 | `reports/` | Relatórios de execução de cada fase (`FASE-NN-RELATORIO.md`) |
@@ -141,8 +157,8 @@ Os itens previstos na seção 3 da especificação mestre são criados **quando 
 | `src/ProjectManager.Worker` | Quando houver processamento em segundo plano |
 | `tests/ProjectManager.ArchitectureTests` | 13 (até lá, as regras ficam em `UnitTests/Architecture`) |
 | `tests/ProjectManager.EndToEndTests` | 13 |
-| `docs/api` | 03/04, com os primeiros endpoints `/api/v1` |
-| `docs/security` | 03, com a estratégia de autenticação |
+| `docs/api` | Criada na Fase 03 (`AUTH.md`) |
+| `docs/security` | Criada na Fase 03 (`AUTENTICACAO.md`) |
 | `docs/deployment`, `docs/operations`, `infrastructure/` | 14 |
 | `scripts/` | Quando houver um script útil. Na Fase 02, o `docker-compose.yml` e os comandos do README foram suficientes. |
 

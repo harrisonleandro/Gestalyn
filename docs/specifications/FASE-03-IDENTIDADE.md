@@ -1,6 +1,6 @@
 # Fase 03: Identidade e autenticação
 
-- **Estado:** Planned. Aguarda aprovação das decisões D1 a D5.
+- **Estado:** In Review. Implementada e validada localmente; falta o CI no GitHub após o push. Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 03), seção 5.1 (contratos `/api/v1/auth/*`) e seção 7 (segurança)
 - **Branch:** `feature/fase-03-identidade` (a partir de `develop`, `a8dae04`)
 
@@ -36,7 +36,7 @@ Permitir que usuários se cadastrem, autentiquem, mantenham sessão, encerrem a 
 - Provedor de e-mail de produção (Fase 14).
 - Interface completa e design system (Fase 09); nesta fase, só as telas mínimas de autenticação.
 
-## Decisões que exigem aprovação
+## Decisões (D1 a D5 aprovadas)
 
 | ID | Proposta | Alternativas |
 |---|---|---|
@@ -135,3 +135,28 @@ docs/security/AUTENTICACAO.md, docs/api/AUTH.md
 ## Definição de conclusão
 
 Todos os critérios verificados com evidência (local e CI), mutação do logout detectada, ADRs 006 e 007 registrados, `docs/security` e `docs/api` criados, README, AGENTS.md, `PROJECT_STATUS.md` e relatório da Fase 03 atualizados, alterações versionadas e integradas por PR.
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F03-001 | Completed | `ApplicationUser` (UUID v7) em `IdentityUserContext`; migration `AddIdentityAndSessions`; e-mail único também no banco |
+| F03-002 | Completed | `POST /register` (202 neutro, aviso ao titular); página `/conta/cadastro`; testes `Register_*` |
+| F03-003 | Completed | `POST /login`; página `/conta/entrar` com `ReturnUrl` local; validado no navegador |
+| F03-004 | Completed | `POST /logout` revoga a sessão (verificado no banco: `revocation_reason = Logout`); logout na Web por POST com antiforgery |
+| F03-005 | Completed | Cookie BFF HttpOnly (`document.cookie` vazio, HTML sem JWT); renovação automática verificada com access token de 65 s (refresh token rotacionado pela Web) |
+| F03-006 | Completed | JwtBearer com verificação de sessão ativa; `GET /me`; `AuthorizeFilter` global; mutação detectada (3 testes falham sem a verificação) |
+| F03-007 | Completed | `forgot-password` e `reset-password` com e-mail real (Mailpit); redefinição revoga as sessões; validado no navegador |
+| F03-008 | Completed | Política de 12 a 128 caracteres; Problem Details 400 com erros por campo; mensagens em pt-BR |
+| F03-009 | Completed | Access token de 15 min, sessão absoluta de 30 dias, rotação, detecção de reuso e janela de tolerância para requisições concorrentes |
+| F03-010 | Completed | Lockout (5/15 min), rate limiting por IP (429), respostas neutras, hash fictício no login |
+| F03-011 | Completed | 5 testes unitários e 22 de integração de autenticação; logs sem segredos |
+| CI | **In Review** | Depende do push de `feature/fase-03-identidade` |
+
+Ajustes feitos durante a implementação, dentro das decisões aprovadas:
+
+1. **Janela de tolerância para reuso (30 s):** na Web, requisições paralelas do navegador podiam renovar com o mesmo refresh token, e a segunda seria vista como roubo, revogando a sessão de um usuário legítimo. A API passou a tolerar a reapresentação dentro da janela (401 sem revogar), e a Web garante uma única renovação por token (`TokenRefreshCoordinator`). Coberto pelo teste `ConcurrentRefreshWithinGracePeriod_DoesNotRevokeTheSession`.
+2. **Expiração da sessão truncada para microssegundos:** o valor devolvido no login diferia do lido do banco (PostgreSQL guarda microssegundos). Defeito encontrado pelo teste `Refresh_RotatesTheRefreshToken`.
+3. **`[Produces("application/json")]` removido do `AuthController`:** fazia os Problem Details saírem como `application/json`, e a Web exibia uma mensagem genérica. Encontrado na verificação no navegador; o teste foi reforçado e confirmado por mutação.
+4. **Endpoint extra `POST /resend-confirmation`:** necessário para a D5 (confirmação obrigatória). Documentado em `docs/api/AUTH.md`.
+5. **Autor das alterações (`CreatedBy`/`UpdatedBy`):** fica para a Fase 08 (auditoria), como já previsto no escopo.
