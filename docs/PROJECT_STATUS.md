@@ -8,7 +8,7 @@
 
 ## Fase atual
 
-**Fase 02, Persistência e modelo de domínio: Completed.** Critérios verificados localmente e no CI do GitHub ([run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315)). A Fase 03 só começa com autorização explícita do responsável.
+**Fase 03, Identidade e autenticação: Planned.** A especificação aguarda aprovação das decisões D1 a D5. As Fases 01 e 02 estão Completed e integradas em `develop`.
 
 ## Estado das fases
 
@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
 | 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
-| 03 | Identidade e autenticação | Not Started | — | — |
+| 03 | Identidade e autenticação | Planned | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | — |
 | 04 | Organizações e permissões | Not Started | — | — |
 | 05 | Projetos e equipes | Not Started | — | — |
 | 06 | Fases, marcos e tarefas | Not Started | — | — |
@@ -71,11 +71,11 @@ Evidências na [especificação da Fase 02](specifications/FASE-02-PERSISTENCIA.
 
 ## Tarefas pendentes
 
-- Integrar `feature/marca-gestalyn` em `develop` (PR, com autorização).
+- Aprovar as decisões D1 a D5 da Fase 03.
 
 ## Bloqueios
 
-Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do responsável.
+Nenhum bloqueio técnico. A implementação da Fase 03 aguarda a aprovação das decisões D1 a D5.
 
 ## Testes executados
 
@@ -110,8 +110,9 @@ Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do respons�
 | 2026-11-10 | Testes de integração com PostgreSQL real (Testcontainers) | [ADR-004](decisions/ADR-004-TESTES-COM-POSTGRESQL.md) |
 | 2026-11-11 | Fase 02 integrada em `develop` (PR #1, merge `ca0c337`) | [harrisonleandro/Gestalyn#1](https://github.com/harrisonleandro/Gestalyn/pull/1) |
 | 2026-11-11 | Nome comercial **Gestalyn** e CLI `gestalyn`; código mantém `ProjectManager.*` | [ADR-005](decisions/ADR-005-NOME-COMERCIAL-GESTALYN.md) |
+| 2026-11-11 | Marca integrada em `develop` (PR #2, merge `a8dae04`) | [harrisonleandro/Gestalyn#2](https://github.com/harrisonleandro/Gestalyn/pull/2) |
 
 ## Próxima atividade
 
-1. Integrar `feature/marca-gestalyn` em `develop` (PR, com autorização).
-2. Fase 03 (Identidade e autenticação), somente após autorização. Os temas iniciais são a estratégia de sessão da Web e de tokens da API (ADR), o ASP.NET Core Identity com `Guid` e o autor das alterações na auditoria.
+1. Fase 03: implementar após a aprovação de D1 a D5, na branch `feature/fase-03-identidade`.
+2. Em seguida, a Fase 04 (organizações e permissões), somente após autorização. O autor das alterações na auditoria (`CreatedBy`/`UpdatedBy`) ficou para a Fase 08.
