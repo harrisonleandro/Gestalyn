@@ -19,9 +19,8 @@ public sealed class UserSession : Entity, IAuditable
     {
         UserId = userId;
 
-        // O PostgreSQL guarda microssegundos: truncar evita que o valor devolvido no login difira do
-        // valor lido depois do banco.
-        ExpiresAt = expiresAt.AddTicks(-(expiresAt.Ticks % TimeSpan.TicksPerMicrosecond));
+        // O PostgreSQL guarda microssegundos: o valor devolvido no login fica igual ao lido do banco.
+        ExpiresAt = Timestamps.TruncateToMicroseconds(expiresAt);
     }
 
     public Guid UserId { get; private set; }

@@ -2,13 +2,13 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ProjectManager.Infrastructure.Identity;
+namespace ProjectManager.Infrastructure.Common;
 
 /// <summary>
-/// Geração e hash de refresh tokens. Os tokens têm 256 bits aleatórios; por isso um hash rápido
-/// (SHA-256) é adequado — não há o que proteger contra força bruta como em senhas.
+/// Tokens opacos de alta entropia (refresh tokens, convites). Têm 256 bits aleatórios; por isso um hash
+/// rápido (SHA-256) é adequado para armazená-los — não há o que proteger contra força bruta como em senhas.
 /// </summary>
-internal static class RefreshTokens
+internal static class OpaqueTokens
 {
     private const int TokenBytes = 32;
 

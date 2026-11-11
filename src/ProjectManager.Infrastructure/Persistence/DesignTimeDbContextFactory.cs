@@ -22,6 +22,6 @@ internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<P
         var options = new DbContextOptionsBuilder<ProjectManagerDbContext>();
         ProjectManagerDatabase.Configure(options, connectionString);
 
-        return new ProjectManagerDbContext(options.Options, new UnresolvedTenantContext(), TimeProvider.System);
+        return new ProjectManagerDbContext(options.Options, new TenantContext(), TimeProvider.System);
     }
 }

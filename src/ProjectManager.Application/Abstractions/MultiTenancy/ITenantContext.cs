@@ -11,4 +11,21 @@ public interface ITenantContext
     /// nenhum dado pertencente a organizações pode ser lido ou gravado.
     /// </summary>
     Guid? OrganizationId { get; }
+
+    /// <summary>
+    /// Associação do usuário autenticado à organização ativa (papel e permissões), quando resolvida.
+    /// </summary>
+    ActiveMembership? Membership { get; }
+}
+
+/// <summary>Associação validada de um usuário a uma organização.</summary>
+public sealed record ActiveMembership(
+    Guid OrganizationId,
+    Guid MemberId,
+    Guid UserId,
+    Guid RoleId,
+    bool IsOwner,
+    IReadOnlySet<string> Permissions)
+{
+    public bool HasPermission(string permission) => Permissions.Contains(permission);
 }

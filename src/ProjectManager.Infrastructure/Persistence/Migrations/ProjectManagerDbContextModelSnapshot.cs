@@ -103,6 +103,90 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.Invitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<Guid?>("AcceptedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accepted_by_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invited_by_user_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invitations");
+
+                    b.HasIndex("AcceptedByUserId")
+                        .HasDatabaseName("ix_invitations_accepted_by_user_id");
+
+                    b.HasIndex("InvitedByUserId")
+                        .HasDatabaseName("ix_invitations_invited_by_user_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invitations_token_hash");
+
+                    b.HasIndex("OrganizationId", "Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invitations_organization_id_email")
+                        .HasFilter("accepted_at IS NULL AND revoked_at IS NULL");
+
+                    b.HasIndex("OrganizationId", "RoleId")
+                        .HasDatabaseName("ix_invitations_organization_id_role_id");
+
+                    b.ToTable("invitations", (string)null);
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Organizations.Organization", b =>
                 {
                     b.Property<Guid>("Id")
@@ -133,6 +217,130 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasName("pk_organizations");
 
                     b.ToTable("organizations", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.OrganizationMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization_members");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_organization_members_user_id");
+
+                    b.HasIndex("OrganizationId", "RoleId")
+                        .HasDatabaseName("ix_organization_members_organization_id_role_id");
+
+                    b.HasIndex("OrganizationId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organization_members_organization_id_user_id");
+
+                    b.ToTable("organization_members", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.Role", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("SystemRole")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("system_role");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_roles");
+
+                    b.HasAlternateKey("OrganizationId", "Id")
+                        .HasName("ak_roles_organization_id_id");
+
+                    b.HasIndex("OrganizationId", "SystemRole")
+                        .IsUnique()
+                        .HasDatabaseName("ix_roles_organization_id_system_role")
+                        .HasFilter("system_role IS NOT NULL");
+
+                    b.ToTable("roles", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.RolePermission", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("PermissionCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("permission_code");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.HasKey("RoleId", "PermissionCode")
+                        .HasName("pk_role_permissions");
+
+                    b.HasIndex("PermissionCode")
+                        .HasDatabaseName("ix_role_permissions_permission_code");
+
+                    b.HasIndex("OrganizationId", "RoleId")
+                        .HasDatabaseName("ix_role_permissions_organization_id_role_id");
+
+                    b.ToTable("role_permissions", (string)null);
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Projects.Project", b =>
@@ -425,6 +633,57 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectManager.Infrastructure.Organizations.PermissionDefinition", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
+
+                    b.HasKey("Code")
+                        .HasName("pk_permissions");
+
+                    b.ToTable("permissions", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Code = "organization.read",
+                            Description = "Consultar os dados da organização"
+                        },
+                        new
+                        {
+                            Code = "organization.update",
+                            Description = "Alterar os dados da organização"
+                        },
+                        new
+                        {
+                            Code = "members.read",
+                            Description = "Consultar membros e papéis"
+                        },
+                        new
+                        {
+                            Code = "members.invite",
+                            Description = "Convidar pessoas e gerenciar convites"
+                        },
+                        new
+                        {
+                            Code = "members.update_role",
+                            Description = "Alterar o papel de membros"
+                        },
+                        new
+                        {
+                            Code = "members.remove",
+                            Description = "Remover membros"
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
                 {
                     b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
@@ -453,6 +712,76 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.Invitation", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AcceptedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_invitations_users_accepted_by_user_id");
+
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("InvitedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invitations_users_invited_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Organizations.Role", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "RoleId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invitations_roles_organization_id_role_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.OrganizationMember", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_members_users_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Organizations.Role", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "RoleId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_members_roles_organization_id_role_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.Role", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_roles_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.RolePermission", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Organizations.PermissionDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("PermissionCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_permissions_permissions_permission_code");
+
+                    b.HasOne("ProjectManager.Domain.Organizations.Role", null)
+                        .WithMany("Permissions")
+                        .HasForeignKey("OrganizationId", "RoleId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_permissions_roles_organization_id_role_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Projects.Project", b =>
@@ -496,6 +825,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_sessions_users_user_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Organizations.Role", b =>
+                {
+                    b.Navigation("Permissions");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Projects.Project", b =>
