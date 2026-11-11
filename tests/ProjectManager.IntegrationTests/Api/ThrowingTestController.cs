@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ProjectManager.IntegrationTests.Api;
@@ -7,6 +8,7 @@ namespace ProjectManager.IntegrationTests.Api;
 /// Controller registrado apenas nos testes para provocar uma exceção não tratada.
 /// </summary>
 [ApiController]
+[AllowAnonymous]
 [Route(Route)]
 public sealed class ThrowingTestController : ControllerBase
 {

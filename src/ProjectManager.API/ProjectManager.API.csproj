@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <!-- Somente para as ferramentas do EF Core (dotnet ef); não é publicado com a aplicação. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />

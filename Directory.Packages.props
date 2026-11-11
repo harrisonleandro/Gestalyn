@@ -26,6 +26,15 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
+  <!-- Identidade e autenticação -->
+  <ItemGroup>
+    <PackageVersion Include="MailKit" Version="4.18.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
+    <!-- Mesma versão usada pelo JwtBearer 10.0.15 (via Protocols.OpenIdConnect), para não misturar versões do IdentityModel. -->
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
+  </ItemGroup>
+
   <!-- Testes -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
