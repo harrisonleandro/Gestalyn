@@ -11,7 +11,7 @@
 
   <!-- Identidade e versão. A versão é a única fonte usada por API, Web e CLI. -->
   <PropertyGroup>
-    <Product>ProjectManager</Product>
+    <Product>Gestalyn</Product>
     <Company>RiukDev</Company>
     <Copyright>Copyright © RiukDev</Copyright>
     <VersionPrefix>0.1.0</VersionPrefix>

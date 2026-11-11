@@ -4,11 +4,11 @@ using System.CommandLine.Help;
 namespace ProjectManager.CLI;
 
 /// <summary>
-/// Monta e executa a árvore de comandos do <c>projectctl</c>.
+/// Monta e executa a árvore de comandos da CLI <c>gestalyn</c>.
 /// </summary>
 public static class CliApplication
 {
-    public const string ExecutableName = "projectctl";
+    public const string ExecutableName = "gestalyn";
 
     /// <summary>
     /// Cria o comando raiz. As opções <c>--help</c> e <c>--version</c> são fornecidas pelo System.CommandLine.
@@ -19,7 +19,7 @@ public static class CliApplication
     /// </remarks>
     public static RootCommand CreateRootCommand()
     {
-        var rootCommand = new RootCommand($"{ExecutableName} — interface de linha de comando do ProjectManager.");
+        var rootCommand = new RootCommand($"{ExecutableName} — interface de linha de comando do Gestalyn.");
 
         // Sem subcomando, exibe a ajuda em vez de encerrar silenciosamente.
         rootCommand.SetAction(parseResult => new HelpAction().Invoke(parseResult));

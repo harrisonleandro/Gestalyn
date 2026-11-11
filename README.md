@@ -1,6 +1,6 @@
-# ProjectManager
+# Gestalyn
 
-> Nome de trabalho. O nome comercial ainda não foi definido.
+> **Gestalyn** é o nome comercial. No código, o nome de trabalho continua sendo **ProjectManager**: solution, projetos e namespaces `ProjectManager.*` ([ADR-005](docs/decisions/ADR-005-NOME-COMERCIAL-GESTALYN.md)).
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
@@ -15,7 +15,7 @@ A referência funcional e técnica é a [especificação mestre](docs/specificat
 | Linguagem / plataforma | C# · .NET 10 LTS |
 | API | ASP.NET Core Web API (controllers), OpenAPI nativo, Problem Details (RFC 9457), Health Checks |
 | Interface | Blazor Web App (Interactive Server) · Bootstrap 5.3 em tema escuro |
-| CLI | `projectctl` · System.CommandLine |
+| CLI | `gestalyn` · System.CommandLine |
 | Testes | xUnit v3 · `WebApplicationFactory` (Microsoft.AspNetCore.Mvc.Testing) |
 | CI | GitHub Actions |
 | Persistência | PostgreSQL 18 · Entity Framework Core 10 + Npgsql · migrations · Testcontainers nos testes |
@@ -48,7 +48,7 @@ ProjectManager/
 │   ├── ProjectManager.Infrastructure/  Persistência, integrações externas, implementações técnicas
 │   ├── ProjectManager.API/             ASP.NET Core Web API
 │   ├── ProjectManager.Web/             Blazor Web App
-│   └── ProjectManager.CLI/             CLI projectctl
+│   └── ProjectManager.CLI/             CLI gestalyn
 ├── tests/
 │   ├── ProjectManager.UnitTests/
 │   └── ProjectManager.IntegrationTests/
@@ -163,7 +163,7 @@ dotnet run --project src/ProjectManager.CLI -- --help
 dotnet run --project src/ProjectManager.CLI -- --version
 ```
 
-O executável compilado chama-se `projectctl` (`src/ProjectManager.CLI/bin/<Configuração>/net10.0/projectctl[.exe]`). Na Fase 01 a CLI oferece apenas `--help` e `--version`; os grupos de comandos (auth, organization, project, task, activity, phase, agent) serão adicionados quando tiverem implementação real.
+O executável compilado chama-se `gestalyn` (`src/ProjectManager.CLI/bin/<Configuração>/net10.0/gestalyn[.exe]`). Por enquanto a CLI oferece apenas `--help` e `--version`; os grupos de comandos (auth, organization, project, task, activity, phase, agent) serão adicionados quando tiverem implementação real.
 
 ## Como executar os testes
 
