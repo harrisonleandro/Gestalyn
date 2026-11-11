@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc.Authorization;
+using ProjectManager.API.Authentication;
 using ProjectManager.API.ErrorHandling;
 using ProjectManager.API.Health;
 using ProjectManager.Application;
@@ -10,7 +12,8 @@ builder.Services
     .AddApplication()
     .AddInfrastructure();
 
-builder.Services.AddControllers();
+// Seguro por padrão: todo controller exige autenticação, salvo [AllowAnonymous] explícito.
+builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()));
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
 {
     document.Info.Title = "Gestalyn API";
@@ -19,6 +22,8 @@ builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document,
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddApiHealthChecks();
+builder.Services.AddApiAuthentication();
+builder.Services.AddAuthRateLimiting();
 
 var app = builder.Build();
 
@@ -34,6 +39,10 @@ else
     app.UseHsts();
     app.UseHttpsRedirection();
 }
+
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapHealthChecks(HealthEndpoints.Path, new HealthCheckOptions
 {

@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProjectManager.CLI\ProjectManager.CLI.csproj" />
     <ProjectReference Include="..\..\src\ProjectManager.Domain\ProjectManager.Domain.csproj" />
+    <ProjectReference Include="..\..\src\ProjectManager.Infrastructure\ProjectManager.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

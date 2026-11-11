@@ -8,7 +8,7 @@
 
 ## Fase atual
 
-**Fase 02, Persistência e modelo de domínio: Completed.** Critérios verificados localmente e no CI do GitHub ([run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315)). A Fase 03 só começa com autorização explícita do responsável.
+**Fase 03, Identidade e autenticação: Completed.** Critérios verificados localmente e no CI do GitHub ([run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052)). A integração em `develop` (PR #3) aguarda autorização do responsável.
 
 ## Estado das fases
 
@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
 | 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
-| 03 | Identidade e autenticação | Not Started | — | — |
+| 03 | Identidade e autenticação | Completed | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
 | 04 | Organizações e permissões | Not Started | — | — |
 | 05 | Projetos e equipes | Not Started | — | — |
 | 06 | Fases, marcos e tarefas | Not Started | — | — |
@@ -69,20 +69,38 @@ Evidências de cada tarefa estão na [especificação da Fase 01](specifications
 
 Evidências na [especificação da Fase 02](specifications/FASE-02-PERSISTENCIA.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-02-RELATORIO.md).
 
+## Tarefas da Fase 03
+
+| ID | Tarefa | Estado |
+|---|---|---|
+| F03-001 | Configurar ASP.NET Core Identity | Completed |
+| F03-002 | Criar cadastro | Completed |
+| F03-003 | Criar login | Completed |
+| F03-004 | Criar logout | Completed |
+| F03-005 | Implementar sessão e autenticação da interface web | Completed |
+| F03-006 | Implementar autenticação da API | Completed |
+| F03-007 | Implementar recuperação de senha | Completed |
+| F03-008 | Implementar validação de credenciais | Completed |
+| F03-009 | Implementar expiração e renovação de sessão | Completed |
+| F03-010 | Implementar proteção contra tentativas abusivas | Completed |
+| F03-011 | Criar testes de autenticação | Completed |
+
+Evidências na [especificação da Fase 03](specifications/FASE-03-IDENTIDADE.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-03-RELATORIO.md).
+
 ## Tarefas pendentes
 
-- Integrar `feature/marca-gestalyn` em `develop` (PR, com autorização).
+- Integrar a Fase 03 em `develop` (PR #3, CI aprovado; merge com autorização).
 
 ## Bloqueios
 
-Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do responsável.
+Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável.
 
 ## Testes executados
 
 | Projeto | Testes | Cobertura |
 |---|---|---|
-| ProjectManager.UnitTests | 23 | Regras de dependência entre projetos (7), invariantes do domínio (11) e CLI (5) |
-| ProjectManager.IntegrationTests | 22 | Persistência (7), isolamento multi-tenant (8), health check com e sem banco (3), OpenAPI por ambiente (2) e Problem Details 404/500 (2). Requer Docker. |
+| ProjectManager.UnitTests | 28 | Regras de dependência entre projetos (7), invariantes do domínio (11), CLI (5) e tokens (5) |
+| ProjectManager.IntegrationTests | 43 | Persistência (7), isolamento multi-tenant (8), autenticação (22: cadastro e login, sessão, recuperação de senha, segurança), health check com e sem banco (3), OpenAPI por ambiente (2) e Problem Details 404/500 (2). Requer Docker (PostgreSQL e Mailpit). |
 
 ## Última validação
 
@@ -93,6 +111,8 @@ Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do respons�
 | GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-10 | `26e4b5c` | [run 42913460175](https://github.com/harrisonleandro/Gestalyn/actions/runs/42913460175): success, 12/12 e 6/6 |
 | GitHub Actions (`ubuntu-latest`), `feature/fase-02-persistencia` | 2026-11-11 | `085d0f1` | [run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315): success, 0 avisos, 23/23 e 22/22 (PostgreSQL via Testcontainers) |
 | Local, `feature/marca-gestalyn` | 2026-11-11 | `ca0c337` + renomeação da marca | build Release 0 avisos e 0 erros · testes 45/45 · Web, API e CLI `gestalyn` executadas |
+| Local, `feature/fase-03-identidade` | 2026-11-11 01:40 | `e70352c` | restore exit 0 · build Release 0 avisos e 0 erros · testes 71/71 (28 unitários, 43 de integração com PostgreSQL e Mailpit) · fluxos validados no navegador |
+| GitHub Actions (`ubuntu-latest`), PR #3 | 2026-11-11 | `b5c4e3a` | [run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052): success, 0 avisos, 28/28 e 43/43 (PostgreSQL e Mailpit via Testcontainers) |
 
 ## Decisões recentes
 
@@ -110,8 +130,11 @@ Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do respons�
 | 2026-11-10 | Testes de integração com PostgreSQL real (Testcontainers) | [ADR-004](decisions/ADR-004-TESTES-COM-POSTGRESQL.md) |
 | 2026-11-11 | Fase 02 integrada em `develop` (PR #1, merge `ca0c337`) | [harrisonleandro/Gestalyn#1](https://github.com/harrisonleandro/Gestalyn/pull/1) |
 | 2026-11-11 | Nome comercial **Gestalyn** e CLI `gestalyn`; código mantém `ProjectManager.*` | [ADR-005](decisions/ADR-005-NOME-COMERCIAL-GESTALYN.md) |
+| 2026-11-11 | Marca integrada em `develop` (PR #2, merge `a8dae04`) | [harrisonleandro/Gestalyn#2](https://github.com/harrisonleandro/Gestalyn/pull/2) |
+| 2026-11-11 | Fase 03: JWT de 15 min com sessão revogável, refresh token com rotação e detecção de reuso, Web como BFF, confirmação de e-mail obrigatória (D1 a D5) | [ADR-006](decisions/ADR-006-AUTENTICACAO-E-SESSAO.md) |
+| 2026-11-11 | E-mail via SMTP (MailKit), Mailpit em desenvolvimento e testes | [ADR-007](decisions/ADR-007-ENVIO-DE-EMAIL.md) |
 
 ## Próxima atividade
 
-1. Integrar `feature/marca-gestalyn` em `develop` (PR, com autorização).
-2. Fase 03 (Identidade e autenticação), somente após autorização. Os temas iniciais são a estratégia de sessão da Web e de tokens da API (ADR), o ASP.NET Core Identity com `Guid` e o autor das alterações na auditoria.
+1. Merge do PR #3 em `develop` (CI aprovado), com autorização.
+2. Fase 04 (organizações e permissões), somente após autorização: membros e convites (o e-mail confirmado identifica o convidado), papéis e permissões, e resolução da organização ativa pela identidade autenticada (substituindo `UnresolvedTenantContext`).

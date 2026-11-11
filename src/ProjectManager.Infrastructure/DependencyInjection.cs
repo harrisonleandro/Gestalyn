@@ -1,9 +1,14 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using ProjectManager.Application.Abstractions.Authentication;
+using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
+using ProjectManager.Infrastructure.Email;
+using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
 using ProjectManager.Infrastructure.Persistence;
 
@@ -25,8 +30,68 @@ public static class DependencyInjection
         services.TryAddScoped<ITenantContext, UnresolvedTenantContext>();
 
         services.AddPersistence();
+        services.AddIdentityServices();
+        services.AddEmail();
 
         return services;
+    }
+
+    private static void AddIdentityServices(this IServiceCollection services)
+    {
+        services.AddOptions<JwtOptions>()
+            .BindConfiguration(JwtOptions.SectionName)
+            .Validate(
+                options => options.IsValid(),
+                $"Configuração inválida em '{JwtOptions.SectionName}': Issuer, Audience, SigningKey (mínimo de {JwtOptions.MinimumSigningKeyBytes} bytes) e durações são obrigatórios.")
+            .ValidateOnStart();
+
+        services.AddOptions<AccountLinkOptions>()
+            .BindConfiguration(AccountLinkOptions.SectionName)
+            .Validate(
+                options => options.WebBaseUrl is { IsAbsoluteUri: true },
+                $"'{AccountLinkOptions.SectionName}:WebBaseUrl' deve ser uma URL absoluta.")
+            .ValidateOnStart();
+
+        services.AddDataProtection();
+
+        services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.SignIn.RequireConfirmedEmail = true;
+
+                // NIST SP 800-63B: comprimento mínimo, sem regras de composição.
+                options.Password.RequiredLength = AuthLimits.PasswordMinLength;
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequiredUniqueChars = 1;
+
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+            })
+            .AddEntityFrameworkStores<ProjectManagerDbContext>()
+            .AddDefaultTokenProviders()
+            .AddErrorDescriber<PortugueseIdentityErrorDescriber>();
+
+        // Links de confirmação e de redefinição de senha.
+        services.Configure<DataProtectionTokenProviderOptions>(options => options.TokenLifespan = TimeSpan.FromHours(2));
+
+        services.AddScoped<AccessTokenIssuer>();
+        services.AddScoped<SessionManager>();
+        services.AddScoped<AccountEmails>();
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
+    }
+
+    private static void AddEmail(this IServiceCollection services)
+    {
+        services.AddOptions<EmailOptions>()
+            .BindConfiguration(EmailOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{EmailOptions.SectionName}': Host, Port e FromAddress são obrigatórios.")
+            .ValidateOnStart();
+
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
     }
 
     private static void AddPersistence(this IServiceCollection services)

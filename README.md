@@ -4,7 +4,7 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 02 (persistência e modelo de domínio) concluída.** A solução tem API, interface Web e CLI funcionais no nível de infraestrutura, e persistência em PostgreSQL com isolamento multi-tenant testado. Ainda não há funcionalidades de negócio expostas (cadastro, autenticação, organizações, projetos e tarefas pela API ou pela interface). O progresso de todas as fases está em [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+**Estado atual: Fase 03 (identidade e autenticação) em revisão.** Já é possível criar conta, confirmar o e-mail, entrar, sair e recuperar a senha, pela API e pela interface Web. Há persistência em PostgreSQL com isolamento multi-tenant testado. Organizações, projetos e tarefas ainda não estão expostos. O progresso de todas as fases está em [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
 
 A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 
@@ -13,14 +13,15 @@ A referência funcional e técnica é a [especificação mestre](docs/specificat
 | Área | Tecnologia |
 |---|---|
 | Linguagem / plataforma | C# · .NET 10 LTS |
-| API | ASP.NET Core Web API (controllers), OpenAPI nativo, Problem Details (RFC 9457), Health Checks |
+| API | ASP.NET Core Web API (controllers), OpenAPI nativo, Problem Details (RFC 9457), Health Checks, rate limiting |
+| Identidade | ASP.NET Core Identity · JWT de curta duração com sessão revogável · refresh token com rotação · e-mail via SMTP (MailKit; Mailpit em desenvolvimento) |
 | Interface | Blazor Web App (Interactive Server) · Bootstrap 5.3 em tema escuro |
 | CLI | `gestalyn` · System.CommandLine |
 | Testes | xUnit v3 · `WebApplicationFactory` (Microsoft.AspNetCore.Mvc.Testing) |
 | CI | GitHub Actions |
 | Persistência | PostgreSQL 18 · Entity Framework Core 10 + Npgsql · migrations · Testcontainers nos testes |
 | Multi-tenancy | Banco e schema compartilhados com isolamento lógico por `OrganizationId`: filtro de leitura, bloqueio de gravação e FKs compostas no banco ([ADR-003](docs/decisions/ADR-003-ISOLAMENTO-MULTI-TENANT.md)) |
-| Planejado (fases futuras) | ASP.NET Core Identity · SignalR · servidor MCP · object storage compatível com S3 · integração com GitHub |
+| Planejado (fases futuras) | SignalR · servidor MCP · object storage compatível com S3 · integração com GitHub |
 
 ## Arquitetura
 
@@ -70,7 +71,7 @@ Descrição completa em [docs/architecture/PROJECT_STRUCTURE.md](docs/architectu
 - **Docker em execução** (Docker Desktop no Windows/macOS): PostgreSQL local e testes de integração.
 - Opcional: certificado HTTPS de desenvolvimento confiável (`dotnet dev-certs https --trust`) para usar os perfis `https`.
 
-## Banco de dados local
+## Ambiente local
 
 1. Crie o arquivo `.env` a partir do exemplo e defina uma senha local. O `.env` não é versionado.
 
@@ -78,11 +79,13 @@ Descrição completa em [docs/architecture/PROJECT_STRUCTURE.md](docs/architectu
    cp .env.example .env
    ```
 
-2. Suba o PostgreSQL 18, exposto apenas em `127.0.0.1:5432`:
+2. Suba o PostgreSQL 18 e o **Mailpit** (SMTP de teste), ambos expostos apenas em `127.0.0.1`:
 
    ```bash
    docker compose up -d
    ```
+
+   Os e-mails enviados em desenvolvimento (confirmação de cadastro, redefinição de senha) aparecem em http://localhost:8025; nada é entregue de verdade.
 
 3. Guarde a connection string da API em user-secrets, com a mesma senha do `.env`:
 
@@ -92,7 +95,13 @@ Descrição completa em [docs/architecture/PROJECT_STRUCTURE.md](docs/architectu
 
    Use `127.0.0.1` em vez de `localhost`: no Windows, `localhost` tenta IPv6 primeiro e atrasa a conexão em cerca de 2 s.
 
-4. Restaure as ferramentas locais e aplique as migrations:
+4. Gere a chave de assinatura dos tokens (mínimo de 32 bytes) e guarde em user-secrets:
+
+   ```bash
+   dotnet user-secrets set "Authentication:Jwt:SigningKey" "$(openssl rand -base64 48)" --project src/ProjectManager.API
+   ```
+
+5. Restaure as ferramentas locais e aplique as migrations:
 
    ```bash
    dotnet tool restore
@@ -137,6 +146,8 @@ Perfil HTTPS: `dotnet run --project src/ProjectManager.API --launch-profile http
 
 O endpoint `/health` reporta somente as verificações de componentes que existem: `self` (processo da API) e `database` (conexão com o PostgreSQL). Com o banco indisponível, responde 503.
 
+A autenticação fica em `/api/v1/auth` (cadastro, confirmação de e-mail, login, refresh, logout, `me` e recuperação de senha). Os contratos estão em [docs/api/AUTH.md](docs/api/AUTH.md) e o modelo de segurança em [docs/security/AUTENTICACAO.md](docs/security/AUTENTICACAO.md). Fora dos endpoints públicos de autenticação, todo controller exige `Authorization: Bearer`.
+
 ## Como executar a Web
 
 Inicie a API primeiro e, em outro terminal:
@@ -145,7 +156,7 @@ Inicie a API primeiro e, em outro terminal:
 dotnet run --project src/ProjectManager.Web
 ```
 
-Acesse http://localhost:5200. A página **Status do sistema** consulta o `/health` da API por HTTP.
+Acesse http://localhost:5200. A página **Status do sistema** consulta o `/health` da API por HTTP. Em **Criar conta** e **Entrar** ficam o cadastro, o login, a recuperação de senha e o perfil. Os tokens da API ficam só no servidor da Web, dentro de um cookie HttpOnly.
 
 A URL da API é configurada em `Api:BaseUrl` (em Development: `appsettings.Development.json`). Fora de Development, a configuração é obrigatória e a aplicação não inicia sem ela. Exemplo por variável de ambiente:
 
@@ -172,7 +183,7 @@ dotnet test
 ```
 
 - **UnitTests**: regras de dependência entre projetos, invariantes do domínio e comportamento da CLI.
-- **IntegrationTests** (**requer Docker**): sobem um PostgreSQL descartável com Testcontainers e aplicam as migrations. Cobrem persistência, isolamento multi-tenant e a API hospedada em memória (health check, OpenAPI por ambiente e respostas de erro padronizadas).
+- **IntegrationTests** (**requer Docker**): sobem PostgreSQL e Mailpit descartáveis com Testcontainers e aplicam as migrations. Cobrem persistência, isolamento multi-tenant, autenticação (fluxos completos com e-mail real, sessão, lockout, rate limiting, logs sem segredos) e a API hospedada em memória.
 
 ## Integração contínua
 

@@ -1,0 +1,71 @@
+@page "/conta/cadastro"
+@inject ApiAccountClient Api
+
+<PageTitle>Criar conta · Gestalyn</PageTitle>
+
+<div class="account-card pm-card">
+    <h1 class="h3 mb-4">Criar conta</h1>
+
+    @if (_registeredEmail is not null)
+    {
+        <div class="alert alert-success" role="status">
+            Enviamos um e-mail para <strong>@_registeredEmail</strong>. Abra o link de confirmação para ativar a conta.
+        </div>
+        <p class="mb-0"><a href="conta/reenviar-confirmacao">Não recebeu? Reenviar o e-mail</a></p>
+    }
+    else
+    {
+        <ApiErrors Result="_result" />
+
+        <EditForm Model="Input" FormName="register" OnValidSubmit="RegisterAsync" method="post">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="mb-3">
+                <label for="displayName" class="form-label">Nome</label>
+                <InputText id="displayName" class="form-control" autocomplete="name" @bind-Value="Input.DisplayName" />
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">E-mail</label>
+                <InputText id="email" type="email" class="form-control" autocomplete="email" @bind-Value="Input.Email" />
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Senha</label>
+                <InputText id="password" type="password" class="form-control" autocomplete="new-password" @bind-Value="Input.Password" />
+                <div class="form-text">Mínimo de 12 caracteres. Frases longas são ótimas senhas.</div>
+            </div>
+            <div class="mb-4">
+                <label for="confirmPassword" class="form-label">Confirme a senha</label>
+                <InputText id="confirmPassword" type="password" class="form-control" autocomplete="new-password" @bind-Value="Input.ConfirmPassword" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Criar conta</button>
+        </EditForm>
+
+        <p class="mt-4 mb-0">Já tem conta? <a href="conta/entrar">Entrar</a></p>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private RegisterForm Input { get; set; } = default!;
+
+    private ApiResult? _result;
+    private string? _registeredEmail;
+
+    protected override void OnInitialized() => Input ??= new RegisterForm();
+
+    private async Task RegisterAsync()
+    {
+        _result = await Api.RegisterAsync(Input.Email, Input.Password, Input.DisplayName, HttpContext.RequestAborted);
+        Input.Password = string.Empty;
+        Input.ConfirmPassword = string.Empty;
+
+        if (_result.Succeeded)
+        {
+            _registeredEmail = Input.Email;
+        }
+    }
+}

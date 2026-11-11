@@ -8,6 +8,11 @@
 
     <main>
         <div class="top-row px-4">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="pm-muted me-3">@context.User.Identity?.Name</span>
+                </Authorized>
+            </AuthorizeView>
             <EnvironmentBadge EnvironmentName="@HostEnvironment.EnvironmentName" />
         </div>
 

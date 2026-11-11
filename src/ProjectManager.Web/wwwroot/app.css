@@ -83,3 +83,12 @@ h1:focus {
     .blazor-error-boundary::after {
         content: "Ocorreu um erro ao exibir este componente.";
     }
+
+.account-card {
+    max-width: 28rem;
+    margin: 1rem auto;
+}
+
+.account-profile {
+    max-width: 40rem;
+}

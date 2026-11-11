@@ -1,21 +1,24 @@
 using System.Reflection;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Projects;
+using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.Persistence.ChangeTracking;
 
 namespace ProjectManager.Infrastructure.Persistence;
 
 /// <summary>
-/// Contexto de persistência. Toda consulta a dados de organizações é filtrada pela organização ativa,
+/// Contexto de persistência. Inclui as tabelas de usuários do ASP.NET Core Identity (sem papéis do
+/// Identity) e as sessões. Toda consulta a dados de organizações é filtrada pela organização ativa,
 /// e toda gravação é validada contra ela antes de chegar ao banco.
 /// </summary>
 public sealed class ProjectManagerDbContext(
     DbContextOptions<ProjectManagerDbContext> options,
     ITenantContext tenantContext,
-    TimeProvider timeProvider) : DbContext(options)
+    TimeProvider timeProvider) : IdentityUserContext<ApplicationUser, Guid>(options)
 {
     private static readonly MethodInfo ApplyOrganizationFilterMethod =
         typeof(ProjectManagerDbContext).GetMethod(nameof(ApplyOrganizationFilter), BindingFlags.NonPublic | BindingFlags.Instance)!;
@@ -25,6 +28,10 @@ public sealed class ProjectManagerDbContext(
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<ProjectPhase> ProjectPhases => Set<ProjectPhase>();
+
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+
+    public DbSet<UserRefreshToken> UserRefreshTokens => Set<UserRefreshToken>();
 
     // Lido pelo EF Core a cada consulta: os filtros globais usam o valor do momento da execução.
     private Guid? CurrentOrganizationId => tenantContext.OrganizationId;
@@ -41,27 +48,29 @@ public sealed class ProjectManagerDbContext(
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ProjectManagerDbContext).Assembly);
+        // Modelo do Identity primeiro; as configurações da solução ajustam nomes de tabelas e chaves.
+        base.OnModelCreating(builder);
+        builder.ApplyConfigurationsFromAssembly(typeof(ProjectManagerDbContext).Assembly);
 
         // A própria organização só é visível quando é a organização ativa.
-        modelBuilder.Entity<Organization>().HasQueryFilter(organization => organization.Id == CurrentOrganizationId);
+        builder.Entity<Organization>().HasQueryFilter(organization => organization.Id == CurrentOrganizationId);
 
-        var organizationOwnedTypes = modelBuilder.Model.GetEntityTypes()
+        var organizationOwnedTypes = builder.Model.GetEntityTypes()
             .Select(entityType => entityType.ClrType)
             .Where(clrType => typeof(IOrganizationOwned).IsAssignableFrom(clrType))
             .ToList();
 
         foreach (var clrType in organizationOwnedTypes)
         {
-            ApplyOrganizationFilterMethod.MakeGenericMethod(clrType).Invoke(this, [modelBuilder]);
+            ApplyOrganizationFilterMethod.MakeGenericMethod(clrType).Invoke(this, [builder]);
         }
     }
 
-    private void ApplyOrganizationFilter<TEntity>(ModelBuilder modelBuilder)
+    private void ApplyOrganizationFilter<TEntity>(ModelBuilder builder)
         where TEntity : class, IOrganizationOwned =>
-        modelBuilder.Entity<TEntity>().HasQueryFilter(entity => entity.OrganizationId == CurrentOrganizationId);
+        builder.Entity<TEntity>().HasQueryFilter(entity => entity.OrganizationId == CurrentOrganizationId);
 
     private void PrepareChanges()
     {

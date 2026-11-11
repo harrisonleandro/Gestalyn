@@ -1,0 +1,76 @@
+@page "/conta/entrar"
+@using System.Net
+@inject ApiAccountClient Api
+@inject NavigationManager Navigation
+
+<PageTitle>Entrar · Gestalyn</PageTitle>
+
+<div class="account-card pm-card">
+    <h1 class="h3 mb-4">Entrar</h1>
+
+    <ApiErrors Result="_result" />
+    @if (_emailNotConfirmed)
+    {
+        <p><a href="conta/reenviar-confirmacao">Reenviar o e-mail de confirmação</a></p>
+    }
+
+    <EditForm Model="Input" FormName="login" OnValidSubmit="LoginAsync" method="post">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="mb-3">
+            <label for="email" class="form-label">E-mail</label>
+            <InputText id="email" type="email" class="form-control" autocomplete="username" @bind-Value="Input.Email" />
+        </div>
+        <div class="mb-4">
+            <label for="password" class="form-label">Senha</label>
+            <InputText id="password" type="password" class="form-control" autocomplete="current-password" @bind-Value="Input.Password" />
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Entrar</button>
+    </EditForm>
+
+    <div class="mt-4 d-flex justify-content-between">
+        <a href="conta/esqueci-a-senha">Esqueci a senha</a>
+        <a href="conta/cadastro">Criar conta</a>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private LoginForm Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private ApiResult? _result;
+    private bool _emailNotConfirmed;
+
+    protected override void OnInitialized() => Input ??= new LoginForm();
+
+    private async Task LoginAsync()
+    {
+        var cancellationToken = HttpContext.RequestAborted;
+        var login = await Api.LoginAsync(Input.Email, Input.Password, cancellationToken);
+        Input.Password = string.Empty;
+
+        if (!login.Result.Succeeded || login.Value is null)
+        {
+            _result = login.Result;
+            _emailNotConfirmed = login.Result.StatusCode == HttpStatusCode.Forbidden;
+            return;
+        }
+
+        var profile = await Api.GetProfileAsync(login.Value.AccessToken, cancellationToken);
+        if (!profile.Result.Succeeded || profile.Value is null)
+        {
+            _result = profile.Result;
+            return;
+        }
+
+        await AccountSession.SignInAsync(HttpContext, profile.Value, login.Value);
+        Navigation.NavigateTo(ReturnUrls.Sanitize(ReturnUrl), forceLoad: true);
+    }
+}

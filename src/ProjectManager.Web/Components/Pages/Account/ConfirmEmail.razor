@@ -1,0 +1,39 @@
+@page "/conta/confirmar-email"
+@inject ApiAccountClient Api
+
+<PageTitle>Confirmar e-mail · Gestalyn</PageTitle>
+
+<div class="account-card pm-card">
+    <h1 class="h3 mb-4">Confirmação de e-mail</h1>
+
+    @if (_result is { Succeeded: true })
+    {
+        <div class="alert alert-success" role="status">E-mail confirmado. Sua conta está ativa.</div>
+        <a href="conta/entrar" class="btn btn-primary w-100">Entrar</a>
+    }
+    else
+    {
+        <ApiErrors Result="_result" />
+        <p class="mb-0"><a href="conta/reenviar-confirmacao">Solicitar um novo link de confirmação</a></p>
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private Guid? UserId { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? Token { get; set; }
+
+    private ApiResult? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _result = UserId is { } userId && !string.IsNullOrEmpty(Token)
+            ? await Api.ConfirmEmailAsync(userId, Token, HttpContext.RequestAborted)
+            : ApiResult.Failure(null, "Link de confirmação incompleto.");
+    }
+}
