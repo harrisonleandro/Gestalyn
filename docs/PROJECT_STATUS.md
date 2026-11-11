@@ -17,7 +17,7 @@
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
 | 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
 | 03 | Identidade e autenticação | In Review | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
-| 04 | Organizações e permissões | Not Started | — | — |
+| 04 | Organizações e permissões | Planned | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | — |
 | 05 | Projetos e equipes | Not Started | — | — |
 | 06 | Fases, marcos e tarefas | Not Started | — | — |
 | 07 | Workflow configurável e histórico | Not Started | — | — |
