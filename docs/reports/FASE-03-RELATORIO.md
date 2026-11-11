@@ -3,7 +3,7 @@
 - **Data:** 2026-11-11
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29
 - **Branch:** `feature/fase-03-identidade` (a partir de `develop`, `a8dae04`)
-- **Estado:** **In Review.** Critérios verificados localmente (testes, navegador e mutação); a execução no CI do GitHub depende do push.
+- **Estado:** **Completed.** Critérios verificados localmente e no CI do GitHub (run 43094635052).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -101,7 +101,9 @@ Aprovado! – Com falha: 0, Aprovado: 28, Total: 28 - ProjectManager.UnitTests.d
 Aprovado! – Com falha: 0, Aprovado: 43, Total: 43 - ProjectManager.IntegrationTests.dll (net10.0)
 ```
 
-O CI no GitHub Actions ainda **não foi executado** para esta branch (veja §14).
+| Execução no GitHub Actions | Commit | Resultado |
+|---|---|---|
+| [43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052) (PR #3) | `b5c4e3a` | success: 0 avisos, 0 erros; 28/28 unitários e 43/43 de integração com PostgreSQL e Mailpit via Testcontainers |
 
 ## 11. Evidências
 
@@ -154,7 +156,7 @@ O CI no GitHub Actions ainda **não foi executado** para esta branch (veja §14)
 
 ## 14. Pendências
 
-- **CI no GitHub:** push de `feature/fase-03-identidade`, execução do CI (Testcontainers com PostgreSQL e Mailpit) e PR para `develop`. Depende de autorização.
+- **Integração em `develop`:** PR #3 com CI aprovado; o merge aguarda autorização do responsável.
 - **Fase 14:**
   - repositório compartilhado de chaves do Data Protection, necessário com mais de uma instância da Web ou da API;
   - forwarded headers para o rate limiting atrás de proxy;
@@ -178,7 +180,7 @@ O CI no GitHub Actions ainda **não foi executado** para esta branch (veja §14)
 
 ## 16. Critérios não atendidos
 
-Nenhum critério funcional está pendente. A **confirmação no CI** ainda falta, e por isso a fase está **In Review**, não Completed.
+Nenhum. Todos os critérios foram verificados localmente e no CI do GitHub.
 
 ## 17. Riscos identificados
 
@@ -192,14 +194,14 @@ Nenhum critério funcional está pendente. A **confirmação no CI** ainda falta
 
 ## 18. Estado do Git
 
-- **Branch:** `feature/fase-03-identidade`, somente local.
+- **Branch:** `feature/fase-03-identidade`, enviada a `origin`; PR [#3](https://github.com/harrisonleandro/Gestalyn/pull/3) para `develop` com CI aprovado.
 - **Commits:** `50b45a3` (plano), `03e01fd` (API e infraestrutura), `e70352c` (Web e correções) e o commit de documentação de encerramento.
 - **`develop`:** `a8dae04` (Fases 01 e 02 e a marca integradas). **`main`:** `c6bd32a`.
 - **Fora do Git:** `.env` e user-secrets (connection string e chave JWT).
 
 ## 19. Próxima fase recomendada
 
-1. **Antes de tudo:** push, CI aprovado e PR para `develop`. Só então a Fase 03 passa para Completed.
+1. **Antes de tudo:** merge do PR #3 em `develop`, com autorização.
 2. **Fase 04, Organizações e permissões:**
    - organizações e membros, com o usuário confirmado como base;
    - convites identificados pelo e-mail confirmado;
