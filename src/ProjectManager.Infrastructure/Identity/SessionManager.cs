@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ProjectManager.Application.Abstractions.Authentication;
+using ProjectManager.Infrastructure.Common;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Identity;
@@ -31,7 +32,7 @@ internal sealed partial class SessionManager(
     public async Task<AuthTokens?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
-        var tokenHash = RefreshTokens.Hash(refreshToken);
+        var tokenHash = OpaqueTokens.Hash(refreshToken);
 
         var stored = await dbContext.UserRefreshTokens
             .Include(token => token.Session)
@@ -118,8 +119,8 @@ internal sealed partial class SessionManager(
 
     private string AddRefreshToken(UserSession session)
     {
-        var refreshToken = RefreshTokens.Generate();
-        dbContext.UserRefreshTokens.Add(new UserRefreshToken(session, RefreshTokens.Hash(refreshToken)));
+        var refreshToken = OpaqueTokens.Generate();
+        dbContext.UserRefreshTokens.Add(new UserRefreshToken(session, OpaqueTokens.Hash(refreshToken)));
 
         return refreshToken;
     }

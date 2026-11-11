@@ -17,6 +17,7 @@ builder.Services.AddOptions<ApiOptions>()
 
 builder.Services.AddHttpClient<ApiHealthClient>(ConfigureApiClient);
 builder.Services.AddHttpClient<ApiAccountClient>(ConfigureApiClient);
+builder.Services.AddHttpClient<ApiInvitationClient>(ConfigureApiClient);
 
 // Sessão da Web (BFF): cookie HttpOnly com os tokens da API, renovados no servidor.
 builder.Services.TryAddSingleton(TimeProvider.System);

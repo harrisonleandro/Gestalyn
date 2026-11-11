@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using ProjectManager.Application.Abstractions.Authentication;
+using ProjectManager.Infrastructure.Common;
 using ProjectManager.Infrastructure.Identity;
 
 namespace ProjectManager.UnitTests.Authentication;
@@ -18,9 +19,9 @@ public sealed class TokenTests
     };
 
     [Fact]
-    public void RefreshTokens_AreUrlSafeUniqueAnd256Bits()
+    public void OpaqueTokens_AreUrlSafeUniqueAnd256Bits()
     {
-        var tokens = Enumerable.Range(0, 100).Select(_ => RefreshTokens.Generate()).ToList();
+        var tokens = Enumerable.Range(0, 100).Select(_ => OpaqueTokens.Generate()).ToList();
 
         Assert.Equal(tokens.Count, tokens.Distinct(StringComparer.Ordinal).Count());
         Assert.All(tokens, token =>
@@ -31,17 +32,17 @@ public sealed class TokenTests
     }
 
     [Fact]
-    public void RefreshTokenHash_IsDeterministicHexAndHidesTheToken()
+    public void OpaqueTokenHash_IsDeterministicHexAndHidesTheToken()
     {
-        var token = RefreshTokens.Generate();
+        var token = OpaqueTokens.Generate();
 
-        var hash = RefreshTokens.Hash(token);
+        var hash = OpaqueTokens.Hash(token);
 
-        Assert.Equal(hash, RefreshTokens.Hash(token));
+        Assert.Equal(hash, OpaqueTokens.Hash(token));
         Assert.Equal(64, hash.Length);
         Assert.Matches("^[0-9A-F]+$", hash);
         Assert.DoesNotContain(token, hash, StringComparison.Ordinal);
-        Assert.NotEqual(hash, RefreshTokens.Hash(RefreshTokens.Generate()));
+        Assert.NotEqual(hash, OpaqueTokens.Hash(OpaqueTokens.Generate()));
     }
 
     [Fact]

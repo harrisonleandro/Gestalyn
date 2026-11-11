@@ -7,9 +7,11 @@ using Microsoft.Extensions.Options;
 using ProjectManager.Application.Abstractions.Authentication;
 using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
+using ProjectManager.Application.Organizations;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
+using ProjectManager.Infrastructure.Organizations;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure;
@@ -26,14 +28,24 @@ public static class DependencyInjection
         // Relógio do sistema injetável, substituível em testes por um TimeProvider controlado.
         services.TryAddSingleton(TimeProvider.System);
 
-        // Sem organização ativa até a resolução pela identidade autenticada (Fase 04).
-        services.TryAddScoped<ITenantContext, UnresolvedTenantContext>();
+        // Organização ativa por requisição: vazia até a validação da associação do usuário (ADR-008).
+        services.AddScoped<TenantContext>();
+        services.AddScoped<ITenantContext>(serviceProvider => serviceProvider.GetRequiredService<TenantContext>());
 
         services.AddPersistence();
         services.AddIdentityServices();
         services.AddEmail();
+        services.AddOrganizations();
 
         return services;
+    }
+
+    private static void AddOrganizations(this IServiceCollection services)
+    {
+        services.AddScoped<MembershipDirectory>();
+        services.AddScoped<IMembershipDirectory>(serviceProvider => serviceProvider.GetRequiredService<MembershipDirectory>());
+        services.AddScoped<OrganizationEmails>();
+        services.AddScoped<IOrganizationService, OrganizationService>();
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

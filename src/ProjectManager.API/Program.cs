@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using ProjectManager.API.Authentication;
 using ProjectManager.API.ErrorHandling;
 using ProjectManager.API.Health;
+using ProjectManager.API.Organizations;
 using ProjectManager.Application;
 using ProjectManager.Infrastructure;
 
@@ -42,6 +43,8 @@ else
 
 app.UseRateLimiter();
 app.UseAuthentication();
+// Organização ativa: depende do usuário autenticado e da rota; antes da autorização dos endpoints.
+app.UseMiddleware<ActiveOrganizationMiddleware>();
 app.UseAuthorization();
 
 app.MapHealthChecks(HealthEndpoints.Path, new HealthCheckOptions

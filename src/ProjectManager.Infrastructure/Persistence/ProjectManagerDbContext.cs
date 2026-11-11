@@ -6,6 +6,7 @@ using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Infrastructure.Identity;
+using ProjectManager.Infrastructure.Organizations;
 using ProjectManager.Infrastructure.Persistence.ChangeTracking;
 
 namespace ProjectManager.Infrastructure.Persistence;
@@ -28,6 +29,16 @@ public sealed class ProjectManagerDbContext(
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<ProjectPhase> ProjectPhases => Set<ProjectPhase>();
+
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    public DbSet<PermissionDefinition> Permissions => Set<PermissionDefinition>();
+
+    public DbSet<OrganizationMember> OrganizationMembers => Set<OrganizationMember>();
+
+    public DbSet<Invitation> Invitations => Set<Invitation>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
