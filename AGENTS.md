@@ -41,7 +41,8 @@ Worker → Application (abstrações) + Infrastructure (implementações)
 - **Multi-tenancy** ([ADR-003](docs/decisions/ADR-003-ISOLAMENTO-MULTI-TENANT.md)): banco e schema compartilhados, UUID, `OrganizationId` nas entidades da organização, validação de pertencimento e autorização no backend e testes de isolamento. Nunca confie apenas no `OrganizationId` enviado pelo cliente ou pelo agente.
   - Toda entidade pertencente a uma organização implementa `IOrganizationOwned`, o que aplica o filtro de leitura automaticamente. Não filtre por organização manualmente.
   - Entidades filhas referenciam o pai por FK composta `(organization_id, <pai>_id)` → `(organization_id, id)`.
-  - Não use `IgnoreQueryFilters` nem SQL bruto sobre dados de organizações sem justificativa registrada em ADR.
+  - `IgnoreQueryFilters` só é permitido no `MembershipDirectory` ([ADR-008](docs/decisions/ADR-008-ORGANIZACAO-ATIVA.md)), sempre restrito ao usuário do token ou ao hash de um convite. SQL bruto sobre dados de organizações exige justificativa em ADR.
+  - Endpoints de organização usam a rota `{organizationId}` (a organização ativa é validada pela associação do usuário) e `[OrganizationPermission("...")]`. A autorização é sempre **por permissão do catálogo, nunca pelo nome do papel** ([ADR-009](docs/decisions/ADR-009-PAPEIS-PERMISSOES-E-CONVITES.md)). Não membro recebe 404; membro sem permissão recebe 403.
 - **Persistência** ([ADR-002](docs/decisions/ADR-002-PERSISTENCIA-EF-CORE-POSTGRESQL.md)): toda alteração do modelo exige uma migration (`dotnet ef migrations add`, veja o README). Migrations nunca são aplicadas automaticamente pela aplicação. Os arquivos em `Migrations/` são código gerado; não os edite à mão sem necessidade.
 - Não introduza microsserviços, Kubernetes, Redis, mensageria distribuída ou infraestrutura complexa sem aprovação.
 - Mudanças de arquitetura exigem aprovação e um ADR em `docs/decisions/`.

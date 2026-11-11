@@ -1,6 +1,6 @@
 # Fase 04: Organizações e permissões
 
-- **Estado:** Planned. Aguarda aprovação das decisões D1 a D5.
+- **Estado:** In Review. Implementada e validada localmente (testes, navegador e mutação); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 04), seções 4.1 e 4.2 (modelo funcional), 5.2 (contratos) e 2.3 (multi-tenancy)
 - **Branch:** `feature/fase-04-organizacoes` (a partir de `feature/fase-03-identidade`; o PR #3 da Fase 03 está aberto para `develop`)
 - **Pré-requisito para implementar:** Fase 03 integrada em `develop`, com o CI aprovado
@@ -30,7 +30,7 @@ Tornar a plataforma multiusuário e multi-organização: criar organizações, g
 - Permissões de agentes (Fase 10).
 - Row-Level Security: continua adiado (veja D4).
 
-## Decisões que exigem aprovação
+## Decisões (D1 a D5 aprovadas)
 
 | ID | Proposta | Alternativas |
 |---|---|---|
@@ -140,3 +140,30 @@ docs/api/ORGANIZATIONS.md
 ## Definição de conclusão
 
 Todos os critérios verificados com evidência (local e CI), mutação da validação de associação detectada, ADRs registrados, documentação da API e de segurança, README, AGENTS.md, `PROJECT_STATUS.md` e relatório da Fase 04 atualizados, e alterações integradas por PR.
+
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F04-001 | Completed | `POST /organizations`: criador Proprietário, 4 papéis de sistema; `Create_MakesTheCreatorOwnerWithSystemRoles` |
+| F04-002 | Completed | `GET /organizations` via `MembershipDirectory`; `User_BelongsToSeveralOrganizationsWithDifferentRoles`, `OrganizationList_ShowsOnlyTheUsersOwnOrganizations` |
+| F04-003 | Completed | `ActiveOrganizationMiddleware` + `TenantContext` (substitui `UnresolvedTenantContext`); mutação detectada |
+| F04-004 | Completed | `OrganizationMember` com FK composta para o papel; listagem de membros |
+| F04-005 | Completed | Convite com e-mail real (Mailpit), listagem e revogação; conflitos 409 |
+| F04-006 | Completed | `POST /invitations/accept`; página `/convites/aceitar` validada no navegador (e-mail errado recusado, destinatário aceito) |
+| F04-007 | Completed | `Role` por organização; papel de sistema único por tipo (índice parcial) |
+| F04-008 | Completed | Catálogo de 6 permissões gravado pela migration; `role_permissions` com FK para o catálogo |
+| F04-009 | Completed | `[OrganizationPermission]`: 404 não membro, 403 sem permissão; `Member_CanReadButNotManage` |
+| F04-010 | Completed | Remoção e saída; último proprietário protegido (409) |
+| F04-011 | Completed | Alteração de papel com regras de proprietário e trava otimista; `Administrator_ManagesMembersButNotOwners` |
+| F04-012 | Completed | `OrganizationIsolationTests` (4) com usuários reais; mutação no `MembershipDirectory` derruba 6 testes |
+| CI | **In Review** | Depende do push de `feature/fase-04-organizacoes` (e do merge do PR #3) |
+
+Ajustes feitos durante a implementação, dentro das decisões aprovadas:
+
+1. **Cabeçalho `X-Gestalyn-Organization` (D1) adiado para a Fase 05:** nenhuma rota desta fase é por ID de recurso; implementá-lo agora criaria código sem uso. A rota `{organizationId}` cobre todos os endpoints desta fase.
+2. **O `MembershipDirectory` também localiza o convite pelo hash do token:** a aceitação precisa encontrar o convite antes de haver organização ativa. Foi mantido no mesmo componente único (D4), documentado no ADR-008.
+3. **Consulta de membros:** a ordenação e o filtro foram movidos para antes da projeção, porque o EF Core não traduz acesso a propriedades de um record projetado. O defeito foi encontrado pelos testes (500 na listagem de membros).
+4. **`RefreshTokens` renomeado para `OpaqueTokens` (`Infrastructure/Common`):** o mesmo gerador serve aos refresh tokens e aos convites.
+5. **`ApiRequests` na Web:** o envio e a leitura de Problem Details foram extraídos do `ApiAccountClient` e são compartilhados com o cliente de convites.

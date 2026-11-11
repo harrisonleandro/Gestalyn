@@ -79,7 +79,7 @@ Conforme a seção 2.3 da especificação mestre, implementado a partir da Fase 
 | Gravação | Inserção, alteração ou exclusão fora da organização ativa lança `CrossTenantAccessException`. `OrganizationId` é imutável. | `Persistence/ChangeTracking/TenantIsolationRules` |
 | Banco | FK composta `(organization_id, <pai>_id)` → `(organization_id, id)` | Configurações EF e migration |
 
-A organização ativa vem de `ITenantContext` (Application). Até a Fase 04, o padrão é `UnresolvedTenantContext` (nenhuma organização ativa).
+A organização ativa vem de `ITenantContext` (Application), implementado por `TenantContext` (Infrastructure). A partir da Fase 04, o `ActiveOrganizationMiddleware` (API) a resolve pela rota `{organizationId}` e só a ativa depois de confirmar a associação do usuário autenticado ([ADR-008](../decisions/ADR-008-ORGANIZACAO-ATIVA.md)). Sem associação, ela fica vazia. O `MembershipDirectory` é o único ponto que consulta sem o filtro de organização, sempre restrito ao usuário do token ou ao hash de um convite.
 
 ### 3.2 Modelo persistido (Fase 02)
 
@@ -116,6 +116,22 @@ erDiagram
 - `projects` tem a chave alternativa única `(organization_id, id)`, alvo das FKs compostas.
 - Todas as tabelas usam `xmin` como token de concorrência otimista ([ADR-002](../decisions/ADR-002-PERSISTENCIA-EF-CORE-POSTGRESQL.md)).
 - Entidades mínimas: os demais atributos de projetos e fases entram nas Fases 05 e 06.
+
+### 3.3 Organizações, papéis e permissões (Fase 04)
+
+```mermaid
+erDiagram
+    organizations ||--o{ roles : "organization_id"
+    roles ||--o{ role_permissions : "(organization_id, role_id)"
+    permissions ||--o{ role_permissions : "permission_code"
+    roles ||--o{ organization_members : "(organization_id, role_id)"
+    users ||--o{ organization_members : "user_id"
+    roles ||--o{ invitations : "(organization_id, role_id)"
+```
+
+- `permissions`: catálogo gravado pela migration; `roles` por organização (Proprietário, Administrador, Membro, Leitor), com um papel de sistema de cada tipo por organização.
+- `organization_members`: único por `(organization_id, user_id)`. `invitations`: hash do token único, e no máximo um convite em aberto por e-mail e organização (índice parcial).
+- Autorização por permissão nos endpoints ([ADR-009](../decisions/ADR-009-PAPEIS-PERMISSOES-E-CONVITES.md)). A organização nunca fica sem proprietário (regra com trava otimista).
 
 ## 4. Módulos (evolução prevista)
 
@@ -178,9 +194,11 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 |---|---|
 | ~~Modelo de domínio inicial, PostgreSQL + EF Core, migrations, auditoria de persistência, health check do banco~~ (ADR-002, 003 e 004) | 02 (concluída) |
 | Autor das alterações (`CreatedBy`/`UpdatedBy`) | 08 |
-| Reavaliação de RLS e resolução da organização ativa pela identidade | 04 |
+| ~~Resolução da organização ativa pela identidade~~ (ADR-008) | 04 (concluída) |
+| Reavaliação de Row-Level Security | 13 |
 | ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |
-| Papéis, permissões e organização ativa | 04 |
+| ~~Papéis, permissões e convites~~ (ADR-009) | 04 (concluída) |
+| Cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso; papéis de projeto | 05 |
 | Credenciais de agentes, escopos e idempotência | 10 |
 | Armazenamento seguro de credenciais na CLI | 11 |
 | Servidor MCP | 12 |

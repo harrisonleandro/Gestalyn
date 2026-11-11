@@ -1,6 +1,6 @@
 # Estrutura do projeto
 
-> Estado: Fase 03. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
+> Estado: Fase 04. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
 
 ## Raiz
 
@@ -33,7 +33,8 @@ ProjectManager.Domain/
 │   ├── IOrganizationOwned.cs     Entidade pertencente a uma organização
 │   ├── IAuditable.cs             CreatedAt/UpdatedAt (UTC)
 │   └── Guard.cs                  Validações de invariantes (interno)
-├── Organizations/Organization.cs Raiz do tenant
+├── Organizations/                Organization (raiz do tenant), Role e RolePermission (papéis de sistema),
+│                                 OrganizationMember, Invitation, OrganizationPermissions (catálogo)
 ├── Projects/Project.cs           Projeto (mínimo; completo na Fase 05)
 ├── Projects/ProjectPhase.cs      Fase do projeto (mínima; completa na Fase 06)
 └── <Modulo>/                     (futuro) Demais entidades por fase
@@ -49,6 +50,8 @@ ProjectManager.Application/
 │   └── CrossTenantAccessException.cs
 ├── Abstractions/Authentication/  IAuthenticationService, contratos com validação, AuthResult, AuthClaimTypes
 ├── Abstractions/Email/           IEmailSender, EmailMessage, EmailDeliveryException
+├── Common/Result.cs              Result/ResultError (NotFound, Forbidden, Conflict, Validation)
+├── Organizations/                IOrganizationService e contratos (requisições e respostas)
 └── <Modulo>/                     (futuro) Casos de uso, DTOs, validadores, interfaces de serviços
 ```
 
@@ -60,8 +63,11 @@ ProjectManager.Infrastructure/
 ├── Identity/                     ApplicationUser, UserSession, UserRefreshToken, SessionManager, AccessTokenIssuer,
 │                                 AuthenticationService, AccountEmails, JwtOptions, AccountLinkOptions, mensagens em pt-BR
 ├── Email/                        SmtpEmailSender (MailKit), EmailOptions
+├── Organizations/                OrganizationService, MembershipDirectory (único IgnoreQueryFilters), OrganizationEmails,
+│                                 PermissionDefinition (catálogo persistido)
+├── Common/OpaqueTokens.cs        Tokens opacos de 256 bits e hash SHA-256 (sessões e convites)
 ├── MultiTenancy/
-│   └── UnresolvedTenantContext.cs Sem organização ativa (padrão até a Fase 04)
+│   └── TenantContext.cs          Organização ativa por requisição (vazia até validar a associação)
 ├── Persistence/
 │   ├── ProjectManagerDbContext.cs Filtros por organização; validação antes de gravar
 │   ├── ProjectManagerDatabase.cs  Configuração única do provedor (Npgsql + snake_case)
@@ -87,7 +93,11 @@ ProjectManager.API/
 │   ├── ApiAuthentication.cs            JwtBearer + verificação de sessão ativa; claims sub/sid
 │   └── AuthRateLimiting.cs             Rate limiting por IP em /api/v1/auth (429 Problem Details)
 ├── Controllers/
-│   └── AuthController.cs               /api/v1/auth/* (demais controllers por módulo nas próximas fases)
+│   ├── AuthController.cs               /api/v1/auth/*
+│   ├── OrganizationsController.cs      /api/v1/organizations/* (organizações, membros, papéis, convites)
+│   └── InvitationsController.cs        /api/v1/invitations/accept
+├── Organizations/                      ActiveOrganizationMiddleware, OrganizationPermissionAttribute
+├── Common/ResultProblems.cs            Result → Problem Details (404/403/409/400)
 ├── Properties/launchSettings.json      Perfis http (5100) e https (7100)
 ├── appsettings.json                    Produção/base: logs JSON, emissor e público do JWT, limites
 ├── appsettings.Development.json        Logs simples, Mailpit e URL da Web para os links de e-mail
@@ -112,6 +122,7 @@ ProjectManager.Web/
 │   ├── Layout/                         MainLayout (usuário logado), NavMenu (ações de conta), ReconnectModal
 │   ├── Pages/                          Home (/), Status (/status), Error, NotFound
 │   ├── Pages/Account/                  /conta/cadastro, entrar, confirmar-email, reenviar-confirmacao,
+│   ├── Pages/Invitations/              /convites/aceitar (protegida)
 │   │                                   esqueci-a-senha, redefinir-senha, perfil (protegida)
 │   └── Shared/                         EnvironmentBadge, ApiStatusCard (Interactive Server), ApiErrors
 ├── wwwroot/                            app.css (tokens do tema), Bootstrap 5.3, favicon
@@ -142,7 +153,7 @@ ProjectManager.CLI/
 | Pasta | Conteúdo |
 |---|---|
 | `architecture/` | `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` |
-| `api/` | Contratos da API por área (`AUTH.md`) |
+| `api/` | Contratos da API por área (`AUTH.md`, `ORGANIZATIONS.md`) |
 | `security/` | Modelo de segurança (`AUTENTICACAO.md`) |
 | `decisions/` | ADRs (`ADR-NNN-TITULO.md`) |
 | `specifications/` | Especificação mestre (fonte de verdade) e especificação de cada fase (`FASE-NN-*.md`) |

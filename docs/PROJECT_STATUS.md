@@ -8,7 +8,7 @@
 
 ## Fase atual
 
-**Fase 04, Organizações e permissões: Planned.** A especificação aguarda aprovação das decisões D1 a D5, e a implementação depende da Fase 03 em `develop`. A **Fase 03 está Completed** (CI aprovado no PR #3); o merge do PR #3 aguarda autorização do responsável.
+**Fase 04, Organizações e permissões: In Review.** Implementada e validada localmente (testes, navegador e mutação); falta o CI no GitHub, que depende do push de `feature/fase-04-organizacoes`. A **Fase 03 está Completed**; o merge do PR #3 foi autorizado e aguarda o encerramento de uma execução de CI travada no GitHub.
 
 ## Estado das fases
 
@@ -17,7 +17,7 @@
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
 | 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
 | 03 | Identidade e autenticação | Completed | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
-| 04 | Organizações e permissões | Planned | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | — |
+| 04 | Organizações e permissões | In Review | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
 | 05 | Projetos e equipes | Not Started | — | — |
 | 06 | Fases, marcos e tarefas | Not Started | — | — |
 | 07 | Workflow configurável e histórico | Not Started | — | — |
@@ -87,10 +87,29 @@ Evidências na [especificação da Fase 02](specifications/FASE-02-PERSISTENCIA.
 
 Evidências na [especificação da Fase 03](specifications/FASE-03-IDENTIDADE.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-03-RELATORIO.md).
 
+## Tarefas da Fase 04
+
+| ID | Tarefa | Estado |
+|---|---|---|
+| F04-001 | Criar organizações | Completed |
+| F04-002 | Listar organizações do usuário | Completed |
+| F04-003 | Selecionar organização ativa | Completed |
+| F04-004 | Implementar membros | Completed |
+| F04-005 | Implementar convites | Completed |
+| F04-006 | Implementar aceitação de convites | Completed |
+| F04-007 | Implementar papéis | Completed |
+| F04-008 | Implementar permissões | Completed |
+| F04-009 | Implementar autorização | Completed |
+| F04-010 | Implementar remoção de membros | Completed |
+| F04-011 | Implementar alteração de papéis | Completed |
+| F04-012 | Criar testes de isolamento | In Review (local aprovado; CI pendente) |
+
+Evidências na [especificação da Fase 04](specifications/FASE-04-ORGANIZACOES.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-04-RELATORIO.md).
+
 ## Tarefas pendentes
 
-- Integrar a Fase 03 em `develop` (PR #3, CI aprovado; merge com autorização).
-- Aprovar as decisões D1 a D5 da Fase 04.
+- Merge do PR #3 (Fase 03) em `develop`: autorizado; aguarda a execução de CI travada no GitHub (testes já aprovados nela).
+- Push de `feature/fase-04-organizacoes`, CI e PR para `develop` (com autorização).
 
 ## Bloqueios
 
@@ -100,8 +119,8 @@ Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável
 
 | Projeto | Testes | Cobertura |
 |---|---|---|
-| ProjectManager.UnitTests | 28 | Regras de dependência entre projetos (7), invariantes do domínio (11), CLI (5) e tokens (5) |
-| ProjectManager.IntegrationTests | 43 | Persistência (7), isolamento multi-tenant (8), autenticação (22: cadastro e login, sessão, recuperação de senha, segurança), health check com e sem banco (3), OpenAPI por ambiente (2) e Problem Details 404/500 (2). Requer Docker (PostgreSQL e Mailpit). |
+| ProjectManager.UnitTests | 35 | Regras de dependência (7), domínio (18: entidades da Fase 02 e organizações, papéis e convites), CLI (5) e tokens (5) |
+| ProjectManager.IntegrationTests | 60 | Persistência (7), isolamento por filtro (8), autenticação (22), organizações (17: fluxos, convites com e-mail real, permissões, isolamento com usuários reais), health check (3), OpenAPI (2) e erros (2). Requer Docker (PostgreSQL e Mailpit). |
 
 ## Última validação
 
@@ -114,6 +133,7 @@ Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável
 | Local, `feature/marca-gestalyn` | 2026-11-11 | `ca0c337` + renomeação da marca | build Release 0 avisos e 0 erros · testes 45/45 · Web, API e CLI `gestalyn` executadas |
 | Local, `feature/fase-03-identidade` | 2026-11-11 01:40 | `e70352c` | restore exit 0 · build Release 0 avisos e 0 erros · testes 71/71 (28 unitários, 43 de integração com PostgreSQL e Mailpit) · fluxos validados no navegador |
 | GitHub Actions (`ubuntu-latest`), PR #3 | 2026-11-11 | `b5c4e3a` | [run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052): success, 0 avisos, 28/28 e 43/43 (PostgreSQL e Mailpit via Testcontainers) |
+| Local, `feature/fase-04-organizacoes` | 2026-11-11 20:41 | `c347fd9` | restore exit 0 · build Release 0 avisos e 0 erros · testes 95/95 (35 unitários, 60 de integração) · convite validado no navegador |
 
 ## Decisões recentes
 
@@ -134,8 +154,11 @@ Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável
 | 2026-11-11 | Marca integrada em `develop` (PR #2, merge `a8dae04`) | [harrisonleandro/Gestalyn#2](https://github.com/harrisonleandro/Gestalyn/pull/2) |
 | 2026-11-11 | Fase 03: JWT de 15 min com sessão revogável, refresh token com rotação e detecção de reuso, Web como BFF, confirmação de e-mail obrigatória (D1 a D5) | [ADR-006](decisions/ADR-006-AUTENTICACAO-E-SESSAO.md) |
 | 2026-11-11 | E-mail via SMTP (MailKit), Mailpit em desenvolvimento e testes | [ADR-007](decisions/ADR-007-ENVIO-DE-EMAIL.md) |
+| 2026-11-11 | Organização ativa pela rota, validada pela associação; `MembershipDirectory` como única leitura sem filtro; RLS para a Fase 13 | [ADR-008](decisions/ADR-008-ORGANIZACAO-ATIVA.md) |
+| 2026-11-11 | Papéis de sistema por organização, autorização por permissão, convites vinculados ao e-mail (7 dias, uso único) | [ADR-009](decisions/ADR-009-PAPEIS-PERMISSOES-E-CONVITES.md) |
 
 ## Próxima atividade
 
-1. Merge do PR #3 em `develop` (CI aprovado), com autorização.
-2. Fase 04 (organizações e permissões): implementar após o merge do PR #3 e a aprovação de D1 a D5, na branch `feature/fase-04-organizacoes`.
+1. Merge do PR #3 assim que o CI travado no GitHub encerrar (ou após cancelamento manual pelo responsável).
+2. Push de `feature/fase-04-organizacoes`, CI e PR para `develop` (com autorização). Com o CI aprovado, a Fase 04 passa a Completed.
+3. Fase 05 (projetos e equipes), somente após autorização: projetos completos, membros e papéis de projeto, e o cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso.

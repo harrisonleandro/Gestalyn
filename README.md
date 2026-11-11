@@ -4,7 +4,7 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 03 (identidade e autenticação) em revisão.** Já é possível criar conta, confirmar o e-mail, entrar, sair e recuperar a senha, pela API e pela interface Web. Há persistência em PostgreSQL com isolamento multi-tenant testado. Organizações, projetos e tarefas ainda não estão expostos. O progresso de todas as fases está em [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+**Estado atual: Fase 04 (organizações e permissões) em revisão.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas por e-mail, gerenciar membros e papéis e alternar entre organizações pela API, com isolamento multi-tenant testado com usuários reais. Projetos e tarefas pela API chegam nas próximas fases.
 
 A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 
@@ -147,6 +147,8 @@ Perfil HTTPS: `dotnet run --project src/ProjectManager.API --launch-profile http
 O endpoint `/health` reporta somente as verificações de componentes que existem: `self` (processo da API) e `database` (conexão com o PostgreSQL). Com o banco indisponível, responde 503.
 
 A autenticação fica em `/api/v1/auth` (cadastro, confirmação de e-mail, login, refresh, logout, `me` e recuperação de senha). Os contratos estão em [docs/api/AUTH.md](docs/api/AUTH.md) e o modelo de segurança em [docs/security/AUTENTICACAO.md](docs/security/AUTENTICACAO.md). Fora dos endpoints públicos de autenticação, todo controller exige `Authorization: Bearer`.
+
+Organizações, membros, papéis e convites ficam em `/api/v1/organizations` e `/api/v1/invitations` ([docs/api/ORGANIZATIONS.md](docs/api/ORGANIZATIONS.md)). As permissões são verificadas no backend: quem não é membro recebe 404, e membro sem permissão recebe 403.
 
 ## Como executar a Web
 
