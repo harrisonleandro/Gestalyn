@@ -8,7 +8,9 @@
 
 ## Fase atual
 
-**Fase 04, Organizações e permissões: In Review.** Implementada e validada localmente (testes, navegador e mutação); falta o CI no GitHub, que depende do push de `feature/fase-04-organizacoes`. A **Fase 03 está Completed**; o merge do PR #3 foi autorizado e aguarda o encerramento de uma execução de CI travada no GitHub.
+**Fase 04, Organizações e permissões: In Review.** Implementada e validada localmente (testes, navegador e mutação); o PR #4 está aberto e o CI dele aguarda na fila do GitHub. A **Fase 03 está Completed**; o merge do PR #3 foi autorizado e aguarda o encerramento de uma execução de CI travada no GitHub.
+
+**Fase 05, Projetos e equipes: Planned.** A [especificação](specifications/FASE-05-PROJETOS.md) aguarda a aprovação das decisões D1 a D5; nada foi implementado.
 
 ## Estado das fases
 
@@ -18,7 +20,7 @@
 | 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
 | 03 | Identidade e autenticação | Completed | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
 | 04 | Organizações e permissões | In Review | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
-| 05 | Projetos e equipes | Not Started | — | — |
+| 05 | Projetos e equipes | Planned | [FASE-05-PROJETOS.md](specifications/FASE-05-PROJETOS.md) | — |
 | 06 | Fases, marcos e tarefas | Not Started | — | — |
 | 07 | Workflow configurável e histórico | Not Started | — | — |
 | 08 | Auditoria, documentação e dashboards | Not Started | — | — |
@@ -109,11 +111,12 @@ Evidências na [especificação da Fase 04](specifications/FASE-04-ORGANIZACOES.
 ## Tarefas pendentes
 
 - Merge do PR #3 (Fase 03) em `develop`: autorizado; aguarda a execução de CI travada no GitHub (testes já aprovados nela).
-- Push de `feature/fase-04-organizacoes`, CI e PR para `develop` (com autorização).
+- PR #4 (Fase 04): CI na fila do GitHub; merge depois do PR #3, com autorização.
+- Fase 05: aprovação das decisões D1 a D5 da especificação.
 
 ## Bloqueios
 
-Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável.
+Nenhum bloqueio no desenvolvimento local. No GitHub, a execução de CI do PR #3 está parada em "in_progress" e uma execução manual (`workflow_dispatch`) terminou com `startup_failure` sem jobs; as actions referenciadas existem. Isso atrasa os merges das Fases 03 e 04. Se persistir, a execução precisa ser cancelada pela interface do GitHub.
 
 ## Testes executados
 
@@ -160,5 +163,5 @@ Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável
 ## Próxima atividade
 
 1. Merge do PR #3 assim que o CI travado no GitHub encerrar (ou após cancelamento manual pelo responsável).
-2. Push de `feature/fase-04-organizacoes`, CI e PR para `develop` (com autorização). Com o CI aprovado, a Fase 04 passa a Completed.
-3. Fase 05 (projetos e equipes), somente após autorização: projetos completos, membros e papéis de projeto, e o cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso.
+2. CI do PR #4 e merge em `develop` (com autorização). Com o CI aprovado, a Fase 04 passa a Completed.
+3. Fase 05: aprovação das decisões D1 a D5 e, em seguida, implementação em `feature/fase-05-projetos`.
