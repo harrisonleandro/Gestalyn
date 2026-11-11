@@ -3,7 +3,7 @@
 - **Data:** 2026-11-11
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29
 - **Branch:** `feature/fase-05-projetos` (a partir de `feature/fase-04-organizacoes`)
-- **Estado:** **In Review.** Critérios verificados localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`, depois das Fases 03 e 04.
+- **Estado:** **In Review.** Critérios verificados localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop` (as Fases 03 e 04 já estão integradas).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -135,12 +135,11 @@ Nenhuma. `Npgsql` (códigos de erro do PostgreSQL) e `System.Text.Json` já esta
 
 1. Pausas no roteiro para respeitar a janela do rate limiting. A segunda execução teve todos os resultados esperados. O rate limiting funcionou como projetado.
 2. Listas em vez de matrizes nos corpos de teste.
-3. A falha do CI não está no código nem no workflow. Ela exige uma nova execução, que fica para decisão do responsável.
+3. A falha do CI não estava no código nem no workflow: o PR #3 passou na 2ª tentativa. A execução presa do PR #4 foi substituída por uma execução manual sobre o mesmo commit, também aprovada.
 
 ## 14. Pendências
 
-- Push de `feature/fase-05-projetos`, CI e PR para `develop` (com autorização), depois da integração das Fases 03 e 04.
-- Nova execução do CI do PR #3; merge (autorizado) depois do CI aprovado.
+- Push de `feature/fase-05-projetos`, CI e PR para `develop` (com autorização).
 - Restauração de projetos arquivados e saída voluntária de uma equipe: não previstas; avaliar na Fase 09, com a interface.
 - Interface Web de projetos (Fase 09) e comandos `gestalyn project` (Fase 11).
 
@@ -175,16 +174,14 @@ Nenhum critério funcional deixou de ser atendido. A verificação no CI e a int
   - `7af13d3` (especificação);
   - `c30da85` (projetos, equipes, testes e migration);
   - commit de documentação de encerramento.
-- **PR #3 (Fase 03):** aberto; o CI falhou só na publicação do artefato; merge autorizado depois do CI aprovado.
-- **PR #4 (Fase 04):** aberto, CI na fila.
-- **`develop`:** `a8dae04`.
+- **PR #3 (Fase 03):** CI aprovado na 2ª tentativa; merge `647573d`.
+- **PR #4 (Fase 04):** CI aprovado (execução manual sobre `b7b170e`); merge `55926bc`.
+- **`develop`:** `55926bc`.
 
 ## 19. Próxima fase recomendada
 
 1. **Antes de tudo:**
-   - nova execução do CI do PR #3 e merge;
-   - CI e merge do PR #4;
-   - push desta branch e PR para `develop`.
+   - push desta branch, CI e PR para `develop`.
 2. **Fase 06, Fases, marcos e tarefas:**
    - `ProjectPhase` completa e `Milestone`;
    - tarefas com o mesmo cálculo de acesso ao projeto e o cabeçalho `X-Gestalyn-Organization`;

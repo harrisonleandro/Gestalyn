@@ -1,6 +1,6 @@
 # Fase 04: Organizações e permissões
 
-- **Estado:** In Review. Implementada e validada localmente (testes, navegador e mutação); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
+- **Estado:** Completed. Validada localmente e no CI, integrada em `develop` pelo PR #4 (merge `55926bc`). Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 04), seções 4.1 e 4.2 (modelo funcional), 5.2 (contratos) e 2.3 (multi-tenancy)
 - **Branch:** `feature/fase-04-organizacoes` (a partir de `feature/fase-03-identidade`; o PR #3 da Fase 03 está aberto para `develop`)
 - **Pré-requisito para implementar:** Fase 03 integrada em `develop`, com o CI aprovado
@@ -158,7 +158,7 @@ Todos os critérios verificados com evidência (local e CI), mutação da valida
 | F04-010 | Completed | Remoção e saída; último proprietário protegido (409) |
 | F04-011 | Completed | Alteração de papel com regras de proprietário e trava otimista; `Administrator_ManagesMembersButNotOwners` |
 | F04-012 | Completed | `OrganizationIsolationTests` (4) com usuários reais; mutação no `MembershipDirectory` derruba 6 testes |
-| CI | **In Review** | Depende do push de `feature/fase-04-organizacoes` (e do merge do PR #3) |
+| CI | Completed | [Run 43106437450](https://github.com/harrisonleandro/Gestalyn/actions/runs/43106437450) (manual, sobre `b7b170e`, porque a execução do PR ficou presa na fila do GitHub): success; merge do PR #4 em `develop` (`55926bc`) |
 
 Ajustes feitos durante a implementação, dentro das decisões aprovadas:
 
