@@ -8,7 +8,9 @@
 
 ## Fase atual
 
-**Fase 05, Projetos e equipes: Completed.** Validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais) e no CI ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): 0 avisos, 59/59 e 77/77), e integrada em `develop` pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) (merge `6a32f58`). A próxima é a Fase 06, que depende de autorização.
+**Fase 05, Projetos e equipes: Completed.** Validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais) e no CI ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): 0 avisos, 59/59 e 77/77), e integrada em `develop` pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) (merge `6a32f58`).
+
+**Fase 06, Fases, marcos e tarefas: Planned.** A [especificação](specifications/FASE-06-TAREFAS.md) aguarda a aprovação das decisões D1 a D7; nada foi implementado.
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
@@ -21,7 +23,7 @@
 | 03 | Identidade e autenticação | Completed | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
 | 04 | Organizações e permissões | Completed | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
 | 05 | Projetos e equipes | Completed | [FASE-05-PROJETOS.md](specifications/FASE-05-PROJETOS.md) | [FASE-05-RELATORIO.md](reports/FASE-05-RELATORIO.md) |
-| 06 | Fases, marcos e tarefas | Not Started | — | — |
+| 06 | Fases, marcos e tarefas | Planned | [FASE-06-TAREFAS.md](specifications/FASE-06-TAREFAS.md) | — |
 | 07 | Workflow configurável e histórico | Not Started | — | — |
 | 08 | Auditoria, documentação e dashboards | Not Started | — | — |
 | 09 | Interface web completa | Not Started | — | — |
@@ -129,7 +131,7 @@ Evidências na [especificação da Fase 05](specifications/FASE-05-PROJETOS.md#e
 
 ## Tarefas pendentes
 
-Nenhuma tarefa pendente das Fases 01 a 05.
+- Fase 06: aprovação das decisões D1 a D7 da especificação.
 
 ## Bloqueios
 
@@ -191,4 +193,4 @@ Nenhum bloqueio no desenvolvimento local. No GitHub:
 
 ## Próxima atividade
 
-1. Fase 06 (fases, marcos e tarefas), somente após autorização: inspeção e especificação com as decisões para aprovação.
+1. Fase 06: aprovação das decisões D1 a D7 e, em seguida, implementação em `feature/fase-06-tarefas`.
