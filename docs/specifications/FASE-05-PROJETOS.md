@@ -1,6 +1,6 @@
 # Fase 05: Projetos e equipes
 
-- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop` (as Fases 03 e 04 já estão integradas). Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
+- **Estado:** Completed. Validada localmente e no CI, e integrada em `develop` pelo PR #5 (merge `6a32f58`). Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 05), seções 4.2 e 4.3 (modelo funcional) e 5.3 (contratos)
 - **Branch:** `feature/fase-05-projetos` (a partir de `feature/fase-04-organizacoes`; os PRs #3 e #4 estão abertos para `develop`)
 - **Pré-requisito para implementar:** decisões aprovadas. A integração em `develop` depende das Fases 03 e 04 integradas, com o CI aprovado.
@@ -163,7 +163,7 @@ Todos os critérios verificados com evidência (local e CI), mutação da verifi
 | F05-010 | Completed | Responsável único (índice parcial; troca em transação) |
 | F05-011 | Completed | Prioridade, início e prazo, com *check constraint* no banco |
 | F05-012 | Completed | 13 unitários novos (24 casos) e 17 de integração (fluxos, permissões, isolamento, FKs e migração); 2 mutações detectadas |
-| CI | **In Review** | Depende do push de `feature/fase-05-projetos`, autorizado pelo responsável |
+| CI | Completed | [run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): success, 0 avisos, 59/59 e 77/77; merge do PR #5 em `develop` (`6a32f58`) |
 
 Ajustes feitos durante a implementação, dentro das decisões aprovadas:
 
