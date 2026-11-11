@@ -1,6 +1,6 @@
 # Fase 03: Identidade e autenticação
 
-- **Estado:** In Review. Implementada e validada localmente; falta o CI no GitHub após o push. Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
+- **Estado:** Completed. Validada localmente e no CI do GitHub (run 43094635052). Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 03), seção 5.1 (contratos `/api/v1/auth/*`) e seção 7 (segurança)
 - **Branch:** `feature/fase-03-identidade` (a partir de `develop`, `a8dae04`)
 
@@ -151,7 +151,7 @@ Todos os critérios verificados com evidência (local e CI), mutação do logout
 | F03-009 | Completed | Access token de 15 min, sessão absoluta de 30 dias, rotação, detecção de reuso e janela de tolerância para requisições concorrentes |
 | F03-010 | Completed | Lockout (5/15 min), rate limiting por IP (429), respostas neutras, hash fictício no login |
 | F03-011 | Completed | 5 testes unitários e 22 de integração de autenticação; logs sem segredos |
-| CI | **In Review** | Depende do push de `feature/fase-03-identidade` |
+| CI | Completed | [run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052) no PR #3: 28/28 e 43/43 no `ubuntu-latest` |
 
 Ajustes feitos durante a implementação, dentro das decisões aprovadas:
 

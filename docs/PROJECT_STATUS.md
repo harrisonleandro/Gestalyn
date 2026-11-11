@@ -8,7 +8,7 @@
 
 ## Fase atual
 
-**Fase 03, Identidade e autenticação: In Review.** A implementação está concluída e validada localmente (testes, navegador e mutação). Falta o CI no GitHub, que depende do push de `feature/fase-03-identidade`. As Fases 01 e 02 estão Completed e integradas em `develop`.
+**Fase 03, Identidade e autenticação: Completed.** Critérios verificados localmente e no CI do GitHub ([run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052)). A integração em `develop` (PR #3) aguarda autorização do responsável.
 
 ## Estado das fases
 
@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
 | 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
-| 03 | Identidade e autenticação | In Review | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
+| 03 | Identidade e autenticação | Completed | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
 | 04 | Organizações e permissões | Not Started | — | — |
 | 05 | Projetos e equipes | Not Started | — | — |
 | 06 | Fases, marcos e tarefas | Not Started | — | — |
@@ -83,17 +83,17 @@ Evidências na [especificação da Fase 02](specifications/FASE-02-PERSISTENCIA.
 | F03-008 | Implementar validação de credenciais | Completed |
 | F03-009 | Implementar expiração e renovação de sessão | Completed |
 | F03-010 | Implementar proteção contra tentativas abusivas | Completed |
-| F03-011 | Criar testes de autenticação | In Review (local aprovado; CI pendente) |
+| F03-011 | Criar testes de autenticação | Completed |
 
 Evidências na [especificação da Fase 03](specifications/FASE-03-IDENTIDADE.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-03-RELATORIO.md).
 
 ## Tarefas pendentes
 
-- Enviar `feature/fase-03-identidade`, validar o CI e integrar em `develop` por PR (com autorização).
+- Integrar a Fase 03 em `develop` (PR #3, CI aprovado; merge com autorização).
 
 ## Bloqueios
 
-Nenhum bloqueio técnico. O encerramento da Fase 03 depende do CI no GitHub.
+Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável.
 
 ## Testes executados
 
@@ -112,6 +112,7 @@ Nenhum bloqueio técnico. O encerramento da Fase 03 depende do CI no GitHub.
 | GitHub Actions (`ubuntu-latest`), `feature/fase-02-persistencia` | 2026-11-11 | `085d0f1` | [run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315): success, 0 avisos, 23/23 e 22/22 (PostgreSQL via Testcontainers) |
 | Local, `feature/marca-gestalyn` | 2026-11-11 | `ca0c337` + renomeação da marca | build Release 0 avisos e 0 erros · testes 45/45 · Web, API e CLI `gestalyn` executadas |
 | Local, `feature/fase-03-identidade` | 2026-11-11 01:40 | `e70352c` | restore exit 0 · build Release 0 avisos e 0 erros · testes 71/71 (28 unitários, 43 de integração com PostgreSQL e Mailpit) · fluxos validados no navegador |
+| GitHub Actions (`ubuntu-latest`), PR #3 | 2026-11-11 | `b5c4e3a` | [run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052): success, 0 avisos, 28/28 e 43/43 (PostgreSQL e Mailpit via Testcontainers) |
 
 ## Decisões recentes
 
@@ -135,5 +136,5 @@ Nenhum bloqueio técnico. O encerramento da Fase 03 depende do CI no GitHub.
 
 ## Próxima atividade
 
-1. Push de `feature/fase-03-identidade`, CI e PR para `develop` (com autorização). Com o CI aprovado, a Fase 03 passa a Completed.
+1. Merge do PR #3 em `develop` (CI aprovado), com autorização.
 2. Fase 04 (organizações e permissões), somente após autorização: membros e convites (o e-mail confirmado identifica o convidado), papéis e permissões, e resolução da organização ativa pela identidade autenticada (substituindo `UnresolvedTenantContext`).
