@@ -4,7 +4,7 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 04 (organizações e permissões) em revisão.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas por e-mail, gerenciar membros e papéis e alternar entre organizações pela API, com isolamento multi-tenant testado com usuários reais. Projetos e tarefas pela API chegam nas próximas fases.
+**Estado atual: Fase 05 (projetos e equipes) em revisão.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas e gerenciar membros e papéis. Pela API, também é possível criar, editar, listar e arquivar projetos com equipe, papéis de projeto, responsável, datas, prioridade, etiquetas e repositórios. O isolamento multi-tenant é testado com usuários reais. Fases, marcos e tarefas chegam na Fase 06.
 
 A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 
@@ -149,6 +149,8 @@ O endpoint `/health` reporta somente as verificações de componentes que existe
 A autenticação fica em `/api/v1/auth` (cadastro, confirmação de e-mail, login, refresh, logout, `me` e recuperação de senha). Os contratos estão em [docs/api/AUTH.md](docs/api/AUTH.md) e o modelo de segurança em [docs/security/AUTENTICACAO.md](docs/security/AUTENTICACAO.md). Fora dos endpoints públicos de autenticação, todo controller exige `Authorization: Bearer`.
 
 Organizações, membros, papéis e convites ficam em `/api/v1/organizations` e `/api/v1/invitations` ([docs/api/ORGANIZATIONS.md](docs/api/ORGANIZATIONS.md)). As permissões são verificadas no backend: quem não é membro recebe 404, e membro sem permissão recebe 403.
+
+Projetos ficam em `/api/v1/organizations/{organizationId}/projects` (criar e listar) e `/api/v1/projects/{projectId}` (consultar, editar, arquivar, equipe e repositórios). Rotas por ID do projeto exigem o cabeçalho `X-Gestalyn-Organization` com o ID da organização ([docs/api/PROJECTS.md](docs/api/PROJECTS.md)).
 
 ## Como executar a Web
 

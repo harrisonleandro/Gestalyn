@@ -8,11 +8,13 @@ using ProjectManager.Application.Abstractions.Authentication;
 using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Organizations;
+using ProjectManager.Application.Projects;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
 using ProjectManager.Infrastructure.Organizations;
 using ProjectManager.Infrastructure.Persistence;
+using ProjectManager.Infrastructure.Projects;
 
 namespace ProjectManager.Infrastructure;
 
@@ -46,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<IMembershipDirectory>(serviceProvider => serviceProvider.GetRequiredService<MembershipDirectory>());
         services.AddScoped<OrganizationEmails>();
         services.AddScoped<IOrganizationService, OrganizationService>();
+        services.AddScoped<IProjectAccess, ProjectAccessResolver>();
+        services.AddScoped<IProjectService, ProjectService>();
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

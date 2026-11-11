@@ -30,6 +30,12 @@ public sealed class ProjectManagerDbContext(
 
     public DbSet<ProjectPhase> ProjectPhases => Set<ProjectPhase>();
 
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+
+    public DbSet<ProjectTag> ProjectTags => Set<ProjectTag>();
+
+    public DbSet<ProjectRepository> ProjectRepositories => Set<ProjectRepository>();
+
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();

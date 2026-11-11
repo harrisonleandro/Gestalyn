@@ -32,7 +32,7 @@ A especificação mestre prevê `Role`, `Permission`, `RolePermission`, papéis 
   | Membro | `organization.read` e `members.read` |
   | Leitor | `organization.read` e `members.read` |
 
-  A diferença entre Membro e Leitor aparece com projetos e tarefas (Fases 05 e 06). `role_permissions` liga papéis e permissões. Papéis personalizados usam o mesmo modelo (sem `system_role`), mas ainda não têm endpoints.
+  A diferença entre Membro e Leitor aparece com projetos e tarefas: desde a Fase 05, o Membro também cria projetos ([ADR-010](ADR-010-PROJETOS-E-EQUIPES.md)). `role_permissions` liga papéis e permissões. Papéis personalizados usam o mesmo modelo (sem `system_role`), mas ainda não têm endpoints.
 
 - **Autorização por permissão, nunca pelo nome do papel:** `[OrganizationPermission("...")]` nos endpoints.
   - **404** para quem não é membro;

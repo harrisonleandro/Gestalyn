@@ -3,7 +3,7 @@
 - **Data:** 2026-11-11
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29
 - **Branch:** `feature/fase-04-organizacoes` (a partir de `feature/fase-03-identidade`; inclui a conclusão da Fase 03)
-- **Estado:** **In Review.** Critérios verificados localmente (testes, navegador e mutação); faltam o CI no GitHub e a integração em `develop`.
+- **Estado:** **Completed.** Critérios verificados localmente e no CI; integrada em `develop` pelo PR #4 (merge `55926bc`).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase

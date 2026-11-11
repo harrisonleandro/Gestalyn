@@ -8,7 +8,9 @@
 
 ## Fase atual
 
-**Fase 04, Organizações e permissões: In Review.** Implementada e validada localmente (testes, navegador e mutação); falta o CI no GitHub, que depende do push de `feature/fase-04-organizacoes`. A **Fase 03 está Completed**; o merge do PR #3 foi autorizado e aguarda o encerramento de uma execução de CI travada no GitHub.
+**Fase 05, Projetos e equipes: In Review.** Implementada e validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais), em commits locais na branch `feature/fase-05-projetos`. Faltam o push, o CI e a integração em `develop`.
+
+**Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
 ## Estado das fases
 
@@ -17,8 +19,8 @@
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
 | 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
 | 03 | Identidade e autenticação | Completed | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
-| 04 | Organizações e permissões | In Review | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
-| 05 | Projetos e equipes | Not Started | — | — |
+| 04 | Organizações e permissões | Completed | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
+| 05 | Projetos e equipes | In Review | [FASE-05-PROJETOS.md](specifications/FASE-05-PROJETOS.md) | [FASE-05-RELATORIO.md](reports/FASE-05-RELATORIO.md) |
 | 06 | Fases, marcos e tarefas | Not Started | — | — |
 | 07 | Workflow configurável e histórico | Not Started | — | — |
 | 08 | Auditoria, documentação e dashboards | Not Started | — | — |
@@ -102,25 +104,47 @@ Evidências na [especificação da Fase 03](specifications/FASE-03-IDENTIDADE.md
 | F04-009 | Implementar autorização | Completed |
 | F04-010 | Implementar remoção de membros | Completed |
 | F04-011 | Implementar alteração de papéis | Completed |
-| F04-012 | Criar testes de isolamento | In Review (local aprovado; CI pendente) |
+| F04-012 | Criar testes de isolamento | Completed |
 
 Evidências na [especificação da Fase 04](specifications/FASE-04-ORGANIZACOES.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-04-RELATORIO.md).
 
+## Tarefas da Fase 05
+
+| ID | Tarefa | Estado |
+|---|---|---|
+| F05-001 | Criar projetos | Completed |
+| F05-002 | Listar projetos | Completed |
+| F05-003 | Consultar detalhes | Completed |
+| F05-004 | Editar projetos | Completed |
+| F05-005 | Arquivar projetos | Completed |
+| F05-006 | Gerenciar membros | Completed |
+| F05-007 | Implementar papéis específicos de projeto | Completed |
+| F05-008 | Implementar tags | Completed |
+| F05-009 | Implementar repositórios associados | Completed |
+| F05-010 | Implementar responsáveis | Completed |
+| F05-011 | Implementar datas e prioridades | Completed |
+| F05-012 | Criar testes | In Review (local aprovado; CI pendente) |
+
+Evidências na [especificação da Fase 05](specifications/FASE-05-PROJETOS.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-05-RELATORIO.md).
+
 ## Tarefas pendentes
 
-- Merge do PR #3 (Fase 03) em `develop`: autorizado; aguarda a execução de CI travada no GitHub (testes já aprovados nela).
-- Push de `feature/fase-04-organizacoes`, CI e PR para `develop` (com autorização).
+- Fase 05: push de `feature/fase-05-projetos`, CI e PR para `develop` (com autorização).
 
 ## Bloqueios
 
-Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável.
+Nenhum bloqueio no desenvolvimento local. No GitHub:
+
+- A execução [43095047963](https://github.com/harrisonleandro/Gestalyn/actions/runs/43095047963) do PR #3 falhou na primeira tentativa, só na publicação do artefato: o serviço de artefatos do GitHub respondeu HTML em vez de JSON. Na segunda tentativa, passou.
+- A execução do PR #4 ([43097924272](https://github.com/harrisonleandro/Gestalyn/actions/runs/43097924272)) ficou presa em "queued": o GitHub recusou o cancelamento ("já concluída") e a nova execução ("já em execução"). A validação foi feita por uma execução manual sobre o mesmo commit (`b7b170e`), aprovada.
+- Se a falha na publicação de artefatos voltar a ocorrer, avaliar `continue-on-error` nessa etapa (com aprovação do responsável).
 
 ## Testes executados
 
 | Projeto | Testes | Cobertura |
 |---|---|---|
-| ProjectManager.UnitTests | 35 | Regras de dependência (7), domínio (18: entidades da Fase 02 e organizações, papéis e convites), CLI (5) e tokens (5) |
-| ProjectManager.IntegrationTests | 60 | Persistência (7), isolamento por filtro (8), autenticação (22), organizações (17: fluxos, convites com e-mail real, permissões, isolamento com usuários reais), health check (3), OpenAPI (2) e erros (2). Requer Docker (PostgreSQL e Mailpit). |
+| ProjectManager.UnitTests | 59 | Regras de dependência (7), domínio (42: entidades da Fase 02; organizações, papéis e convites; projetos, etiquetas, repositórios, arquivamento e acesso efetivo), CLI (5) e tokens (5) |
+| ProjectManager.IntegrationTests | 77 | Persistência (7), isolamento por filtro (8), autenticação (22), organizações (17: fluxos, convites com e-mail real, permissões, isolamento com usuários reais), projetos (17: fluxos, visibilidade, papéis de projeto, equipe, cabeçalho de organização, isolamento, FKs compostas e migração de dados), health check (3), OpenAPI (2) e erros (2). Requer Docker (PostgreSQL e Mailpit). |
 
 ## Última validação
 
@@ -134,6 +158,10 @@ Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável
 | Local, `feature/fase-03-identidade` | 2026-11-11 01:40 | `e70352c` | restore exit 0 · build Release 0 avisos e 0 erros · testes 71/71 (28 unitários, 43 de integração com PostgreSQL e Mailpit) · fluxos validados no navegador |
 | GitHub Actions (`ubuntu-latest`), PR #3 | 2026-11-11 | `b5c4e3a` | [run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052): success, 0 avisos, 28/28 e 43/43 (PostgreSQL e Mailpit via Testcontainers) |
 | Local, `feature/fase-04-organizacoes` | 2026-11-11 20:41 | `c347fd9` | restore exit 0 · build Release 0 avisos e 0 erros · testes 95/95 (35 unitários, 60 de integração) · convite validado no navegador |
+| GitHub Actions (`ubuntu-latest`), PR #3 | 2026-11-11 | `8b8a7b5` | [run 43095047963](https://github.com/harrisonleandro/Gestalyn/actions/runs/43095047963): falha na publicação do artefato na 1ª tentativa; **success** na 2ª |
+| GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-11 | `647573d` (merge do PR #3) | [run 43106099052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43106099052): success |
+| GitHub Actions (`ubuntu-latest`), `feature/fase-04-organizacoes` | 2026-11-11 | `b7b170e` (cabeça do PR #4) | [run 43106437450](https://github.com/harrisonleandro/Gestalyn/actions/runs/43106437450) (manual): success |
+| Local, `feature/fase-05-projetos` | 2026-11-11 21:40 | `c30da85` | restore exit 0 · build Release 0 avisos e 0 erros · testes 136/136 (59 unitários, 77 de integração) · API executada com usuários reais · migration aplicada no banco local |
 
 ## Decisões recentes
 
@@ -156,9 +184,10 @@ Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável
 | 2026-11-11 | E-mail via SMTP (MailKit), Mailpit em desenvolvimento e testes | [ADR-007](decisions/ADR-007-ENVIO-DE-EMAIL.md) |
 | 2026-11-11 | Organização ativa pela rota, validada pela associação; `MembershipDirectory` como única leitura sem filtro; RLS para a Fase 13 | [ADR-008](decisions/ADR-008-ORGANIZACAO-ATIVA.md) |
 | 2026-11-11 | Papéis de sistema por organização, autorização por permissão, convites vinculados ao e-mail (7 dias, uso único) | [ADR-009](decisions/ADR-009-PAPEIS-PERMISSOES-E-CONVITES.md) |
+| 2026-11-11 | Fases 03 e 04 integradas em `develop` (PR #3, merge `647573d`; PR #4, merge `55926bc`) | [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3), [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) |
+| 2026-11-11 | Fase 05: visibilidade por equipe, papéis fixos de projeto, equipe só com membros da organização (FK com cascata), responsável único, repositórios só como metadados, etiquetas por projeto e cabeçalho `X-Gestalyn-Organization` (D1 a D5) | [ADR-010](decisions/ADR-010-PROJETOS-E-EQUIPES.md) |
 
 ## Próxima atividade
 
-1. Merge do PR #3 assim que o CI travado no GitHub encerrar (ou após cancelamento manual pelo responsável).
-2. Push de `feature/fase-04-organizacoes`, CI e PR para `develop` (com autorização). Com o CI aprovado, a Fase 04 passa a Completed.
-3. Fase 05 (projetos e equipes), somente após autorização: projetos completos, membros e papéis de projeto, e o cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso.
+1. Push de `feature/fase-05-projetos`, CI e PR para `develop` (com autorização). Com o CI aprovado e as alterações integradas, a Fase 05 passa a Completed.
+2. Fase 06 (fases, marcos e tarefas), somente após autorização.
