@@ -2,6 +2,8 @@
 
 Este arquivo define como agentes de IA (Claude Code, Codex, Copilot e similares) devem trabalhar neste repositório. Ele complementa o [README.md](README.md) e a documentação em `docs/`.
 
+**Nomes ([ADR-005](docs/decisions/ADR-005-NOME-COMERCIAL-GESTALYN.md)):** o produto se chama **Gestalyn**. Use esse nome em tudo o que o usuário vê (interface, mensagens, OpenAPI, documentação). A CLI se chama `gestalyn`. No código, o nome de trabalho continua **ProjectManager** (solution, projetos e namespaces `ProjectManager.*`). Não renomeie o código sem um novo ADR.
+
 ## 1. Fontes de verdade
 
 1. **[Especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md):** decisões arquiteturais aprovadas, modelo funcional, contratos da API, roadmap das 14 fases e processo obrigatório.

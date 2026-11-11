@@ -2,6 +2,8 @@
 
 > Documento fornecido pelo responsável do projeto em 2026-11-10 como especificação funcional e técnica aprovada. É a fonte de verdade para decisões arquiteturais, escopo das fases e critérios de aceitação.
 > Alterações neste documento exigem aprovação do responsável. Desvios aprovados devem ser registrados em ADRs em `docs/decisions/`.
+>
+> **Alteração aprovada em 2026-11-11** ([ADR-005](../decisions/ADR-005-NOME-COMERCIAL-GESTALYN.md)): nome comercial definido como **Gestalyn** e CLI renomeada de `projectctl` para `gestalyn`. "ProjectManager" permanece como nome de trabalho no código (solution, projetos e namespaces).
 
 ---
 
@@ -24,7 +26,7 @@ O resultado esperado é um produto real, funcional, seguro, testável, documenta
 
 Nome de trabalho: ProjectManager.
 
-Nome comercial: Pendente de definição.
+Nome comercial: Gestalyn.
 
 Tipo: Plataforma de gerenciamento de projetos, equipes, tarefas, processos e agentes de inteligência artificial.
 
@@ -571,27 +573,27 @@ As permissões deverão ser limitadas por organização e projeto.
 
 ## 6.2. CLI
 
-Nome provisório:
+Nome:
 
-projectctl
+gestalyn
 
 Comandos futuros:
 
 ```
-projectctl auth login
-projectctl auth status
-projectctl organization list
-projectctl project list
-projectctl project show
-projectctl project context
-projectctl task list
-projectctl task show
-projectctl task create
-projectctl task update
-projectctl task report
-projectctl activity report
-projectctl phase list
-projectctl agent status
+gestalyn auth login
+gestalyn auth status
+gestalyn organization list
+gestalyn project list
+gestalyn project show
+gestalyn project context
+gestalyn task list
+gestalyn task show
+gestalyn task create
+gestalyn task update
+gestalyn task report
+gestalyn activity report
+gestalyn phase list
+gestalyn agent status
 ```
 
 A CLI deverá consumir a API.
@@ -1235,7 +1237,7 @@ Critérios:
 - Idempotência funcional.
 - Tentativas de acesso indevido são bloqueadas.
 
-## FASE 11 — CLI PROJECTCTL
+## FASE 11 — CLI GESTALYN
 
 Objetivo:
 

@@ -23,6 +23,7 @@ public sealed class OpenApiDocumentTests(PostgresDatabaseFixture database) : IDi
         await using var stream = await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: TestContext.Current.CancellationToken);
         Assert.StartsWith("3.", document.RootElement.GetProperty("openapi").GetString(), StringComparison.Ordinal);
+        Assert.Equal("Gestalyn API", document.RootElement.GetProperty("info").GetProperty("title").GetString());
     }
 
     [Fact]

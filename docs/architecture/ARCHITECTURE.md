@@ -1,16 +1,16 @@
-# Arquitetura do ProjectManager
+# Arquitetura do Gestalyn
 
 > Estado: Fase 01 (fundação técnica). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
 
 ## 1. Visão geral
 
-O ProjectManager é um **monólito modular** em .NET 10. Um único processo de API concentra as regras de negócio e a persistência. A interface Web e a CLI `projectctl` consomem a API **exclusivamente por HTTP**. O futuro servidor MCP acessará os casos de uso pela camada Application, ou por contratos próprios, sem duplicar regras de negócio. O futuro Worker usará abstrações da Application e implementações da Infrastructure.
+O Gestalyn (nome de trabalho no código: ProjectManager) é um **monólito modular** em .NET 10. Um único processo de API concentra as regras de negócio e a persistência. A interface Web e a CLI `gestalyn` consomem a API **exclusivamente por HTTP**. O futuro servidor MCP acessará os casos de uso pela camada Application, ou por contratos próprios, sem duplicar regras de negócio. O futuro Worker usará abstrações da Application e implementações da Infrastructure.
 
 ```mermaid
 flowchart LR
     subgraph Clientes
         Web["ProjectManager.Web<br/>Blazor Web App"]
-        CLI["ProjectManager.CLI<br/>projectctl"]
+        CLI["ProjectManager.CLI<br/>gestalyn"]
     end
 
     subgraph Futuro["Fases futuras"]
@@ -49,7 +49,7 @@ flowchart LR
 | `Infrastructure` | `Application`, `Domain` | EF Core/PostgreSQL, Identity, integrações externas (GitHub, IA), relógio, e-mail etc. |
 | `API` | `Application`, `Infrastructure` | Composição (DI), controllers, middleware, OpenAPI, tratamento de erros, health checks. |
 | `Web` | API via HTTP | Interface Blazor. Não acessa banco nem camadas internas. |
-| `CLI` | API via HTTP | Interface de terminal `projectctl`. Não implementa regras de negócio. |
+| `CLI` | API via HTTP | Interface de terminal `gestalyn`. Não implementa regras de negócio. |
 | `MCP` *(Fase 12)* | `Application` (ou contratos próprios) | Servidor MCP para agentes. Usa os mecanismos de autenticação e autorização aprovados e não duplica regras de negócio. |
 | `Worker` *(quando necessário)* | `Application`, `Infrastructure` | Processamento em segundo plano. |
 

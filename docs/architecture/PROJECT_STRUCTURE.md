@@ -107,7 +107,7 @@ ProjectManager.Web/
 
 ### ProjectManager.CLI
 
-Executável `projectctl`.
+Executável `gestalyn` (AssemblyName; o projeto continua `ProjectManager.CLI`).
 
 ```
 ProjectManager.CLI/

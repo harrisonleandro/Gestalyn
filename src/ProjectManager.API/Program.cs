@@ -11,7 +11,11 @@ builder.Services
     .AddInfrastructure();
 
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
+{
+    document.Info.Title = "Gestalyn API";
+    return Task.CompletedTask;
+}));
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddApiHealthChecks();

@@ -24,7 +24,7 @@
 | 08 | Auditoria, documentação e dashboards | Not Started | — | — |
 | 09 | Interface web completa | Not Started | — | — |
 | 10 | API e autenticação de agentes | Not Started | — | — |
-| 11 | CLI projectctl | Not Started | — | — |
+| 11 | CLI gestalyn | Not Started | — | — |
 | 12 | MCP e integrações com agentes | Not Started | — | — |
 | 13 | Testes integrados e hardening | Not Started | — | — |
 | 14 | Infraestrutura e publicação cloud | Not Started | — | — |
@@ -71,8 +71,7 @@ Evidências na [especificação da Fase 02](specifications/FASE-02-PERSISTENCIA.
 
 ## Tarefas pendentes
 
-- Integrar `feature/fase-02-persistencia` em `develop` (PR ou merge, com autorização).
-- Confirmar se **Gestalyn** (nome do repositório) é o nome comercial; a especificação mestre o mantém como "pendente de definição".
+- Integrar `feature/marca-gestalyn` em `develop` (PR, com autorização).
 
 ## Bloqueios
 
@@ -93,6 +92,7 @@ Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do respons�
 | GitHub Actions (`ubuntu-latest`), `main` | 2026-11-10 | `c6bd32a` | [run 42901411495](https://github.com/harrisonleandro/Gestalyn/actions/runs/42901411495): success |
 | GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-10 | `26e4b5c` | [run 42913460175](https://github.com/harrisonleandro/Gestalyn/actions/runs/42913460175): success, 12/12 e 6/6 |
 | GitHub Actions (`ubuntu-latest`), `feature/fase-02-persistencia` | 2026-11-11 | `085d0f1` | [run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315): success, 0 avisos, 23/23 e 22/22 (PostgreSQL via Testcontainers) |
+| Local, `feature/marca-gestalyn` | 2026-11-11 | `ca0c337` + renomeação da marca | build Release 0 avisos e 0 erros · testes 45/45 · Web, API e CLI `gestalyn` executadas |
 
 ## Decisões recentes
 
@@ -108,8 +108,10 @@ Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do respons�
 | 2026-11-10 | EF Core + Npgsql, `snake_case`, UUID v7, `xmin`, migrations explícitas | [ADR-002](decisions/ADR-002-PERSISTENCIA-EF-CORE-POSTGRESQL.md) |
 | 2026-11-10 | Isolamento em três camadas (filtro, validação de gravação, FK composta); RLS avaliado e adiado | [ADR-003](decisions/ADR-003-ISOLAMENTO-MULTI-TENANT.md) |
 | 2026-11-10 | Testes de integração com PostgreSQL real (Testcontainers) | [ADR-004](decisions/ADR-004-TESTES-COM-POSTGRESQL.md) |
+| 2026-11-11 | Fase 02 integrada em `develop` (PR #1, merge `ca0c337`) | [harrisonleandro/Gestalyn#1](https://github.com/harrisonleandro/Gestalyn/pull/1) |
+| 2026-11-11 | Nome comercial **Gestalyn** e CLI `gestalyn`; código mantém `ProjectManager.*` | [ADR-005](decisions/ADR-005-NOME-COMERCIAL-GESTALYN.md) |
 
 ## Próxima atividade
 
-1. Integrar `feature/fase-02-persistencia` em `develop` (PR, com autorização).
+1. Integrar `feature/marca-gestalyn` em `develop` (PR, com autorização).
 2. Fase 03 (Identidade e autenticação), somente após autorização. Os temas iniciais são a estratégia de sessão da Web e de tokens da API (ADR), o ASP.NET Core Identity com `Guid` e o autor das alterações na auditoria.

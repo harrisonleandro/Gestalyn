@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>ProjectManager.CLI</RootNamespace>
-    <AssemblyName>projectctl</AssemblyName>
+    <AssemblyName>gestalyn</AssemblyName>
   </PropertyGroup>
 
   <!-- A CLI acessa a API exclusivamente por HTTP: não há referências a outros projetos da solução. -->
