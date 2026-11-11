@@ -8,7 +8,7 @@
 
 ## Fase atual
 
-**Fase 03, Identidade e autenticação: Completed.** Critérios verificados localmente e no CI do GitHub ([run 43094635052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43094635052)). A integração em `develop` (PR #3) aguarda autorização do responsável.
+**Fase 04, Organizações e permissões: Planned.** A especificação aguarda aprovação das decisões D1 a D5, e a implementação depende da Fase 03 em `develop`. A **Fase 03 está Completed** (CI aprovado no PR #3); o merge do PR #3 aguarda autorização do responsável.
 
 ## Estado das fases
 
@@ -90,6 +90,7 @@ Evidências na [especificação da Fase 03](specifications/FASE-03-IDENTIDADE.md
 ## Tarefas pendentes
 
 - Integrar a Fase 03 em `develop` (PR #3, CI aprovado; merge com autorização).
+- Aprovar as decisões D1 a D5 da Fase 04.
 
 ## Bloqueios
 
@@ -137,4 +138,4 @@ Nenhum bloqueio técnico. O merge do PR #3 aguarda autorização do responsável
 ## Próxima atividade
 
 1. Merge do PR #3 em `develop` (CI aprovado), com autorização.
-2. Fase 04 (organizações e permissões), somente após autorização: membros e convites (o e-mail confirmado identifica o convidado), papéis e permissões, e resolução da organização ativa pela identidade autenticada (substituindo `UnresolvedTenantContext`).
+2. Fase 04 (organizações e permissões): implementar após o merge do PR #3 e a aprovação de D1 a D5, na branch `feature/fase-04-organizacoes`.
