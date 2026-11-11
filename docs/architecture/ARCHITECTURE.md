@@ -133,6 +133,22 @@ erDiagram
 - `organization_members`: único por `(organization_id, user_id)`. `invitations`: hash do token único, e no máximo um convite em aberto por e-mail e organização (índice parcial).
 - Autorização por permissão nos endpoints ([ADR-009](../decisions/ADR-009-PAPEIS-PERMISSOES-E-CONVITES.md)). A organização nunca fica sem proprietário (regra com trava otimista).
 
+### 3.4 Projetos e equipes (Fase 05)
+
+```mermaid
+erDiagram
+    organizations ||--o{ projects : "organization_id"
+    projects ||--o{ project_members : "(organization_id, project_id)"
+    organization_members ||--o{ project_members : "(organization_id, user_id), cascata"
+    projects ||--o{ project_tags : "(organization_id, project_id)"
+    projects ||--o{ project_repositories : "(organization_id, project_id)"
+    projects ||--o{ project_phases : "(organization_id, project_id)"
+```
+
+- `project_members`: papel fixo de projeto (Gerente, Colaborador, Observador) e no máximo um responsável por projeto (índice único parcial). A FK composta para `organization_members` garante que só membros da organização entram na equipe e os remove dela, em cascata, quando saem da organização.
+- `project_tags` (chave `(project_id, normalized_name)`) e `project_repositories` (URL única por projeto) seguem o projeto. O projeto arquivado (`archived_at`) fica somente leitura.
+- Acesso efetivo: permissões da organização (`projects.read_all`, `projects.manage_all`) somadas às do papel na equipe. Rotas por ID recebem a organização pelo cabeçalho `X-Gestalyn-Organization` ([ADR-010](../decisions/ADR-010-PROJETOS-E-EQUIPES.md)).
+
 ## 4. Módulos (evolução prevista)
 
 A modularização será **vertical por contexto de negócio** dentro de cada camada (por exemplo `Application/Projects`, `Application/Tasks`, `Infrastructure/Persistence/Projects`). Cada módulo expõe seus casos de uso pela camada `Application` e não acessa diretamente os dados de outro módulo. A comunicação entre módulos ocorre por interfaces de aplicação ou eventos de domínio.
@@ -198,6 +214,7 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | Reavaliação de Row-Level Security | 13 |
 | ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |
 | ~~Papéis, permissões e convites~~ (ADR-009) | 04 (concluída) |
+| ~~Acesso a projetos, papéis de projeto e cabeçalho de organização~~ (ADR-010) | 05 |
 | Cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso; papéis de projeto | 05 |
 | Credenciais de agentes, escopos e idempotência | 10 |
 | Armazenamento seguro de credenciais na CLI | 11 |

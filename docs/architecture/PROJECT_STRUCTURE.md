@@ -1,6 +1,6 @@
 # Estrutura do projeto
 
-> Estado: Fase 04. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
+> Estado: Fase 05. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
 
 ## Raiz
 
@@ -35,7 +35,8 @@ ProjectManager.Domain/
 │   └── Guard.cs                  Validações de invariantes (interno)
 ├── Organizations/                Organization (raiz do tenant), Role e RolePermission (papéis de sistema),
 │                                 OrganizationMember, Invitation, OrganizationPermissions (catálogo)
-├── Projects/Project.cs           Projeto (mínimo; completo na Fase 05)
+├── Projects/                     Project (arquivamento, datas, prioridade, etiquetas, repositórios), ProjectMember,
+│                                 ProjectTag, ProjectRepository, ProjectPermissions e ProjectRole (papéis fixos)
 ├── Projects/ProjectPhase.cs      Fase do projeto (mínima; completa na Fase 06)
 └── <Modulo>/                     (futuro) Demais entidades por fase
 ```
@@ -52,6 +53,8 @@ ProjectManager.Application/
 ├── Abstractions/Email/           IEmailSender, EmailMessage, EmailDeliveryException
 ├── Common/Result.cs              Result/ResultError (NotFound, Forbidden, Conflict, Validation)
 ├── Organizations/                IOrganizationService e contratos (requisições e respostas)
+├── Projects/                     IProjectService, contratos, IProjectAccess e ProjectAccessGrant (acesso efetivo)
+├── Common/PagedResult.cs         Página de listagem com total
 └── <Modulo>/                     (futuro) Casos de uso, DTOs, validadores, interfaces de serviços
 ```
 
@@ -65,6 +68,7 @@ ProjectManager.Infrastructure/
 ├── Email/                        SmtpEmailSender (MailKit), EmailOptions
 ├── Organizations/                OrganizationService, MembershipDirectory (único IgnoreQueryFilters), OrganizationEmails,
 │                                 PermissionDefinition (catálogo persistido)
+├── Projects/                     ProjectService, ProjectAccessResolver
 ├── Common/OpaqueTokens.cs        Tokens opacos de 256 bits e hash SHA-256 (sessões e convites)
 ├── MultiTenancy/
 │   └── TenantContext.cs          Organização ativa por requisição (vazia até validar a associação)
@@ -95,8 +99,10 @@ ProjectManager.API/
 ├── Controllers/
 │   ├── AuthController.cs               /api/v1/auth/*
 │   ├── OrganizationsController.cs      /api/v1/organizations/* (organizações, membros, papéis, convites)
-│   └── InvitationsController.cs        /api/v1/invitations/accept
-├── Organizations/                      ActiveOrganizationMiddleware, OrganizationPermissionAttribute
+│   ├── InvitationsController.cs        /api/v1/invitations/accept
+│   └── ProjectsController.cs           /api/v1/organizations/{id}/projects e /api/v1/projects/*
+├── Organizations/                      ActiveOrganizationMiddleware (rota ou cabeçalho X-Gestalyn-Organization),
+│                                       OrganizationPermissionAttribute, ProjectPermissionAttribute
 ├── Common/ResultProblems.cs            Result → Problem Details (404/403/409/400)
 ├── Properties/launchSettings.json      Perfis http (5100) e https (7100)
 ├── appsettings.json                    Produção/base: logs JSON, emissor e público do JWT, limites
@@ -153,7 +159,7 @@ ProjectManager.CLI/
 | Pasta | Conteúdo |
 |---|---|
 | `architecture/` | `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` |
-| `api/` | Contratos da API por área (`AUTH.md`, `ORGANIZATIONS.md`) |
+| `api/` | Contratos da API por área (`AUTH.md`, `ORGANIZATIONS.md`, `PROJECTS.md`) |
 | `security/` | Modelo de segurança (`AUTENTICACAO.md`) |
 | `decisions/` | ADRs (`ADR-NNN-TITULO.md`) |
 | `specifications/` | Especificação mestre (fonte de verdade) e especificação de cada fase (`FASE-NN-*.md`) |

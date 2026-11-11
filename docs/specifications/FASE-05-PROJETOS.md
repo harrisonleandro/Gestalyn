@@ -1,6 +1,6 @@
 # Fase 05: Projetos e equipes
 
-- **Estado:** Planned. Aguarda a aprovação das decisões D1 a D5 pelo responsável.
+- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`, depois das Fases 03 e 04. Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 05), seções 4.2 e 4.3 (modelo funcional) e 5.3 (contratos)
 - **Branch:** `feature/fase-05-projetos` (a partir de `feature/fase-04-organizacoes`; os PRs #3 e #4 estão abertos para `develop`)
 - **Pré-requisito para implementar:** decisões aprovadas. A integração em `develop` depende das Fases 03 e 04 integradas, com o CI aprovado.
@@ -33,7 +33,7 @@ Implementar o gerenciamento de projetos dentro da organização: criar, listar, 
 - Integração real com o GitHub (leitura de commits, PRs, webhooks): fora do MVP desta fase (veja D4).
 - Exclusão física de projetos e restauração de projetos arquivados (veja as decisões de baixo risco).
 
-## Decisões (aguardam aprovação)
+## Decisões (D1 a D5 aprovadas)
 
 | ID | Proposta | Alternativas |
 |---|---|---|
@@ -146,3 +146,30 @@ docs/api/PROJECTS.md
 ## Definição de conclusão
 
 Todos os critérios verificados com evidência (local e CI), mutação da verificação de equipe detectada, ADR-010 registrado, `docs/api/PROJECTS.md`, README, AGENTS.md, ARCHITECTURE, `PROJECT_STATUS.md` e relatório da Fase 05 atualizados, e alterações integradas por PR depois das Fases 03 e 04.
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F05-001 | Completed | `POST /organizations/{id}/projects`; criador como Gerente; `Create_MakesTheCreatorManager_WithDatesPriorityAndTags`, `ProjectCreation_RequiresThePermission` |
+| F05-002 | Completed | Visibilidade por equipe, paginação e filtros; `List_FiltersByTagAndPriority_AndPaginatesByName`, `OrganizationMember_SeesOnlyProjectsOfTheirTeams_WhileAdministratorsSeeAll` |
+| F05-003 | Completed | Cabeçalho `X-Gestalyn-Organization` no `ActiveOrganizationMiddleware`; `[ProjectPermission]`; `OrganizationHeader_IsRequired_AndValidatedAgainstTheMembership` |
+| F05-004 | Completed | `PATCH` parcial (`null` limpa, ausência mantém); `Update_ChangesOnlyTheSentFields_AndNullClearsOptionalValues` |
+| F05-005 | Completed | Arquivamento lógico, somente leitura, fora da listagem padrão; `Archive_IsLogical_ReadOnly_AndHiddenFromTheDefaultList` |
+| F05-006 | Completed | `ProjectMember` com FK composta e cascata; `Team_AcceptsOnlyOrganizationMembers_AndKeepsASingleResponsible`, `LeavingTheOrganization_RemovesThePersonFromProjectTeams` |
+| F05-007 | Completed | Gerente, Colaborador e Observador por permissão; `ProjectRoles_GrantTheirPermissions_InEveryEndpoint` |
+| F05-008 | Completed | `ProjectTag` com unificação sem diferenciar maiúsculas e minúsculas e limite de 20; filtro `?tag=` |
+| F05-009 | Completed | `ProjectRepository` com URL normalizada e provedor; `Repositories_AreNormalized_Unique_AndValidated` |
+| F05-010 | Completed | Responsável único (índice parcial; troca em transação) |
+| F05-011 | Completed | Prioridade, início e prazo, com *check constraint* no banco |
+| F05-012 | Completed | 13 unitários novos (24 casos) e 17 de integração (fluxos, permissões, isolamento, FKs e migração); 2 mutações detectadas |
+| CI | **In Review** | Depende do push de `feature/fase-05-projetos`, autorizado pelo responsável, e da integração das Fases 03 e 04 |
+
+Ajustes feitos durante a implementação, dentro das decisões aprovadas:
+
+1. **Chave alternativa em `organization_members`:** a unicidade `(organization_id, user_id)` passou de índice único a chave alternativa, porque é o alvo da FK composta das equipes. O efeito sobre os dados é o mesmo.
+2. **Troca de responsável em transação:** o responsável anterior é desmarcado com `ExecuteUpdate` antes de gravar o novo, porque o índice único parcial não admite dois responsáveis nem por um instante.
+3. **Enumerações pelo nome no JSON:** `JsonStringEnumConverter` na API, sem aceitar números, para `priority`, `role` e `provider`.
+4. **Valor padrão da prioridade na migration:** a coluna `priority` foi criada com o padrão `Medium`, para os projetos existentes. É o único ajuste manual no arquivo gerado, coberto pelo `ProjectMigrationTests`.
+5. **URL de repositório sem credenciais, consulta ou fragmento:** é uma restrição a mais que a D4, para não gravar tokens colados na URL.
+6. **Rate limiting na execução real:** o roteiro com três usuários passou do limite de 10 requisições de autenticação por minuto e precisou de pausas. É o comportamento esperado da Fase 03, não um defeito.
