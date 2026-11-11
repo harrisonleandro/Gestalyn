@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProjectManager.CLI\ProjectManager.CLI.csproj" />
+    <ProjectReference Include="..\..\src\ProjectManager.Domain\ProjectManager.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,14 +5,16 @@ using ProjectManager.IntegrationTests.Infrastructure;
 
 namespace ProjectManager.IntegrationTests.Api;
 
-public sealed class OpenApiDocumentTests(ApiFactory factory) : IClassFixture<ApiFactory>
+public sealed class OpenApiDocumentTests(PostgresDatabaseFixture database) : IDisposable
 {
+    private readonly ApiFactory _factory = new(database.ConnectionString);
+
     private static readonly Uri OpenApiDocumentUri = new("/openapi/v1.json", UriKind.Relative);
 
     [Fact]
     public async Task Development_ExposesOpenApiDocument()
     {
-        using var client = factory.CreateClient();
+        using var client = _factory.CreateClient();
 
         using var response = await client.GetAsync(OpenApiDocumentUri, TestContext.Current.CancellationToken);
 
@@ -26,11 +28,13 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IClassFixture<Api
     [Fact]
     public async Task Production_DoesNotExposeOpenApiDocument()
     {
-        using var productionFactory = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+        using var productionFactory = _factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
         using var client = productionFactory.CreateClient();
 
         using var response = await client.GetAsync(OpenApiDocumentUri, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    public void Dispose() => _factory.Dispose();
 }

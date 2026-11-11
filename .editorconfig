@@ -110,3 +110,7 @@ dotnet_diagnostic.IDE0052.severity = warning
 # Testes: nomes no formato Metodo_Cenario_Resultado usam sublinhados.
 [tests/**.cs]
 dotnet_diagnostic.CA1707.severity = none
+
+# Migrations do EF Core: código gerado por ferramenta, excluído dos analisadores.
+[src/**/Migrations/*.cs]
+generated_code = true

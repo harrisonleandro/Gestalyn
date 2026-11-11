@@ -36,7 +36,11 @@ Worker → Application (abstrações) + Infrastructure (implementações)
 - `Application` depende apenas de `Domain` e de abstrações (`Microsoft.Extensions.*.Abstractions`).
 - `Web` e `CLI` **nunca** referenciam `Domain`, `Application`, `Infrastructure` ou `API`.
 - As regras são verificadas por `tests/ProjectManager.UnitTests/Architecture/ProjectReferenceRulesTests.cs`. Ao criar um projeto em `src/`, adicione-o às regras do teste.
-- **Multi-tenancy:** banco e schema compartilhados, UUID, `OrganizationId` nas entidades da organização, validação de pertencimento e autorização no backend e testes de isolamento. Nunca confie apenas no `OrganizationId` enviado pelo cliente ou pelo agente.
+- **Multi-tenancy** ([ADR-003](docs/decisions/ADR-003-ISOLAMENTO-MULTI-TENANT.md)): banco e schema compartilhados, UUID, `OrganizationId` nas entidades da organização, validação de pertencimento e autorização no backend e testes de isolamento. Nunca confie apenas no `OrganizationId` enviado pelo cliente ou pelo agente.
+  - Toda entidade pertencente a uma organização implementa `IOrganizationOwned`, o que aplica o filtro de leitura automaticamente. Não filtre por organização manualmente.
+  - Entidades filhas referenciam o pai por FK composta `(organization_id, <pai>_id)` → `(organization_id, id)`.
+  - Não use `IgnoreQueryFilters` nem SQL bruto sobre dados de organizações sem justificativa registrada em ADR.
+- **Persistência** ([ADR-002](docs/decisions/ADR-002-PERSISTENCIA-EF-CORE-POSTGRESQL.md)): toda alteração do modelo exige uma migration (`dotnet ef migrations add`, veja o README). Migrations nunca são aplicadas automaticamente pela aplicação. Os arquivos em `Migrations/` são código gerado; não os edite à mão sem necessidade.
 - Não introduza microsserviços, Kubernetes, Redis, mensageria distribuída ou infraestrutura complexa sem aprovação.
 - Mudanças de arquitetura exigem aprovação e um ADR em `docs/decisions/`.
 
@@ -84,7 +88,8 @@ Uma tarefa só fica `Completed` em `PROJECT_STATUS.md` quando seus critérios fo
 
 - Testes devem verificar comportamento real. Não crie testes artificiais para aumentar a contagem.
 - Unitários em `tests/ProjectManager.UnitTests`; integração da API em `tests/ProjectManager.IntegrationTests` (com `WebApplicationFactory`).
-- Isolamento multi-tenant e permissões exigem testes automatizados a partir da Fase 02.
+- Isolamento multi-tenant e permissões exigem testes automatizados a partir da Fase 02. Toda nova entidade de organização ganha testes de leitura e gravação cross-tenant.
+- Testes de integração usam PostgreSQL real via Testcontainers ([ADR-004](docs/decisions/ADR-004-TESTES-COM-POSTGRESQL.md)) e **exigem Docker em execução**. Não substitua por InMemory ou SQLite.
 - Use `TestContext.Current.CancellationToken` (xUnit v3) em chamadas assíncronas.
 
 ## 9. Relato de resultados

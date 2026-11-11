@@ -6,14 +6,16 @@ using ProjectManager.IntegrationTests.Infrastructure;
 
 namespace ProjectManager.IntegrationTests.Api;
 
-public sealed class ErrorHandlingTests(ApiFactory factory) : IClassFixture<ApiFactory>
+public sealed class ErrorHandlingTests(PostgresDatabaseFixture database) : IDisposable
 {
+    private readonly ApiFactory _factory = new(database.ConnectionString);
+
     private const string ProblemJsonMediaType = "application/problem+json";
 
     [Fact]
     public async Task UnknownRoute_ReturnsNotFoundProblemDetails()
     {
-        using var client = factory.CreateClient();
+        using var client = _factory.CreateClient();
 
         using var response = await client.GetAsync(new Uri("/rota-inexistente", UriKind.Relative), TestContext.Current.CancellationToken);
 
@@ -44,7 +46,7 @@ public sealed class ErrorHandlingTests(ApiFactory factory) : IClassFixture<ApiFa
     }
 
     private HttpClient CreateClientWithThrowingEndpoint() =>
-        factory
+        _factory
             .WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
                 services.AddControllers().AddApplicationPart(typeof(ThrowingTestController).Assembly)))
             .CreateClient();
@@ -54,4 +56,6 @@ public sealed class ErrorHandlingTests(ApiFactory factory) : IClassFixture<ApiFa
         await using var stream = await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
         return await JsonDocument.ParseAsync(stream, cancellationToken: TestContext.Current.CancellationToken);
     }
+
+    public void Dispose() => _factory.Dispose();
 }
