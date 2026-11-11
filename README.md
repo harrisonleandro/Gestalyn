@@ -4,7 +4,7 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 05 (projetos e equipes) em revisão.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas e gerenciar membros e papéis. Pela API, também é possível criar, editar, listar e arquivar projetos com equipe, papéis de projeto, responsável, datas, prioridade, etiquetas e repositórios. O isolamento multi-tenant é testado com usuários reais. Fases, marcos e tarefas chegam na Fase 06.
+**Estado atual: Fase 05 (projetos e equipes) concluída.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas e gerenciar membros e papéis. Pela API, também é possível criar, editar, listar e arquivar projetos com equipe, papéis de projeto, responsável, datas, prioridade, etiquetas e repositórios. O isolamento multi-tenant é testado com usuários reais. Fases, marcos e tarefas chegam na Fase 06.
 
 A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 

@@ -3,7 +3,7 @@
 - **Data:** 2026-11-11
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29
 - **Branch:** `feature/fase-05-projetos` (a partir de `feature/fase-04-organizacoes`)
-- **Estado:** **In Review.** Critérios verificados localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop` (as Fases 03 e 04 já estão integradas).
+- **Estado:** **Completed.** Critérios verificados localmente e no CI; integrada em `develop` pelo PR #5 (merge `6a32f58`).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -139,7 +139,6 @@ Nenhuma. `Npgsql` (códigos de erro do PostgreSQL) e `System.Text.Json` já esta
 
 ## 14. Pendências
 
-- Push de `feature/fase-05-projetos`, CI e PR para `develop` (com autorização).
 - Restauração de projetos arquivados e saída voluntária de uma equipe: não previstas; avaliar na Fase 09, com a interface.
 - Interface Web de projetos (Fase 09) e comandos `gestalyn project` (Fase 11).
 
@@ -156,7 +155,7 @@ Nenhuma. `Npgsql` (códigos de erro do PostgreSQL) e `System.Text.Json` já esta
 
 ## 16. Critérios não atendidos
 
-Nenhum critério funcional deixou de ser atendido. A verificação no CI e a integração por PR (definição de conclusão) estão pendentes, por isso a fase está **In Review**.
+Nenhum. A definição de conclusão também foi cumprida: CI aprovado ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853)) e integração por PR (PR #5, merge `6a32f58`).
 
 ## 17. Riscos identificados
 
@@ -169,14 +168,15 @@ Nenhum critério funcional deixou de ser atendido. A verificação no CI e a int
 
 ## 18. Estado do Git
 
-- **Branch:** `feature/fase-05-projetos`, somente local.
+- **Branch:** `feature/fase-05-projetos`, enviada e incorporada pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5).
 - **Commits:**
   - `7af13d3` (especificação);
   - `c30da85` (projetos, equipes, testes e migration);
   - commit de documentação de encerramento.
 - **PR #3 (Fase 03):** CI aprovado na 2ª tentativa; merge `647573d`.
 - **PR #4 (Fase 04):** CI aprovado (execução manual sobre `b7b170e`); merge `55926bc`.
-- **`develop`:** `55926bc`.
+- **PR #5 (Fase 05):** CI aprovado sobre `8659a93`; merge `6a32f58`.
+- **`develop`:** `6a32f58`.
 
 ## 19. Próxima fase recomendada
 
