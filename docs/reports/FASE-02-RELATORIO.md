@@ -3,7 +3,7 @@
 - **Data:** 2026-11-10
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 (`postgres:18-alpine`)
 - **Branch:** `feature/fase-02-persistencia` (a partir de `develop`)
-- **Estado:** **In Review.** Todos os critérios foram verificados localmente; a execução no CI do GitHub depende do push.
+- **Estado:** **Completed.** Critérios verificados localmente e no CI do GitHub (2026-11-11).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -110,7 +110,11 @@ Aprovado! – Com falha: 0, Aprovado: 23, Total: 23 - ProjectManager.UnitTests.d
 Aprovado! – Com falha: 0, Aprovado: 22, Total: 22 - ProjectManager.IntegrationTests.dll (net10.0)
 ```
 
-O CI no GitHub Actions ainda **não foi executado** para esta branch (veja §14).
+| Execução no GitHub Actions | Commit | Resultado |
+|---|---|---|
+| [42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315) (`workflow_dispatch` em `feature/fase-02-persistencia`) | `085d0f1` | success: 0 avisos, 0 erros; 23/23 unitários e 22/22 de integração com PostgreSQL via Testcontainers no `ubuntu-latest` |
+
+O workflow só dispara automaticamente em `main`, `develop` e pull requests; por isso, a validação da branch de feature foi acionada manualmente.
 
 ## 11. Evidências
 
@@ -169,7 +173,6 @@ CREATE UNIQUE INDEX ix_project_phases_project_id_position ON project_phases (pro
 
 ## 14. Pendências
 
-- **CI no GitHub:** a branch precisa ser enviada para confirmar que os testes com Testcontainers passam no `ubuntu-latest`. Isso exige autorização de push.
 - **Integração em `develop`** (PR ou merge), com autorização.
 - **Autor das alterações** (`CreatedBy`/`UpdatedBy`): depende de identidade (Fases 03 e 08).
 - **Resolução da organização ativa pela identidade e reavaliação de RLS:** Fase 04.
@@ -184,13 +187,13 @@ CREATE UNIQUE INDEX ix_project_phases_project_id_position ON project_phases (pro
 | Relacionamentos consistentes | `Project_WithPhases_RoundTripsInPositionOrder`; FKs na migration |
 | Índices adequados | Índice único `(project_id, position)`, chave alternativa `(organization_id, id)` e índice da FK composta; teste de unicidade |
 | Restrições de integridade | `RESTRICT`, `UNIQUE`, `CHECK`, `NOT NULL` e `xmin` testados |
-| Testes de persistência | 7/7 (local) |
-| Testes de isolamento | 8/8 (local), sensíveis às mutações |
+| Testes de persistência | 7/7 (local e CI) |
+| Testes de isolamento | 8/8 (local e CI), sensíveis às mutações |
 | Nenhum acesso cross-tenant permitido | Bloqueado na leitura e na gravação (aplicação) e no relacionamento (banco) |
 
 ## 16. Critérios não atendidos
 
-Nenhum critério funcional está pendente. A **confirmação no CI** de que os testes de persistência e de isolamento passam fora desta máquina ainda está pendente, e por isso a fase está **In Review**, não Completed.
+Nenhum. Todos os critérios foram verificados localmente e no CI do GitHub.
 
 ## 17. Riscos identificados
 
@@ -204,7 +207,7 @@ Nenhum critério funcional está pendente. A **confirmação no CI** de que os t
 
 ## 18. Estado do Git
 
-- **Branch:** `feature/fase-02-persistencia`, somente local, criada a partir de `develop` (`fe5d1aa`).
+- **Branch:** `feature/fase-02-persistencia`, criada a partir de `develop` (`fe5d1aa`) e enviada a `origin` com o CI aprovado.
 - **Commits da fase:**
   - `6a01965` planejamento;
   - `5805a32` domínio;
@@ -216,7 +219,7 @@ Nenhum critério funcional está pendente. A **confirmação no CI** de que os t
 
 ## 19. Próxima fase recomendada
 
-1. **Antes de tudo:** push da branch, CI aprovado e integração em `develop`. Só então a Fase 02 passa para Completed.
+1. **Antes de tudo:** integrar `feature/fase-02-persistencia` em `develop` por PR (com autorização).
 2. **Fase 03, Identidade e autenticação:**
    - ADR da estratégia de sessão da Web e de autenticação da API (cookies × tokens) e da recuperação de senha.
    - ASP.NET Core Identity com chave `Guid` no mesmo `DbContext`.

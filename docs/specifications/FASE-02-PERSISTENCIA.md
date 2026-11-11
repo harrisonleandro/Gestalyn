@@ -1,6 +1,6 @@
 # Fase 02: Persistência e modelo de domínio
 
-- **Estado:** In Review. Implementada e validada localmente; falta confirmar o CI no GitHub após o push. Decisões D1 a D4 aprovadas pelo responsável em 2026-11-10.
+- **Estado:** Completed. Validada localmente e no CI do GitHub (run 42927992315). Decisões D1 a D4 aprovadas pelo responsável em 2026-11-10.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9, Fase 02; seções 2.3 (multi-tenancy) e 6.5 (concorrência)
 - **Branch:** `feature/fase-02-persistencia` (a partir de `develop`)
 
@@ -160,7 +160,7 @@ Todos os critérios de aceitação verificados com evidência (local e CI), test
 | F02-012 | Completed | `PersistenceTests`: 7 testes |
 | F02-013 | Completed | `TenantIsolationTests`: 8 testes, sensíveis às mutações (veja o relatório) |
 | Health check | Completed | `/health` com `database`: 200 com o banco no ar, 503 com o banco parado; 3 testes de API |
-| CI | **In Review** | Depende do push de `feature/fase-02-persistencia` |
+| CI | Completed | [run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315): 23/23 e 22/22 no `ubuntu-latest` |
 
 Ajustes feitos durante a implementação, todos dentro das decisões aprovadas:
 

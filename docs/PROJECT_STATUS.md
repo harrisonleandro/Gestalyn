@@ -8,14 +8,14 @@
 
 ## Fase atual
 
-**Fase 02, Persistência e modelo de domínio: In Review.** A implementação está concluída e validada localmente, com testes contra PostgreSQL real e testes de mutação. Falta confirmar o CI no GitHub, que depende do push de `feature/fase-02-persistencia`. A Fase 01 está Completed.
+**Fase 02, Persistência e modelo de domínio: Completed.** Critérios verificados localmente e no CI do GitHub ([run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315)). A Fase 03 só começa com autorização explícita do responsável.
 
 ## Estado das fases
 
 | Fase | Nome | Estado | Especificação | Relatório |
 |---|---|---|---|---|
 | 01 | Fundação da solução .NET | Completed | [FASE-01-FUNDACAO.md](specifications/FASE-01-FUNDACAO.md) | [FASE-01-RELATORIO.md](reports/FASE-01-RELATORIO.md) |
-| 02 | Persistência e modelo de domínio | In Review | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
+| 02 | Persistência e modelo de domínio | Completed | [FASE-02-PERSISTENCIA.md](specifications/FASE-02-PERSISTENCIA.md) | [FASE-02-RELATORIO.md](reports/FASE-02-RELATORIO.md) |
 | 03 | Identidade e autenticação | Not Started | — | — |
 | 04 | Organizações e permissões | Not Started | — | — |
 | 05 | Projetos e equipes | Not Started | — | — |
@@ -64,20 +64,19 @@ Evidências de cada tarefa estão na [especificação da Fase 01](specifications
 | F02-009 | Implementar auditoria básica de persistência | Completed |
 | F02-010 | Configurar índices | Completed |
 | F02-011 | Implementar restrições de integridade | Completed |
-| F02-012 | Testar persistência | In Review (local aprovado; CI pendente) |
-| F02-013 | Testar isolamento multi-tenant | In Review (local aprovado; CI pendente) |
+| F02-012 | Testar persistência | Completed |
+| F02-013 | Testar isolamento multi-tenant | Completed |
 
 Evidências na [especificação da Fase 02](specifications/FASE-02-PERSISTENCIA.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-02-RELATORIO.md).
 
 ## Tarefas pendentes
 
-- Enviar `feature/fase-02-persistencia` e confirmar o CI com Testcontainers no GitHub (depende de autorização de push).
 - Integrar `feature/fase-02-persistencia` em `develop` (PR ou merge, com autorização).
 - Confirmar se **Gestalyn** (nome do repositório) é o nome comercial; a especificação mestre o mantém como "pendente de definição".
 
 ## Bloqueios
 
-Nenhum bloqueio técnico. O encerramento da Fase 02 depende do CI no GitHub.
+Nenhum bloqueio técnico. O início da Fase 03 aguarda autorização do responsável.
 
 ## Testes executados
 
@@ -93,6 +92,7 @@ Nenhum bloqueio técnico. O encerramento da Fase 02 depende do CI no GitHub.
 | Local (Windows, SDK 10.0.404, Docker 29.8.2) | 2026-11-10 23:50 | `f803464` (`feature/fase-02-persistencia`) | restore exit 0 · build Release 0 avisos e 0 erros · testes 45/45 (23 unitários, 22 de integração com PostgreSQL 18) |
 | GitHub Actions (`ubuntu-latest`), `main` | 2026-11-10 | `c6bd32a` | [run 42901411495](https://github.com/harrisonleandro/Gestalyn/actions/runs/42901411495): success |
 | GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-10 | `26e4b5c` | [run 42913460175](https://github.com/harrisonleandro/Gestalyn/actions/runs/42913460175): success, 12/12 e 6/6 |
+| GitHub Actions (`ubuntu-latest`), `feature/fase-02-persistencia` | 2026-11-11 | `085d0f1` | [run 42927992315](https://github.com/harrisonleandro/Gestalyn/actions/runs/42927992315): success, 0 avisos, 23/23 e 22/22 (PostgreSQL via Testcontainers) |
 
 ## Decisões recentes
 
@@ -111,5 +111,5 @@ Nenhum bloqueio técnico. O encerramento da Fase 02 depende do CI no GitHub.
 
 ## Próxima atividade
 
-1. Push de `feature/fase-02-persistencia` e verificação do CI (com autorização). Se aprovado, marcar a Fase 02 como Completed e integrar em `develop`.
+1. Integrar `feature/fase-02-persistencia` em `develop` (PR, com autorização).
 2. Fase 03 (Identidade e autenticação), somente após autorização. Os temas iniciais são a estratégia de sessão da Web e de tokens da API (ADR), o ASP.NET Core Identity com `Guid` e o autor das alterações na auditoria.
