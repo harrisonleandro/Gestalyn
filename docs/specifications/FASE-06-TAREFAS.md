@@ -1,6 +1,6 @@
 # Fase 06: Fases, marcos e tarefas
 
-- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-11.
+- **Estado:** Completed. Validada localmente e no CI, e integrada em `develop` pelo PR #7 (merge `8025a23`). Decisões D1 a D7 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 06), seções 4.3 e 4.4 (modelo funcional), 5.4 (contratos) e 7 (segurança: upload de arquivos)
 - **Branch:** `feature/fase-06-tarefas` (a partir de `develop`, com as Fases 01 a 05 integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -220,7 +220,7 @@ O nome da entidade no código será `ProjectTask`, para não colidir com `System
 | F06-011 | Completed | Tarefa arquivada somente leitura; projeto arquivado bloqueia tarefas, fases e marcos |
 | F06-012 | Completed | Filtros, ordenações e paginação; `List_FiltersSortsAndPaginates` |
 | F06-013 | Completed | 40 casos unitários novos e 19 testes de integração novos; 2 mutações detectadas |
-| CI | **In Review** | Depende do push de `feature/fase-06-tarefas`, autorizado pelo responsável |
+| CI | Completed | [run 43136119632](https://github.com/harrisonleandro/Gestalyn/actions/runs/43136119632): success, 0 avisos, 99/99 e 96/96; merge do PR #7 em `develop` (`8025a23`) |
 
 Ajustes feitos durante a implementação, dentro das decisões aprovadas:
 

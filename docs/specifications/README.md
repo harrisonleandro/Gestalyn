@@ -8,7 +8,7 @@
 | [FASE-03-IDENTIDADE.md](FASE-03-IDENTIDADE.md) | Especificação da Fase 03: identidade e autenticação (Completed). |
 | [FASE-04-ORGANIZACOES.md](FASE-04-ORGANIZACOES.md) | Especificação da Fase 04: organizações e permissões (Completed). |
 | [FASE-05-PROJETOS.md](FASE-05-PROJETOS.md) | Especificação da Fase 05: projetos e equipes (Completed). |
-| [FASE-06-TAREFAS.md](FASE-06-TAREFAS.md) | Especificação da Fase 06: fases, marcos e tarefas (In Review). |
+| [FASE-06-TAREFAS.md](FASE-06-TAREFAS.md) | Especificação da Fase 06: fases, marcos e tarefas (Completed). |
 
 Cada fase recebe um documento próprio (`FASE-NN-<TEMA>.md`) antes da implementação, com objetivo, escopo, fora de escopo, dependências, tarefas, arquivos previstos, critérios de aceitação, estratégia de testes, riscos e definição de conclusão (seção 12, etapa B, da especificação mestre).
 
