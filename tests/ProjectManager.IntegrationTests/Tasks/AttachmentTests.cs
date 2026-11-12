@@ -102,6 +102,8 @@ public sealed class AttachmentTests : IDisposable
     {
         var workspace = await _kit.CreateWorkspaceAsync();
         var viewer = await _kit.AddTeamMemberAsync(workspace, "Viewer");
+        var outsideTheTeam = await _kit.Organizations.CreateUserAsync();
+        await _kit.Organizations.AddMemberAsync(workspace.Owner, workspace.OrganizationId, outsideTheTeam, "Member");
         var intruder = await _kit.Organizations.CreateUserAsync();
         var intruderOrganization = await _kit.Organizations.CreateOrganizationAsync(intruder);
         var task = await _kit.CreateTaskAsync(workspace, "Confidencial");
@@ -116,6 +118,12 @@ public sealed class AttachmentTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, viewerDownloads.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, viewerUploads.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, viewerDeletes.StatusCode);
+
+        // Membro da organização fora da equipe: o projeto é invisível para ele, e o anexo também.
+        using var outsiderLists = await _kit.SendToTaskAsync(HttpMethod.Get, workspace, task.Id, "/attachments", outsideTheTeam);
+        using var outsiderDownloads = await _kit.SendToTaskAsync(HttpMethod.Get, workspace, task.Id, contentPath, outsideTheTeam);
+        Assert.Equal(HttpStatusCode.NotFound, outsiderLists.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, outsiderDownloads.StatusCode);
 
         foreach (var organizationId in new[] { intruderOrganization.Id, workspace.OrganizationId })
         {

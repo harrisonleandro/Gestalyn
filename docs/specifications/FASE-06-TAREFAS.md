@@ -1,6 +1,6 @@
 # Fase 06: Fases, marcos e tarefas
 
-- **Estado:** In Progress. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-11.
+- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 06), seções 4.3 e 4.4 (modelo funcional), 5.4 (contratos) e 7 (segurança: upload de arquivos)
 - **Branch:** `feature/fase-06-tarefas` (a partir de `develop`, com as Fases 01 a 05 integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -202,3 +202,32 @@ O nome da entidade no código será `ProjectTask`, para não colidir com `System
 - ADR-011 registrado.
 - Documentação atualizada: `docs/api/TASKS.md`, README, AGENTS.md, ARCHITECTURE, `PROJECT_STATUS.md` e relatório da Fase 06.
 - Alterações integradas por PR.
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F06-001 | Completed | Fases com datas, reordenação em transação e exclusão só sem tarefas; `Phases_AreCreatedInOrder_EditedReordered_AndDeletedOnlyWithoutTasks` |
+| F06-002 | Completed | Marcos com fase do mesmo projeto e data em que foi atingido; `Milestones_UsePhasesOfTheSameProject_TrackReaching_AndKeepTheirTasks` |
+| F06-003 | Completed | `ProjectTask` com número por projeto; `[TaskPermission]`; `Create_NumbersTasksPerProject_WithPhaseMilestoneLabelsAndAssignees`, `ConcurrentCreation_NeverRepeatsNumbers` |
+| F06-004 | Completed | `TaskAssignment` com FK composta para a equipe e cascata; `Assignees_MustBeOnTheTeam_AndLeaveTasksWhenTheyLeaveTheTeam` |
+| F06-005 | Completed | `Priority` compartilhada; ordenação pela ordem da enumeração |
+| F06-006 | Completed | Prazo; filtros `dueBefore`, `dueAfter` e `overdue` |
+| F06-007 | Completed | Comentários com regras de autoria; `Comments_AreEditedOnlyByTheAuthor_AndDeletedByTheAuthorOrAManager` |
+| F06-008 | Completed | `TaskLabel` com as regras de `Labels` |
+| F06-009 | Completed | Dependências no mesmo projeto, sem duplicatas nem ciclos; `Dependencies_RejectSelfDuplicatesOtherProjectsAndCycles` |
+| F06-010 | Completed | `IFileStorage` e `LocalFileStorage`; `AttachmentTests` (4) e `AttachmentFilesTests` |
+| F06-011 | Completed | Tarefa arquivada somente leitura; projeto arquivado bloqueia tarefas, fases e marcos |
+| F06-012 | Completed | Filtros, ordenações e paginação; `List_FiltersSortsAndPaginates` |
+| F06-013 | Completed | 40 casos unitários novos e 19 testes de integração novos; 2 mutações detectadas |
+| CI | **In Review** | Depende do push de `feature/fase-06-tarefas`, autorizado pelo responsável |
+
+Ajustes feitos durante a implementação, dentro das decisões aprovadas:
+
+1. **Um commit para fases, marcos, tarefas, comentários e dependências, e outro para anexos:** o plano previa quatro, mas a exclusão de fases e marcos depende das tarefas, e comentários e dependências entraram na mesma migration (`AddPlanningAndTasks`). Os anexos ficaram em migration e commit próprios (`AddTaskAttachments`).
+2. **Filtro "minhas tarefas":** `assignedToMe=true` em vez de `assignee=me`, para não misturar um texto com o `assigneeId` (UUID).
+3. **Regras de etiquetas unificadas em `Labels`:** valem para projetos e tarefas. A mensagem de limite passou a ser "São permitidas no máximo 20 etiquetas".
+4. **Chave alternativa `(organization_id, project_id, user_id)` em `project_members`:** é o alvo da FK dos responsáveis e substituiu o índice simples `(organization_id, project_id)`, que ficou redundante.
+5. **Teste de download por membro da organização fora da equipe:** acrescentado quando a mutação no download mostrou que o filtro de organização sozinho bastava para os testes entre organizações. Agora a remoção do `[TaskPermission]` no download é detectada.
+6. **Responsáveis atribuídos no mesmo instante:** a ordem é desempatada pelo nome, e o defeito apareceu num teste. O caminho de desenvolvimento dos anexos passou a ser `%LOCALAPPDATA%/Gestalyn/storage`.
+7. **Docker parado no início da validação:** os testes de integração falharam ao conectar. O Docker Desktop foi iniciado, e os testes rodaram em seguida.

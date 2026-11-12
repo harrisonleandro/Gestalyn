@@ -149,6 +149,28 @@ erDiagram
 - `project_tags` (chave `(project_id, normalized_name)`) e `project_repositories` (URL única por projeto) seguem o projeto. O projeto arquivado (`archived_at`) fica somente leitura.
 - Acesso efetivo: permissões da organização (`projects.read_all`, `projects.manage_all`) somadas às do papel na equipe. Rotas por ID recebem a organização pelo cabeçalho `X-Gestalyn-Organization` ([ADR-010](../decisions/ADR-010-PROJETOS-E-EQUIPES.md)).
 
+### 3.5 Fases, marcos e tarefas (Fase 06)
+
+```mermaid
+erDiagram
+    projects ||--o{ project_phases : "(organization_id, project_id)"
+    projects ||--o{ milestones : "(organization_id, project_id)"
+    project_phases ||--o{ milestones : "(project_id, phase_id)"
+    projects ||--o{ tasks : "(organization_id, project_id)"
+    project_phases ||--o{ tasks : "(project_id, phase_id)"
+    milestones ||--o{ tasks : "(project_id, milestone_id)"
+    tasks ||--o{ task_assignments : "(organization_id, project_id, task_id)"
+    project_members ||--o{ task_assignments : "(organization_id, project_id, user_id), cascata"
+    tasks ||--o{ task_labels : "(organization_id, project_id, task_id)"
+    tasks ||--o{ task_comments : "(organization_id, project_id, task_id)"
+    tasks ||--o{ task_dependencies : "task_id e depends_on_task_id, mesmo project_id"
+    tasks ||--o{ task_attachments : "(organization_id, project_id, task_id)"
+```
+
+- Tarefa com número sequencial por projeto (`next_task_number` com `xmin`), fase e marco do mesmo projeto e sem estado até o workflow da Fase 07.
+- Responsáveis só da equipe do projeto (cascata ao sair dela). As dependências ficam no mesmo projeto e não podem formar ciclos, o que é verificado numa transação serializável.
+- Anexos em `IFileStorage` (disco local, chave `attachments/{organização}/{anexo}`), com tipo conferido pelo conteúdo e download só pela API ([ADR-011](../decisions/ADR-011-TAREFAS-E-ANEXOS.md)).
+
 ## 4. Módulos (evolução prevista)
 
 A modularização será **vertical por contexto de negócio** dentro de cada camada (por exemplo `Application/Projects`, `Application/Tasks`, `Infrastructure/Persistence/Projects`). Cada módulo expõe seus casos de uso pela camada `Application` e não acessa diretamente os dados de outro módulo. A comunicação entre módulos ocorre por interfaces de aplicação ou eventos de domínio.
@@ -214,7 +236,9 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | Reavaliação de Row-Level Security | 13 |
 | ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |
 | ~~Papéis, permissões e convites~~ (ADR-009) | 04 (concluída) |
-| ~~Acesso a projetos, papéis de projeto e cabeçalho de organização~~ (ADR-010) | 05 |
+| ~~Acesso a projetos, papéis de projeto e cabeçalho de organização~~ (ADR-010) | 05 (concluída) |
+| ~~Fases, marcos, tarefas e armazenamento de anexos~~ (ADR-011) | 06 |
+| Armazenamento de anexos em object storage compatível com S3 | 14 |
 | Cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso; papéis de projeto | 05 |
 | Credenciais de agentes, escopos e idempotência | 10 |
 | Armazenamento seguro de credenciais na CLI | 11 |
