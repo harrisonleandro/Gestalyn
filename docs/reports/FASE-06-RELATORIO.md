@@ -3,7 +3,7 @@
 - **Data:** 2026-11-12
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29
 - **Branch:** `feature/fase-06-tarefas` (a partir de `develop`, com as Fases 01 a 05 integradas)
-- **Estado:** **In Review.** Critérios verificados localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`.
+- **Estado:** **Completed.** Critérios verificados localmente e no CI; integrada em `develop` pelo PR #7 (merge `8025a23`).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -149,7 +149,6 @@ Nenhuma. A verificação de tipos de arquivo usa assinaturas conhecidas e a vali
 
 ## 14. Pendências
 
-- Push de `feature/fase-06-tarefas`, CI e PR para `develop` (com autorização).
 - Estados das tarefas e histórico de estados: Fase 07. Histórico de alterações: Fase 08.
 - Armazenamento em S3 e migração dos arquivos: Fase 14. Antivírus e cotas: Fases 13 e 14.
 - Interface Web (Fase 09), tarefas por agentes (Fase 10) e comandos `gestalyn task` (Fase 11).
@@ -166,7 +165,7 @@ Nenhuma. A verificação de tipos de arquivo usa assinaturas conhecidas e a vali
 
 ## 16. Critérios não atendidos
 
-Nenhum critério funcional deixou de ser atendido. A verificação no CI e a integração por PR (definição de conclusão) estão pendentes, por isso a fase está **In Review**.
+Nenhum. A definição de conclusão também foi cumprida: CI aprovado ([run 43136119632](https://github.com/harrisonleandro/Gestalyn/actions/runs/43136119632)) e integração por PR (PR #7, merge `8025a23`).
 
 ## 17. Riscos identificados
 
@@ -180,18 +179,18 @@ Nenhum critério funcional deixou de ser atendido. A verificação no CI e a int
 
 ## 18. Estado do Git
 
-- **Branch:** `feature/fase-06-tarefas`, somente local.
+- **Branch:** `feature/fase-06-tarefas`, enviada e incorporada pelo [PR #7](https://github.com/harrisonleandro/Gestalyn/pull/7).
 - **Commits:**
   - `93b95e9` (especificação);
   - `a87dd63` (fases, marcos, tarefas, comentários e dependências);
   - `b452cdb` (anexos);
   - commit de documentação de encerramento.
-- **`develop`:** `4072cb5`.
+- **PR #7 (Fase 06):** CI aprovado sobre `5cb5087`; merge `8025a23`.
+- **`develop`:** `8025a23`.
 
 ## 19. Próxima fase recomendada
 
-1. **Antes de tudo:** push desta branch, CI e PR para `develop`.
-2. **Fase 07, Workflow configurável e histórico:**
+1. **Fase 07, Workflow configurável e histórico:**
    - `WorkflowDefinition`, `WorkflowState` e `WorkflowTransition` por projeto, com os estados iniciais;
    - migration que coloca todas as tarefas existentes no estado inicial;
    - categorias e estados finais;
