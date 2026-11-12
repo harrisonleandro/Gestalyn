@@ -158,3 +158,32 @@ internal sealed class TaskDependencyConfiguration : IEntityTypeConfiguration<Tas
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+internal sealed class TaskAttachmentConfiguration : IEntityTypeConfiguration<TaskAttachment>
+{
+    public void Configure(EntityTypeBuilder<TaskAttachment> builder)
+    {
+        builder.ToTable("task_attachments", table => table.HasCheckConstraint("ck_task_attachments_size_positive", "size_bytes > 0"));
+        builder.ConfigureEntityBase();
+
+        builder.Property(attachment => attachment.FileName).HasMaxLength(AttachmentFiles.FileNameMaxLength).IsRequired();
+        builder.Property(attachment => attachment.ContentType).HasMaxLength(TaskAttachment.ContentTypeMaxLength).IsRequired();
+        builder.Property(attachment => attachment.Sha256).HasMaxLength(64).IsFixedLength().IsRequired();
+        builder.Property(attachment => attachment.StorageKey).HasMaxLength(TaskAttachment.StorageKeyMaxLength).IsRequired();
+
+        builder.HasIndex(attachment => attachment.StorageKey).IsUnique();
+        builder.HasIndex(attachment => new { attachment.TaskId, attachment.CreatedAt });
+
+        // Restrict: apagar a linha sem apagar o arquivo deixaria órfãos; a remoção passa pelo serviço.
+        builder.HasOne<ProjectTask>()
+            .WithMany()
+            .HasForeignKey(attachment => new { attachment.OrganizationId, attachment.ProjectId, attachment.TaskId })
+            .HasPrincipalKey(task => new { task.OrganizationId, task.ProjectId, task.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(attachment => attachment.UploadedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}

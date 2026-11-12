@@ -23,6 +23,9 @@ public sealed class ApiFactory(
 
     public TestLogCollector Logs { get; } = new();
 
+    /// <summary>Diretório temporário e exclusivo desta instância para os anexos.</summary>
+    public string AttachmentsRoot { get; } = Path.Combine(Path.GetTempPath(), "gestalyn-tests", Guid.NewGuid().ToString("N"));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -39,6 +42,7 @@ public sealed class ApiFactory(
             ["Email:FromAddress"] = "nao-responda@gestalyn.test",
             // Limite alto: apenas o teste de rate limiting usa um limite baixo.
             ["RateLimiting:Auth:PermitLimit"] = "100000",
+            ["Storage:Attachments:RootPath"] = AttachmentsRoot,
         };
 
         foreach (var (key, value) in overrides ?? new Dictionary<string, string?>())
@@ -49,5 +53,15 @@ public sealed class ApiFactory(
         // Adicionado por último: prevalece sobre appsettings, user-secrets e variáveis de ambiente.
         builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(settings));
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (disposing && Directory.Exists(AttachmentsRoot))
+        {
+            Directory.Delete(AttachmentsRoot, recursive: true);
+        }
     }
 }

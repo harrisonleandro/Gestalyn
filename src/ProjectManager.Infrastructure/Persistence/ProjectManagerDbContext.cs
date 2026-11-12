@@ -43,6 +43,8 @@ public sealed class ProjectManagerDbContext(
 
     public DbSet<TaskDependency> TaskDependencies => Set<TaskDependency>();
 
+    public DbSet<TaskAttachment> TaskAttachments => Set<TaskAttachment>();
+
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
     public DbSet<ProjectTag> ProjectTags => Set<ProjectTag>();
