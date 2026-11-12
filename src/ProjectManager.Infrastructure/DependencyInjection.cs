@@ -7,14 +7,20 @@ using Microsoft.Extensions.Options;
 using ProjectManager.Application.Abstractions.Authentication;
 using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
+using ProjectManager.Application.Abstractions.Storage;
 using ProjectManager.Application.Organizations;
+using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
+using ProjectManager.Application.Tasks;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
 using ProjectManager.Infrastructure.Organizations;
 using ProjectManager.Infrastructure.Persistence;
+using ProjectManager.Infrastructure.Planning;
 using ProjectManager.Infrastructure.Projects;
+using ProjectManager.Infrastructure.Storage;
+using ProjectManager.Infrastructure.Tasks;
 
 namespace ProjectManager.Infrastructure;
 
@@ -50,6 +56,15 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IProjectAccess, ProjectAccessResolver>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IPlanningService, PlanningService>();
+        services.AddScoped<ITaskService, TaskService>();
+        services.AddScoped<IAttachmentService, AttachmentService>();
+
+        services.AddOptions<StorageOptions>()
+            .BindConfiguration(StorageOptions.SectionName)
+            .Validate(options => !string.IsNullOrWhiteSpace(options.RootPath), $"Configure o diretório dos anexos em '{StorageOptions.SectionName}:RootPath'.")
+            .ValidateOnStart();
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

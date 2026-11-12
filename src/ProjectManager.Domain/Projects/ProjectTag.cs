@@ -8,8 +8,8 @@ namespace ProjectManager.Domain.Projects;
 /// </summary>
 public sealed class ProjectTag : IOrganizationOwned
 {
-    public const int NameMaxLength = 50;
-    public const int MaxPerProject = 20;
+    public const int NameMaxLength = Labels.NameMaxLength;
+    public const int MaxPerProject = Labels.MaxPerItem;
 
     internal ProjectTag(Project project, string name)
     {
@@ -35,11 +35,7 @@ public sealed class ProjectTag : IOrganizationOwned
     public string NormalizedName { get; private set; }
 
     /// <summary>Forma usada para unicidade e filtros.</summary>
-    public static string Normalize(string name)
-    {
-        ArgumentNullException.ThrowIfNull(name);
-        return name.Trim().ToUpperInvariant();
-    }
+    public static string Normalize(string name) => Labels.NormalizeName(name);
 
     internal void ChangeSpelling(string name) => Name = name;
 }

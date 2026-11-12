@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Projects;
 using ProjectManager.Domain.Organizations;
+using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Infrastructure.Persistence;
 
@@ -40,7 +40,7 @@ internal sealed partial class ProjectService(
         }
 
         var project = new Project(actor.OrganizationId, request.Name, request.Description);
-        project.ChangePriority(request.Priority ?? ProjectPriority.Medium);
+        project.ChangePriority(request.Priority ?? Priority.Medium);
         project.Schedule(request.StartDate, request.DueDate);
         project.SetTags(request.Tags ?? []);
 
@@ -438,29 +438,8 @@ internal sealed partial class ProjectService(
          where member.ProjectId == projectId && member.IsResponsible
          select new ProjectResponsible(member.UserId, user.DisplayName)).SingleOrDefaultAsync(cancellationToken);
 
-    /// <summary>
-    /// Grava as alterações. Concorrência (<c>xmin</c>), unicidade e vínculos removidos ao mesmo tempo
-    /// viram conflito; qualquer outro erro continua sendo exceção.
-    /// </summary>
-    private async Task<string?> TrySaveAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return null;
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return ConcurrencyMessage;
-        }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException
-        {
-            SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.ForeignKeyViolation,
-        })
-        {
-            return ConcurrencyMessage;
-        }
-    }
+    private async Task<string?> TrySaveAsync(CancellationToken cancellationToken) =>
+        await dbContext.TrySaveChangesAsync(cancellationToken) ? null : ConcurrencyMessage;
 
     private static ProjectDetails ToDetails(Project project, ProjectResponsible? responsible, ProjectAccessGrant access) =>
         new(

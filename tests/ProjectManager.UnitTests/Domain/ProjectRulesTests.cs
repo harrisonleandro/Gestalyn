@@ -1,6 +1,7 @@
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Projects;
 using ProjectManager.Domain.Organizations;
+using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 
 namespace ProjectManager.UnitTests.Domain;
@@ -15,7 +16,7 @@ public sealed class ProjectRulesTests
     {
         var project = new Project(OrganizationId, "Projeto");
 
-        Assert.Equal(ProjectPriority.Medium, project.Priority);
+        Assert.Equal(Priority.Medium, project.Priority);
         Assert.False(project.IsArchived);
     }
 
@@ -123,7 +124,7 @@ public sealed class ProjectRulesTests
         Assert.Equal((archivedAt, userId), (project.ArchivedAt, project.ArchivedByUserId));
         Assert.Throws<InvalidOperationException>(() => project.Rename("Outro"));
         Assert.Throws<InvalidOperationException>(() => project.SetTags(["x"]));
-        Assert.Throws<InvalidOperationException>(() => project.ChangePriority(ProjectPriority.High));
+        Assert.Throws<InvalidOperationException>(() => project.ChangePriority(Priority.High));
         Assert.Throws<InvalidOperationException>(() => project.AddPhase("Fase"));
     }
 
@@ -131,7 +132,9 @@ public sealed class ProjectRulesTests
     public void ProjectRoles_GrantTheirPermissions()
     {
         Assert.Equal(ProjectPermissions.All, ProjectPermissions.For(ProjectRole.Manager));
-        Assert.Equal([ProjectPermissions.Read, ProjectPermissions.Update], ProjectPermissions.For(ProjectRole.Contributor));
+        Assert.Equal(
+            [ProjectPermissions.Read, ProjectPermissions.Update, ProjectPermissions.TasksWrite, ProjectPermissions.TasksComment],
+            ProjectPermissions.For(ProjectRole.Contributor));
         Assert.Equal([ProjectPermissions.Read], ProjectPermissions.For(ProjectRole.Viewer));
     }
 

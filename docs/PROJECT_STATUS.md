@@ -8,7 +8,9 @@
 
 ## Fase atual
 
-**Fase 05, Projetos e equipes: Completed.** Validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais) e no CI ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): 0 avisos, 59/59 e 77/77), e integrada em `develop` pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) (merge `6a32f58`). A próxima é a Fase 06, que depende de autorização.
+**Fase 05, Projetos e equipes: Completed.** Validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais) e no CI ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): 0 avisos, 59/59 e 77/77), e integrada em `develop` pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) (merge `6a32f58`).
+
+**Fase 06, Fases, marcos e tarefas: In Review.** Implementada e validada localmente (195/195 testes, duas mutações detectadas e execução real da API com upload e download de anexo), em commits locais na branch `feature/fase-06-tarefas`. Faltam o push, o CI e a integração em `develop`.
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
@@ -21,7 +23,7 @@
 | 03 | Identidade e autenticação | Completed | [FASE-03-IDENTIDADE.md](specifications/FASE-03-IDENTIDADE.md) | [FASE-03-RELATORIO.md](reports/FASE-03-RELATORIO.md) |
 | 04 | Organizações e permissões | Completed | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
 | 05 | Projetos e equipes | Completed | [FASE-05-PROJETOS.md](specifications/FASE-05-PROJETOS.md) | [FASE-05-RELATORIO.md](reports/FASE-05-RELATORIO.md) |
-| 06 | Fases, marcos e tarefas | Not Started | — | — |
+| 06 | Fases, marcos e tarefas | In Review | [FASE-06-TAREFAS.md](specifications/FASE-06-TAREFAS.md) | [FASE-06-RELATORIO.md](reports/FASE-06-RELATORIO.md) |
 | 07 | Workflow configurável e histórico | Not Started | — | — |
 | 08 | Auditoria, documentação e dashboards | Not Started | — | — |
 | 09 | Interface web completa | Not Started | — | — |
@@ -127,9 +129,29 @@ Evidências na [especificação da Fase 04](specifications/FASE-04-ORGANIZACOES.
 
 Evidências na [especificação da Fase 05](specifications/FASE-05-PROJETOS.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-05-RELATORIO.md).
 
+## Tarefas da Fase 06
+
+| ID | Tarefa | Estado |
+|---|---|---|
+| F06-001 | Implementar fases | Completed |
+| F06-002 | Implementar marcos | Completed |
+| F06-003 | Implementar tarefas | Completed |
+| F06-004 | Implementar múltiplos responsáveis | Completed |
+| F06-005 | Implementar prioridades | Completed |
+| F06-006 | Implementar prazos | Completed |
+| F06-007 | Implementar comentários | Completed |
+| F06-008 | Implementar etiquetas | Completed |
+| F06-009 | Implementar dependências | Completed |
+| F06-010 | Implementar anexos | Completed |
+| F06-011 | Implementar arquivamento | Completed |
+| F06-012 | Implementar filtros e paginação | Completed |
+| F06-013 | Criar testes | In Review (local aprovado; CI pendente) |
+
+Evidências na [especificação da Fase 06](specifications/FASE-06-TAREFAS.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-06-RELATORIO.md).
+
 ## Tarefas pendentes
 
-Nenhuma tarefa pendente das Fases 01 a 05.
+- Fase 06: push de `feature/fase-06-tarefas`, CI e PR para `develop` (com autorização).
 
 ## Bloqueios
 
@@ -143,8 +165,8 @@ Nenhum bloqueio no desenvolvimento local. No GitHub:
 
 | Projeto | Testes | Cobertura |
 |---|---|---|
-| ProjectManager.UnitTests | 59 | Regras de dependência (7), domínio (42: entidades da Fase 02; organizações, papéis e convites; projetos, etiquetas, repositórios, arquivamento e acesso efetivo), CLI (5) e tokens (5) |
-| ProjectManager.IntegrationTests | 77 | Persistência (7), isolamento por filtro (8), autenticação (22), organizações (17: fluxos, convites com e-mail real, permissões, isolamento com usuários reais), projetos (17: fluxos, visibilidade, papéis de projeto, equipe, cabeçalho de organização, isolamento, FKs compostas e migração de dados), health check (3), OpenAPI (2) e erros (2). Requer Docker (PostgreSQL e Mailpit). |
+| ProjectManager.UnitTests | 99 | Regras de dependência (7), domínio (82: entidades da Fase 02; organizações, papéis e convites; projetos, etiquetas, repositórios, arquivamento e acesso efetivo; fases, marcos, tarefas, comentários, ciclos de dependência, tipos e nomes de anexos), CLI (5) e tokens (5) |
+| ProjectManager.IntegrationTests | 96 | Persistência (7), isolamento por filtro (8), autenticação (22), organizações (17: fluxos, convites com e-mail real, permissões, isolamento com usuários reais), projetos (17: fluxos, visibilidade, papéis de projeto, equipe, cabeçalho de organização, isolamento, FKs compostas e migração de dados), fases, marcos e tarefas (19: planejamento, número sob concorrência, responsáveis, filtros, comentários, dependências e ciclos, anexos protegidos, permissões e isolamento), health check (3), OpenAPI (2) e erros (2). Requer Docker (PostgreSQL e Mailpit). |
 
 ## Última validação
 
@@ -162,6 +184,7 @@ Nenhum bloqueio no desenvolvimento local. No GitHub:
 | GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-11 | `647573d` (merge do PR #3) | [run 43106099052](https://github.com/harrisonleandro/Gestalyn/actions/runs/43106099052): success |
 | GitHub Actions (`ubuntu-latest`), `feature/fase-04-organizacoes` | 2026-11-11 | `b7b170e` (cabeça do PR #4) | [run 43106437450](https://github.com/harrisonleandro/Gestalyn/actions/runs/43106437450) (manual): success |
 | GitHub Actions (`ubuntu-latest`), PR #5 | 2026-11-11 | `8659a93` | [run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): success, 0 avisos, 59/59 e 77/77 (PostgreSQL e Mailpit via Testcontainers) |
+| Local, `feature/fase-06-tarefas` | 2026-11-12 01:38 | `b452cdb` | restore exit 0 · build Release 0 avisos e 0 erros · testes 195/195 (99 unitários, 96 de integração) · API executada com upload e download de anexo · migrations aplicadas no banco local |
 | Local, `feature/fase-05-projetos` | 2026-11-11 21:40 | `c30da85` | restore exit 0 · build Release 0 avisos e 0 erros · testes 136/136 (59 unitários, 77 de integração) · API executada com usuários reais · migration aplicada no banco local |
 
 ## Decisões recentes
@@ -189,6 +212,9 @@ Nenhum bloqueio no desenvolvimento local. No GitHub:
 | 2026-11-11 | Fase 05 integrada em `develop` (PR #5, merge `6a32f58`) | [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) |
 | 2026-11-11 | Fase 05: visibilidade por equipe, papéis fixos de projeto, equipe só com membros da organização (FK com cascata), responsável único, repositórios só como metadados, etiquetas por projeto e cabeçalho `X-Gestalyn-Organization` (D1 a D5) | [ADR-010](decisions/ADR-010-PROJETOS-E-EQUIPES.md) |
 
+| 2026-11-12 | Fase 06: tarefas sem estado até o workflow, anexos em `IFileStorage` (disco local, tipos conferidos pelo conteúdo), fases e marcos do mesmo projeto, responsáveis da equipe, dependências sem ciclos, permissões de tarefa e número por projeto (D1 a D7) | [ADR-011](decisions/ADR-011-TAREFAS-E-ANEXOS.md) |
+
 ## Próxima atividade
 
-1. Fase 06 (fases, marcos e tarefas), somente após autorização: inspeção e especificação com as decisões para aprovação.
+1. Push de `feature/fase-06-tarefas`, CI e PR para `develop` (com autorização). Com o CI aprovado e as alterações integradas, a Fase 06 passa a Completed.
+2. Fase 07 (workflow configurável e histórico), somente após autorização.

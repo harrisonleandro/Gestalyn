@@ -342,6 +342,72 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("role_permissions", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Projects.Milestone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("PhaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("phase_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset?>("ReachedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reached_at");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_milestones");
+
+                    b.HasAlternateKey("ProjectId", "Id")
+                        .HasName("ak_milestones_project_id_id");
+
+                    b.HasIndex("OrganizationId", "ProjectId")
+                        .HasDatabaseName("ix_milestones_organization_id_project_id");
+
+                    b.HasIndex("ProjectId", "PhaseId")
+                        .HasDatabaseName("ix_milestones_project_id_phase_id");
+
+                    b.ToTable("milestones", (string)null);
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -374,6 +440,12 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<int>("NextTaskNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("next_task_number");
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uuid")
@@ -459,13 +531,13 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_project_members");
 
+                    b.HasAlternateKey("OrganizationId", "ProjectId", "UserId")
+                        .HasName("ak_project_members_organization_id_project_id_user_id");
+
                     b.HasIndex("ProjectId")
                         .IsUnique()
                         .HasDatabaseName("ix_project_members_responsible")
                         .HasFilter("is_responsible");
-
-                    b.HasIndex("OrganizationId", "ProjectId")
-                        .HasDatabaseName("ix_project_members_organization_id_project_id");
 
                     b.HasIndex("OrganizationId", "UserId")
                         .HasDatabaseName("ix_project_members_organization_id_user_id");
@@ -487,6 +559,15 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -505,6 +586,10 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -518,6 +603,9 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_project_phases");
 
+                    b.HasAlternateKey("ProjectId", "Id")
+                        .HasName("ak_project_phases_project_id_id");
+
                     b.HasIndex("OrganizationId", "ProjectId")
                         .HasDatabaseName("ix_project_phases_organization_id_project_id");
 
@@ -527,6 +615,8 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
 
                     b.ToTable("project_phases", null, t =>
                         {
+                            t.HasCheckConstraint("ck_project_phases_end_date_after_start", "end_date IS NULL OR start_date IS NULL OR end_date >= start_date");
+
                             t.HasCheckConstraint("ck_project_phases_position_positive", "position > 0");
                         });
                 });
@@ -620,6 +710,376 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_project_tags_organization_id_project_id");
 
                     b.ToTable("project_tags", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.ProjectTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<Guid?>("ArchivedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("archived_by_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<Guid?>("MilestoneId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("milestone_id");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("PhaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("phase_id");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("priority");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tasks");
+
+                    b.HasAlternateKey("OrganizationId", "ProjectId", "Id")
+                        .HasName("ak_tasks_organization_id_project_id_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_tasks_created_by_user_id");
+
+                    b.HasIndex("ProjectId", "DueDate")
+                        .HasDatabaseName("ix_tasks_project_id_due_date");
+
+                    b.HasIndex("ProjectId", "MilestoneId")
+                        .HasDatabaseName("ix_tasks_project_id_milestone_id");
+
+                    b.HasIndex("ProjectId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tasks_project_id_number");
+
+                    b.HasIndex("ProjectId", "PhaseId")
+                        .HasDatabaseName("ix_tasks_project_id_phase_id");
+
+                    b.ToTable("tasks", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_tasks_number_positive", "number > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskAssignment", b =>
+                {
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.HasKey("TaskId", "UserId")
+                        .HasName("pk_task_assignments");
+
+                    b.HasIndex("ProjectId", "UserId")
+                        .HasDatabaseName("ix_task_assignments_project_id_user_id");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_task_assignments_organization_id_project_id_task_id");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "UserId")
+                        .HasDatabaseName("ix_task_assignments_organization_id_project_id_user_id");
+
+                    b.ToTable("task_assignments", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("sha256")
+                        .IsFixedLength();
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by_user_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_attachments");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_task_attachments_storage_key");
+
+                    b.HasIndex("UploadedByUserId")
+                        .HasDatabaseName("ix_task_attachments_uploaded_by_user_id");
+
+                    b.HasIndex("TaskId", "CreatedAt")
+                        .HasDatabaseName("ix_task_attachments_task_id_created_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_task_attachments_organization_id_project_id_task_id");
+
+                    b.ToTable("task_attachments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_task_attachments_size_positive", "size_bytes > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_user_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("EditedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("edited_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_comments");
+
+                    b.HasIndex("AuthorUserId")
+                        .HasDatabaseName("ix_task_comments_author_user_id");
+
+                    b.HasIndex("TaskId", "CreatedAt")
+                        .HasDatabaseName("ix_task_comments_task_id_created_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_task_comments_organization_id_project_id_task_id");
+
+                    b.ToTable("task_comments", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskDependency", b =>
+                {
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid>("DependsOnTaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("depends_on_task_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.HasKey("TaskId", "DependsOnTaskId")
+                        .HasName("pk_task_dependencies");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_task_dependencies_created_by_user_id");
+
+                    b.HasIndex("DependsOnTaskId")
+                        .HasDatabaseName("ix_task_dependencies_depends_on_task_id");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "DependsOnTaskId")
+                        .HasDatabaseName("ix_task_dependencies_organization_id_project_id_depends_on_tas");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_task_dependencies_organization_id_project_id_task_id");
+
+                    b.ToTable("task_dependencies", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_task_dependencies_not_self", "task_id <> depends_on_task_id");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskLabel", b =>
+                {
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.HasKey("TaskId", "NormalizedName")
+                        .HasName("pk_task_labels");
+
+                    b.HasIndex("ProjectId", "NormalizedName")
+                        .HasDatabaseName("ix_task_labels_project_id_normalized_name");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_task_labels_organization_id_project_id_task_id");
+
+                    b.ToTable("task_labels", (string)null);
                 });
 
             modelBuilder.Entity("ProjectManager.Infrastructure.Identity.ApplicationUser", b =>
@@ -980,6 +1440,24 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_role_permissions_roles_organization_id_role_id");
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Projects.Milestone", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_milestones_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.ProjectPhase", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId", "PhaseId")
+                        .HasPrincipalKey("ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_milestones_project_phases_project_id_phase_id");
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Projects.Project", b =>
                 {
                     b.HasOne("ProjectManager.Domain.Organizations.Organization", null)
@@ -1042,6 +1520,130 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_project_tags_projects_organization_id_project_id");
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.ProjectTask", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tasks_users_created_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tasks_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Milestone", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId", "MilestoneId")
+                        .HasPrincipalKey("ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tasks_milestones_project_id_milestone_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.ProjectPhase", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId", "PhaseId")
+                        .HasPrincipalKey("ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tasks_project_phases_project_id_phase_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskAssignment", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany("Assignments")
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_assignments_tasks_organization_id_project_id_task_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.ProjectMember", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "UserId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_assignments_project_members_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskAttachment", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_attachments_users_uploaded_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_attachments_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskComment", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_comments_users_author_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_comments_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskDependency", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_dependencies_users_created_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "DependsOnTaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_dependencies_tasks_organization_id_project_id_depends_");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_dependencies_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskLabel", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany("Labels")
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_labels_tasks_organization_id_project_id_task_id");
+                });
+
             modelBuilder.Entity("ProjectManager.Infrastructure.Identity.UserRefreshToken", b =>
                 {
                     b.HasOne("ProjectManager.Infrastructure.Identity.UserSession", "Session")
@@ -1076,6 +1678,13 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.Navigation("Repositories");
 
                     b.Navigation("Tags");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Tasks.ProjectTask", b =>
+                {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("Labels");
                 });
 #pragma warning restore 612, 618
         }
