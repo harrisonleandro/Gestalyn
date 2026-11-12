@@ -46,4 +46,7 @@ public interface IProjectAccess
     /// visível para o usuário.
     /// </summary>
     Task<ProjectAccessGrant?> FindAsync(ActiveMembership membership, Guid projectId, CancellationToken cancellationToken);
+
+    /// <summary>Acesso ao projeto da tarefa, ou <c>null</c> se a tarefa não existe ou o projeto é invisível.</summary>
+    Task<ProjectAccessGrant?> FindByTaskAsync(ActiveMembership membership, Guid taskId, CancellationToken cancellationToken);
 }

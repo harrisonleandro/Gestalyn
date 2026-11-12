@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Projects;
+using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 using ProjectManager.IntegrationTests.Infrastructure;
 using ProjectManager.IntegrationTests.Organizations;
@@ -41,7 +42,7 @@ public sealed class ProjectTests : IDisposable
         });
 
         Assert.Equal("Portal do cliente", project.Name);
-        Assert.Equal(ProjectPriority.High, project.Priority);
+        Assert.Equal(Priority.High, project.Priority);
         Assert.Equal(new DateOnly(2026, 12, 1), project.StartDate);
         Assert.Equal(new DateOnly(2027, 3, 31), project.DueDate);
         Assert.Equal(["Cliente", "Web"], project.Tags);
@@ -65,7 +66,7 @@ public sealed class ProjectTests : IDisposable
         using var unknownPriority = await _kit.CreateAsync(owner, organization.Id, new { name = "Prioridade", priority = "Urgentíssima" });
         using var blankName = await _kit.CreateAsync(owner, organization.Id, new { name = "" });
 
-        Assert.Equal(ProjectPriority.Medium, project.Priority);
+        Assert.Equal(Priority.Medium, project.Priority);
         Assert.Equal(HttpStatusCode.BadRequest, dueBeforeStart.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, tooManyTags.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, unknownPriority.StatusCode);
@@ -103,7 +104,7 @@ public sealed class ProjectTests : IDisposable
         Assert.Null(cleared.Description);
         Assert.Null(cleared.DueDate);
         Assert.Equal(new DateOnly(2027, 1, 1), cleared.StartDate);
-        Assert.Equal(ProjectPriority.Critical, cleared.Priority);
+        Assert.Equal(Priority.Critical, cleared.Priority);
         Assert.Equal(["B", "c"], cleared.Tags);
         Assert.Equal(HttpStatusCode.BadRequest, invalidSchedule.StatusCode);
     }

@@ -70,7 +70,7 @@ public sealed class ProjectMigrationTests(PostgresDatabaseFixture database)
         Assert.Equal(all, PermissionsOf("Administrator"));
         Assert.Equal(["projects.create"], PermissionsOf("Member"));
         Assert.Empty(PermissionsOf("Viewer"));
-        Assert.Equal(Domain.Projects.ProjectPriority.Medium, priority);
+        Assert.Equal(Domain.Common.Priority.Medium, priority);
 
         await context.Database.EnsureDeletedAsync(CancellationToken);
 

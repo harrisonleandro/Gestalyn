@@ -7,16 +7,14 @@ using ProjectManager.Application.Projects;
 namespace ProjectManager.API.Organizations;
 
 /// <summary>
-/// Exige uma permissão de projeto na rota <c>{projectId}</c> (ADR-010). A organização vem do cabeçalho
+/// Exige uma permissão de projeto no recurso da rota (ADR-010 e ADR-011). A organização vem do cabeçalho
 /// <c>X-Gestalyn-Organization</c>: ausente ou inválido, 400. Sem acesso ao projeto (não membro da
-/// organização, projeto de outra organização ou fora da equipe sem <c>projects.read_all</c>), 404.
-/// Com acesso, mas sem a permissão, 403.
+/// organização, recurso de outra organização ou fora da equipe sem <c>projects.read_all</c>), 404.
+/// Com acesso, mas sem a permissão, 403. O acesso resolvido fica em <c>HttpContext.Items</c>.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-public sealed class ProjectPermissionAttribute(string permission) : Attribute, IAsyncAuthorizationFilter
+public abstract class ProjectResourcePermissionAttribute(string permission, string routeValueName, string notFoundTitle)
+    : Attribute, IAsyncAuthorizationFilter
 {
-    public const string RouteValueName = "projectId";
-
     public string Permission { get; } = permission;
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
@@ -41,13 +39,13 @@ public sealed class ProjectPermissionAttribute(string permission) : Attribute, I
         }
 
         var membership = httpContext.RequestServices.GetRequiredService<ITenantContext>().Membership;
-        var access = membership is not null && Guid.TryParse(httpContext.GetRouteValue(RouteValueName) as string, out var projectId)
-            ? await httpContext.RequestServices.GetRequiredService<IProjectAccess>().FindAsync(membership, projectId, httpContext.RequestAborted)
+        var access = membership is not null && Guid.TryParse(httpContext.GetRouteValue(routeValueName) as string, out var resourceId)
+            ? await FindAccessAsync(httpContext.RequestServices.GetRequiredService<IProjectAccess>(), membership, resourceId, httpContext.RequestAborted)
             : null;
 
         if (access is null)
         {
-            context.Result = CreateProblem(httpContext, StatusCodes.Status404NotFound, "Projeto não encontrado.", detail: null);
+            context.Result = CreateProblem(httpContext, StatusCodes.Status404NotFound, notFoundTitle, detail: null);
         }
         else if (!access.HasPermission(Permission))
         {
@@ -63,6 +61,12 @@ public sealed class ProjectPermissionAttribute(string permission) : Attribute, I
         }
     }
 
+    protected abstract Task<ProjectAccessGrant?> FindAccessAsync(
+        IProjectAccess projectAccess,
+        ActiveMembership membership,
+        Guid resourceId,
+        CancellationToken cancellationToken);
+
     private static ObjectResult CreateProblem(HttpContext httpContext, int statusCode, string title, string? detail)
     {
         var factory = httpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
@@ -70,4 +74,34 @@ public sealed class ProjectPermissionAttribute(string permission) : Attribute, I
 
         return new ObjectResult(problem) { StatusCode = statusCode };
     }
+}
+
+/// <summary>Permissão de projeto na rota <c>{projectId}</c>.</summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class ProjectPermissionAttribute(string permission)
+    : ProjectResourcePermissionAttribute(permission, RouteValueName, "Projeto não encontrado.")
+{
+    public const string RouteValueName = "projectId";
+
+    protected override Task<ProjectAccessGrant?> FindAccessAsync(
+        IProjectAccess projectAccess,
+        ActiveMembership membership,
+        Guid resourceId,
+        CancellationToken cancellationToken) =>
+        projectAccess.FindAsync(membership, resourceId, cancellationToken);
+}
+
+/// <summary>Permissão de projeto na rota <c>{taskId}</c>: o acesso é o do projeto da tarefa.</summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class TaskPermissionAttribute(string permission)
+    : ProjectResourcePermissionAttribute(permission, RouteValueName, "Tarefa não encontrada.")
+{
+    public const string RouteValueName = "taskId";
+
+    protected override Task<ProjectAccessGrant?> FindAccessAsync(
+        IProjectAccess projectAccess,
+        ActiveMembership membership,
+        Guid resourceId,
+        CancellationToken cancellationToken) =>
+        projectAccess.FindByTaskAsync(membership, resourceId, cancellationToken);
 }

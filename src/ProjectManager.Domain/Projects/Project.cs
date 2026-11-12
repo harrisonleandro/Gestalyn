@@ -2,15 +2,6 @@ using ProjectManager.Domain.Common;
 
 namespace ProjectManager.Domain.Projects;
 
-/// <summary>Prioridade de um projeto.</summary>
-public enum ProjectPriority
-{
-    Low,
-    Medium,
-    High,
-    Critical,
-}
-
 /// <summary>
 /// Projeto de uma organização. O arquivamento é lógico: o projeto arquivado continua no banco e fica
 /// somente leitura. A equipe (<see cref="ProjectMember"/>) é uma entidade própria.
@@ -32,7 +23,7 @@ public sealed class Project : Entity, IOrganizationOwned, IAuditable
         OrganizationId = Guard.RequiredId(organizationId, nameof(organizationId));
         Name = Guard.RequiredText(name, NameMaxLength, nameof(name));
         Description = Guard.OptionalText(description, DescriptionMaxLength, nameof(description));
-        Priority = ProjectPriority.Medium;
+        Priority = Priority.Medium;
     }
 
     public Guid OrganizationId { get; private set; }
@@ -41,7 +32,7 @@ public sealed class Project : Entity, IOrganizationOwned, IAuditable
 
     public string? Description { get; private set; }
 
-    public ProjectPriority Priority { get; private set; }
+    public Priority Priority { get; private set; }
 
     public DateOnly? StartDate { get; private set; }
 
@@ -52,6 +43,9 @@ public sealed class Project : Entity, IOrganizationOwned, IAuditable
     public Guid? ArchivedByUserId { get; private set; }
 
     public bool IsArchived => ArchivedAt is not null;
+
+    /// <summary>Próximo número de tarefa do projeto (ADR-011). Números não são reutilizados.</summary>
+    public int NextTaskNumber { get; private set; } = 1;
 
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -80,7 +74,7 @@ public sealed class Project : Entity, IOrganizationOwned, IAuditable
         Description = Guard.OptionalText(description, DescriptionMaxLength, nameof(description));
     }
 
-    public void ChangePriority(ProjectPriority priority)
+    public void ChangePriority(Priority priority)
     {
         EnsureNotArchived();
         Priority = Enum.IsDefined(priority)
@@ -132,32 +126,8 @@ public sealed class Project : Entity, IOrganizationOwned, IAuditable
     /// Valida e unifica nomes de etiquetas. Retorna <c>null</c> e a mensagem de erro quando o conjunto é
     /// inválido.
     /// </summary>
-    public static IReadOnlyDictionary<string, string>? NormalizeTags(IEnumerable<string> names, out string? error)
-    {
-        ArgumentNullException.ThrowIfNull(names);
-
-        var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var raw in names)
-        {
-            var name = raw?.Trim();
-            if (string.IsNullOrEmpty(name) || name.Length > ProjectTag.NameMaxLength)
-            {
-                error = $"Cada etiqueta deve ter de 1 a {ProjectTag.NameMaxLength} caracteres.";
-                return null;
-            }
-
-            result.TryAdd(ProjectTag.Normalize(name), name);
-        }
-
-        if (result.Count > ProjectTag.MaxPerProject)
-        {
-            error = $"Um projeto pode ter no máximo {ProjectTag.MaxPerProject} etiquetas.";
-            return null;
-        }
-
-        error = null;
-        return result;
-    }
+    public static IReadOnlyDictionary<string, string>? NormalizeTags(IEnumerable<string> names, out string? error) =>
+        Labels.Normalize(names, out error);
 
     /// <summary>Associa um repositório. A URL deve vir de <see cref="ProjectRepository.TryNormalizeUrl"/>.</summary>
     public ProjectRepository AddRepository(Uri url, string? name)
@@ -187,6 +157,13 @@ public sealed class Project : Entity, IOrganizationOwned, IAuditable
         return _repositories.RemoveAll(repository => repository.Id == repositoryId) > 0;
     }
 
+    /// <summary>Reserva o próximo número de tarefa. A trava otimista do projeto evita números repetidos.</summary>
+    public int AllocateTaskNumber()
+    {
+        EnsureNotArchived();
+        return NextTaskNumber++;
+    }
+
     /// <summary>Arquiva o projeto. Arquivar de novo não muda nada.</summary>
     public void Archive(Guid userId, DateTimeOffset now)
     {
@@ -205,6 +182,11 @@ public sealed class Project : Entity, IOrganizationOwned, IAuditable
     public ProjectPhase AddPhase(string name)
     {
         EnsureNotArchived();
+        if (_phases.Count >= ProjectPhase.MaxPerProject)
+        {
+            throw new InvalidOperationException($"Um projeto pode ter no máximo {ProjectPhase.MaxPerProject} fases.");
+        }
+
         var nextPosition = _phases.Count == 0 ? 1 : _phases.Max(phase => phase.Position) + 1;
         var phase = new ProjectPhase(this, name, nextPosition);
         _phases.Add(phase);

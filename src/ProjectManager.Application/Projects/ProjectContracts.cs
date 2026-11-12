@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 
 namespace ProjectManager.Application.Projects;
@@ -13,7 +14,7 @@ public sealed class CreateProjectRequest
     [StringLength(Project.DescriptionMaxLength, ErrorMessage = "A descrição deve ter no máximo {1} caracteres.")]
     public string? Description { get; init; }
 
-    public ProjectPriority? Priority { get; init; }
+    public Priority? Priority { get; init; }
 
     public DateOnly? StartDate { get; init; }
 
@@ -46,7 +47,7 @@ public sealed class UpdateProjectRequest
         }
     }
 
-    public ProjectPriority? Priority { get; init; }
+    public Priority? Priority { get; init; }
 
     public DateOnly? StartDate
     {
@@ -94,7 +95,7 @@ public sealed class ProjectListQuery
     [StringLength(ProjectTag.NameMaxLength)]
     public string? Tag { get; init; }
 
-    public ProjectPriority? Priority { get; init; }
+    public Priority? Priority { get; init; }
 
     public bool IncludeArchived { get; init; }
 }
@@ -131,7 +132,7 @@ public sealed class AddProjectRepositoryRequest
 public sealed record ProjectSummary(
     Guid Id,
     string Name,
-    ProjectPriority Priority,
+    Priority Priority,
     DateOnly? StartDate,
     DateOnly? DueDate,
     IReadOnlyList<string> Tags,
@@ -145,7 +146,7 @@ public sealed record ProjectDetails(
     Guid Id,
     string Name,
     string? Description,
-    ProjectPriority Priority,
+    Priority Priority,
     DateOnly? StartDate,
     DateOnly? DueDate,
     IReadOnlyList<string> Tags,

@@ -18,15 +18,20 @@ public static class ProjectPermissions
     public const string Update = "project.update";
     public const string Archive = "project.archive";
     public const string MembersManage = "project.members.manage";
+    public const string Plan = "project.plan";
+    public const string TasksWrite = "tasks.write";
+    public const string TasksComment = "tasks.comment";
+    public const string TasksArchive = "tasks.archive";
 
-    public static IReadOnlyList<string> All { get; } = [Read, Update, Archive, MembersManage];
+    public static IReadOnlyList<string> All { get; } = [Read, Update, Archive, MembersManage, Plan, TasksWrite, TasksComment, TasksArchive];
 
-    private static readonly IReadOnlyList<string> ContributorPermissions = [Read, Update];
+    private static readonly IReadOnlyList<string> ContributorPermissions = [Read, Update, TasksWrite, TasksComment];
     private static readonly IReadOnlyList<string> ViewerPermissions = [Read];
 
     /// <summary>
-    /// Gerente: tudo no projeto. Colaborador: ler e editar dados, etiquetas e repositórios.
-    /// Observador: somente leitura.
+    /// Gerente: tudo no projeto, inclusive fases, marcos e arquivamento de tarefas. Colaborador: ler e
+    /// editar dados, etiquetas e repositórios, criar e editar tarefas e comentar. Observador: somente
+    /// leitura (ADR-010 e ADR-011).
     /// </summary>
     public static IReadOnlyList<string> For(ProjectRole role) => role switch
     {

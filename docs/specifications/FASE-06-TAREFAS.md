@@ -1,6 +1,6 @@
 # Fase 06: Fases, marcos e tarefas
 
-- **Estado:** Planned. Aguarda a aprovação das decisões D1 a D7 pelo responsável.
+- **Estado:** In Progress. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 06), seções 4.3 e 4.4 (modelo funcional), 5.4 (contratos) e 7 (segurança: upload de arquivos)
 - **Branch:** `feature/fase-06-tarefas` (a partir de `develop`, com as Fases 01 a 05 integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -35,7 +35,7 @@ Implementar o gerenciamento operacional do trabalho dentro de cada projeto: fase
 - Antivírus nos anexos e cotas de armazenamento por organização: Fases 13 e 14.
 - Notificações (menções, atribuição): fora do MVP desta fase.
 
-## Decisões (aguardam aprovação)
+## Decisões (D1 a D7 aprovadas)
 
 | ID | Proposta | Alternativas |
 |---|---|---|

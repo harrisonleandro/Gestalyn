@@ -5,6 +5,7 @@ using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Projects;
+using ProjectManager.Domain.Tasks;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.Organizations;
 using ProjectManager.Infrastructure.Persistence.ChangeTracking;
@@ -29,6 +30,18 @@ public sealed class ProjectManagerDbContext(
     public DbSet<Project> Projects => Set<Project>();
 
     public DbSet<ProjectPhase> ProjectPhases => Set<ProjectPhase>();
+
+    public DbSet<Milestone> Milestones => Set<Milestone>();
+
+    public DbSet<ProjectTask> Tasks => Set<ProjectTask>();
+
+    public DbSet<TaskAssignment> TaskAssignments => Set<TaskAssignment>();
+
+    public DbSet<TaskLabel> TaskLabels => Set<TaskLabel>();
+
+    public DbSet<TaskComment> TaskComments => Set<TaskComment>();
+
+    public DbSet<TaskDependency> TaskDependencies => Set<TaskDependency>();
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 

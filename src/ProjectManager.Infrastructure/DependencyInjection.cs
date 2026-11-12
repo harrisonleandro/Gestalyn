@@ -8,13 +8,17 @@ using ProjectManager.Application.Abstractions.Authentication;
 using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Organizations;
+using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
+using ProjectManager.Application.Tasks;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
 using ProjectManager.Infrastructure.Organizations;
 using ProjectManager.Infrastructure.Persistence;
+using ProjectManager.Infrastructure.Planning;
 using ProjectManager.Infrastructure.Projects;
+using ProjectManager.Infrastructure.Tasks;
 
 namespace ProjectManager.Infrastructure;
 
@@ -50,6 +54,8 @@ public static class DependencyInjection
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IProjectAccess, ProjectAccessResolver>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IPlanningService, PlanningService>();
+        services.AddScoped<ITaskService, TaskService>();
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

@@ -13,6 +13,7 @@ internal sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
             table.HasCheckConstraint("ck_projects_due_date_after_start", "due_date IS NULL OR start_date IS NULL OR due_date >= start_date"));
         builder.ConfigureEntityBase();
         builder.Ignore(project => project.IsArchived);
+        builder.Property(project => project.NextTaskNumber).HasDefaultValue(1).HasSentinel(0);
 
         builder.Property(project => project.Name)
             .HasMaxLength(Project.NameMaxLength)
@@ -110,6 +111,9 @@ internal sealed class ProjectMemberConfiguration : IEntityTypeConfiguration<Proj
         builder.Property(member => member.Role).HasConversion<string>().HasMaxLength(16);
 
         builder.HasIndex(member => new { member.ProjectId, member.UserId }).IsUnique();
+
+        // Alvo da FK composta dos responsáveis por tarefas: só quem está na equipe.
+        builder.HasAlternateKey(member => new { member.OrganizationId, member.ProjectId, member.UserId });
 
         // Visibilidade: projetos em que o usuário está na equipe.
         builder.HasIndex(member => new { member.OrganizationId, member.UserId });
