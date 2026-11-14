@@ -93,6 +93,7 @@ Uma tarefa só fica `Completed` em `PROJECT_STATUS.md` quando seus critérios fo
 - Branches: `main` (estável), `develop` (integração), `feature/*`, `fix/*`, `hotfix/*`. Trabalho de fase acontece em `feature/*` a partir de `develop`.
 - Commits locais pequenos e descritivos são permitidos quando apropriados.
 - **Push, abertura de PR e merge em `main` exigem pedido explícito do responsável.**
+- `main` e `develop` são protegidas por rulesets: não há push direto. Toda mudança entra por PR, com o check "Build e testes" aprovado e os comentários resolvidos.
 - Nunca faça force push, não reescreva histórico, não descarte alterações do usuário e não commite segredos.
 - O repositório remoto ([harrisonleandro/Gestalyn](https://github.com/harrisonleandro/Gestalyn)) é **público**: tudo o que for enviado fica visível.
 - Pull Requests incluem objetivo, alterações, testes executados, evidências, riscos e pendências.

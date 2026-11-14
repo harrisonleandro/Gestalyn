@@ -197,7 +197,7 @@ Fluxo da seção 13 da especificação mestre: `main` (estável), `develop` (int
 
 - **`main`** está em `c6bd32a` (Fase 01) e só recebe `develop` por um PR de release, num marco definido pelo responsável. Não é sincronizada a cada fase.
 - **`develop`** reúne as Fases 01 a 06.
-- **Proteção:** nenhuma das duas tem regras de proteção no GitHub (verificado em 2026-11-12). A política recomendada (PR obrigatório, CI aprovado, comentários resolvidos, sem force push nem exclusão) está no plano da auditoria e depende de aprovação para ser aplicada.
+- **Proteção:** rulesets ativos desde 2026-11-14 nas duas branches: PR obrigatório com comentários resolvidos, check "Build e testes" do GitHub Actions obrigatório, sem force push nem exclusão. Em `main`, a branch também precisa estar atualizada antes do merge. Não há aprovação de revisor obrigatória enquanto houver um único mantenedor.
 
 ## Portas de desenvolvimento
 
