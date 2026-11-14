@@ -14,24 +14,30 @@
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
-**Correções da auditoria técnica de 2026-11-12: In Progress.** A auditoria do `develop` (`7a5c170`) confirmou cinco problemas. As correções estão em branches locais, ainda sem PR:
+**Correções da auditoria técnica de 2026-11-12: Completed.** A auditoria do `develop` (`7a5c170`) confirmou cinco problemas, todos corrigidos e integrados com o CI aprovado:
 
-| Achado | Branch | Estado |
+| Achado | Correção | Estado |
 |---|---|---|
-| P1: reuso de refresh token dentro da janela de 30 s (o invasor que usa o token primeiro mantém a sessão) | `fix/rotacao-refresh-token` ([ADR-012](decisions/ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md)) | In Review (local aprovado; CI e PR pendentes) |
-| P2: nome em branco no PATCH responde 500 (projeto, fase, marco e tarefa) | `fix/validacao-entrada` | In Review (local aprovado; CI e PR pendentes) |
-| P2: página muito alta responde 500 (projetos e tarefas) | `fix/validacao-entrada` | In Review (local aprovado; CI e PR pendentes) |
-| P2: `main` e `develop` sem proteção no GitHub | Configuração do repositório | Planned (depende de aprovação) |
-| P2: documentação desatualizada | `docs/sincronizar-documentacao` | In Review |
+| P1: reuso de refresh token dentro da janela de 30 s (o invasor que usa o token primeiro mantém a sessão) | [PR #9](https://github.com/harrisonleandro/Gestalyn/pull/9), merge `cf5bcc0` ([ADR-012](decisions/ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md)) | Completed |
+| P2: nome em branco no PATCH responde 500 (projeto, fase, marco e tarefa) | [PR #10](https://github.com/harrisonleandro/Gestalyn/pull/10), merge `67c8059` | Completed |
+| P2: página muito alta responde 500 (projetos e tarefas) | [PR #10](https://github.com/harrisonleandro/Gestalyn/pull/10), merge `67c8059` | Completed |
+| P2: `main` e `develop` sem proteção no GitHub | Rulesets "Proteção de develop" e "Proteção de main" (2026-11-14) | Completed |
+| P2: documentação desatualizada | [PR #11](https://github.com/harrisonleandro/Gestalyn/pull/11), merge `41cf693`, e este registro | Completed |
 
 ## Estado das branches
 
 | Branch | Commit | Conteúdo |
 |---|---|---|
 | `main` | `c6bd32a` | Fase 01. Recebe `develop` só por PR de release, num marco definido pelo responsável. |
-| `develop` | `7a5c170` | Fases 01 a 06 |
+| `develop` | `41cf693` | Fases 01 a 06 e correções da auditoria |
 
-Nenhuma das duas tem proteção no GitHub (verificado em 2026-11-12).
+**Proteção** (rulesets ativos desde 2026-11-14, sem exceções de bloqueio), nas duas branches:
+- não podem ser excluídas nem receber force push;
+- só recebem mudanças por PR, com os comentários de revisão resolvidos;
+- exigem o check "Build e testes", vindo do GitHub Actions;
+- `main` também exige a branch atualizada antes do merge.
+
+Não há aprovação de revisor obrigatória enquanto houver um único mantenedor.
 
 ## Estado das fases
 
@@ -170,8 +176,10 @@ Evidências na [especificação da Fase 06](specifications/FASE-06-TAREFAS.md#ex
 
 ## Tarefas pendentes
 
-- Correções da auditoria de 2026-11-12: push, CI e PR das branches `fix/rotacao-refresh-token`, `fix/validacao-entrada` e `docs/sincronizar-documentacao` (com autorização).
-- Proteção de `main` e `develop` no GitHub (com autorização).
+- Configurações recomendadas pela auditoria e ainda não aplicadas (dependem de decisão):
+  - alertas e atualizações de segurança do Dependabot;
+  - apagar a branch depois do merge;
+  - permitir só actions oficiais do GitHub e de criadores verificados.
 
 ## Bloqueios
 
@@ -209,6 +217,10 @@ Incidentes já resolvidos, mantidos como referência:
 | GitHub Actions (`ubuntu-latest`), `feature/fase-04-organizacoes` | 2026-11-11 | `b7b170e` (cabeça do PR #4) | [run 43106437450](https://github.com/harrisonleandro/Gestalyn/actions/runs/43106437450) (manual): success |
 | GitHub Actions (`ubuntu-latest`), PR #5 | 2026-11-11 | `8659a93` | [run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): success, 0 avisos, 59/59 e 77/77 (PostgreSQL e Mailpit via Testcontainers) |
 | GitHub Actions (`ubuntu-latest`), PR #7 | 2026-11-12 | `5cb5087` | [run 43136119632](https://github.com/harrisonleandro/Gestalyn/actions/runs/43136119632): success, 0 avisos, 99/99 e 96/96 (PostgreSQL e Mailpit via Testcontainers) |
+| GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-14 | `41cf693` (merges dos PRs #9, #10 e #11) | [run 43636303889](https://github.com/harrisonleandro/Gestalyn/actions/runs/43636303889): success, 0 avisos, 127/127 e 117/117 |
+| GitHub Actions (`ubuntu-latest`), PR #9 | 2026-11-14 | `a83dd0e` | [run 43636088042](https://github.com/harrisonleandro/Gestalyn/actions/runs/43636088042): success, 0 avisos, 114/114 e 101/101 |
+| GitHub Actions (`ubuntu-latest`), PR #10 | 2026-11-14 | `673425a` | [run 43636091061](https://github.com/harrisonleandro/Gestalyn/actions/runs/43636091061): success, 0 avisos, 112/112 e 112/112 |
+| Local, branches da auditoria combinadas | 2026-11-14 | `3f8d20a` (verificação local) | build Release 0 avisos · testes 244/244 (127 unitários, 117 de integração) · 5 mutações detectadas · API executada com o cenário do invasor |
 | Local, `feature/fase-06-tarefas` | 2026-11-12 01:38 | `b452cdb` | restore exit 0 · build Release 0 avisos e 0 erros · testes 195/195 (99 unitários, 96 de integração) · API executada com upload e download de anexo · migrations aplicadas no banco local |
 | Local, `feature/fase-05-projetos` | 2026-11-11 21:40 | `c30da85` | restore exit 0 · build Release 0 avisos e 0 erros · testes 136/136 (59 unitários, 77 de integração) · API executada com usuários reais · migration aplicada no banco local |
 
@@ -238,9 +250,10 @@ Incidentes já resolvidos, mantidos como referência:
 | 2026-11-11 | Fase 05: visibilidade por equipe, papéis fixos de projeto, equipe só com membros da organização (FK com cascata), responsável único, repositórios só como metadados, etiquetas por projeto e cabeçalho `X-Gestalyn-Organization` (D1 a D5) | [ADR-010](decisions/ADR-010-PROJETOS-E-EQUIPES.md) |
 
 | 2026-11-12 | Fase 06 integrada em `develop` (PR #7, merge `8025a23`) | [PR #7](https://github.com/harrisonleandro/Gestalyn/pull/7) |
+| 2026-11-14 | Rotação idempotente de refresh token: repetição só dentro de 10 s e com o sucessor ainda não usado; qualquer outro reuso revoga a sessão (auditoria, P1) | [ADR-012](decisions/ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md), [PR #9](https://github.com/harrisonleandro/Gestalyn/pull/9) |
+| 2026-11-14 | Proteção de `main` e `develop` por rulesets: PR obrigatório, CI "Build e testes" obrigatório, sem force push nem exclusão | Rulesets 27277722 e 27277724 |
 | 2026-11-12 | Fase 06: tarefas sem estado até o workflow, anexos em `IFileStorage` (disco local, tipos conferidos pelo conteúdo), fases e marcos do mesmo projeto, responsáveis da equipe, dependências sem ciclos, permissões de tarefa e número por projeto (D1 a D7) | [ADR-011](decisions/ADR-011-TAREFAS-E-ANEXOS.md) |
 
 ## Próxima atividade
 
-1. Concluir as correções da auditoria: proteção das branches, PRs com CI aprovado e merge em `develop`.
-2. Fase 07 (workflow configurável e histórico), somente após autorização e depois das correções da auditoria.
+1. Fase 07 (workflow configurável e histórico), somente após autorização.
