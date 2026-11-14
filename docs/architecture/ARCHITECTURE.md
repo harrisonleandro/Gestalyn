@@ -1,6 +1,6 @@
 # Arquitetura do Gestalyn
 
-> Estado: Fase 01 (fundação técnica). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
+> Estado: Fases 01 a 06 concluídas (fundação, persistência, identidade, organizações, projetos e tarefas). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
 
 ## 1. Visão geral
 
@@ -25,7 +25,8 @@ flowchart LR
         Domain["Domain<br/>entidades, regras, eventos"]
     end
 
-    DB[("PostgreSQL<br/>(fase futura)")]
+    DB[("PostgreSQL 18")]
+    Files[("Anexos<br/>disco local; S3 na Fase 14")]
 
     Web -- HTTP --> API
     CLI -- HTTP --> API
@@ -38,6 +39,7 @@ flowchart LR
     App --> Domain
     Infra --> Domain
     Infra -. EF Core .-> DB
+    Infra -. IFileStorage .-> Files
 ```
 
 ## 2. Camadas e dependências
@@ -177,7 +179,7 @@ A modularização será **vertical por contexto de negócio** dentro de cada cam
 
 Módulos previstos (especificação mestre, seção 4): identidade e organizações, autorização, projetos, tarefas, fluxos de trabalho configuráveis, auditoria e documentação, e agentes de IA.
 
-## 5. Aspectos transversais implementados na Fase 01
+## 5. Aspectos transversais (desde a Fase 01)
 
 ### 5.1 API
 
@@ -222,7 +224,7 @@ Detalhes no [ADR-006](../decisions/ADR-006-AUTENTICACAO-E-SESSAO.md), no [ADR-00
 | API | `AuthController` (`/api/v1/auth`), JwtBearer com verificação de sessão ativa a cada requisição, rate limiting por IP, `AuthorizeFilter` global |
 | Web | BFF: cookie HttpOnly com os tokens, renovação automática em navegações, páginas de conta (SSR estático com antiforgery), logout por POST |
 
-Usuários e sessões são **globais**, não pertencem a uma organização; por isso não implementam `IOrganizationOwned`. O vínculo com organizações chega na Fase 04, por membros.
+Usuários e sessões são **globais**, não pertencem a uma organização; por isso não implementam `IOrganizationOwned`. O vínculo com organizações é feito por `organization_members` (Fase 04).
 
 ## 6. Próximas decisões, por fase
 

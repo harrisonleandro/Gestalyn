@@ -2,7 +2,7 @@
 
 - **Estado:** Completed. Validada localmente e no CI, e integrada em `develop` pelo PR #5 (merge `6a32f58`). Decisões D1 a D5 aprovadas pelo responsável em 2026-11-11.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 05), seções 4.2 e 4.3 (modelo funcional) e 5.3 (contratos)
-- **Branch:** `feature/fase-05-projetos` (a partir de `feature/fase-04-organizacoes`; os PRs #3 e #4 estão abertos para `develop`)
+- **Branch:** `feature/fase-05-projetos` (a partir de `feature/fase-04-organizacoes`). No planejamento, os PRs #3 e #4 ainda estavam abertos; os dois foram incorporados em `develop` antes do PR #5.
 - **Pré-requisito para implementar:** decisões aprovadas. A integração em `develop` depende das Fases 03 e 04 integradas, com o CI aprovado.
 
 ## Objetivo
@@ -73,7 +73,9 @@ As rotas `/projects/{id}` exigem o cabeçalho `X-Gestalyn-Organization`. Não me
 
 ## Dependências
 
-| Item | Estado |
+> Estado no momento do planejamento (2026-11-11). Resultado: PR #3 incorporado (`647573d`), PR #4 incorporado (`55926bc`) e PR #5 desta fase incorporado (`6a32f58`).
+
+| Item | Estado no planejamento |
 |---|---|
 | Fase 04 (organizações, papéis e permissões) | In Review, PR #4 aberto; o CI do GitHub está na fila |
 | Fase 03 | Completed; merge do PR #3 autorizado, aguardando o CI |
