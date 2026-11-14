@@ -69,7 +69,7 @@ Permissões efetivas no projeto:
 - Em `description`, `startDate` e `dueDate`, enviar `null` limpa o valor; omitir o campo o mantém.
 - `tags` substitui o conjunto inteiro, e `[]` limpa.
 
-**Listar:** `?page=1&pageSize=50&tag=web&priority=High&includeArchived=false`. A ordem é por nome, e `pageSize` vai até 100.
+**Listar:** `?page=1&pageSize=50&tag=web&priority=High&includeArchived=false`. A ordem é por nome. `pageSize` vai de 1 a 100, e `page` de 1 a 21.474.837 (a maior página cujo deslocamento cabe num inteiro de 32 bits); fora desses limites, a resposta é 400. Uma página além do fim responde 200 com a lista vazia e o total correto.
 
 ```json
 { "items": [ { "id": "…", "name": "Portal", "priority": "High", "startDate": "2026-12-01", "dueDate": null,

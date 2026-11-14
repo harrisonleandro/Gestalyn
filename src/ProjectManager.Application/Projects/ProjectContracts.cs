@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using ProjectManager.Application.Common;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 
@@ -33,6 +34,7 @@ public sealed class UpdateProjectRequest
     private readonly DateOnly? _startDate;
     private readonly DateOnly? _dueDate;
 
+    [NotWhiteSpace(ErrorMessage = "Informe o nome do projeto.")]
     [StringLength(Project.NameMaxLength, MinimumLength = 1, ErrorMessage = "O nome deve ter de {2} a {1} caracteres.")]
     public string? Name { get; init; }
 
@@ -81,17 +83,8 @@ public sealed class UpdateProjectRequest
     public bool HasDueDate { get; private init; }
 }
 
-public sealed class ProjectListQuery
+public sealed class ProjectListQuery : PageQuery
 {
-    public const int DefaultPageSize = 50;
-    public const int MaxPageSize = 100;
-
-    [Range(1, int.MaxValue, ErrorMessage = "A página deve ser maior que zero.")]
-    public int Page { get; init; } = 1;
-
-    [Range(1, MaxPageSize, ErrorMessage = "O tamanho da página deve ficar entre {1} e {2}.")]
-    public int PageSize { get; init; } = DefaultPageSize;
-
     [StringLength(ProjectTag.NameMaxLength)]
     public string? Tag { get; init; }
 

@@ -174,7 +174,7 @@ internal sealed partial class TaskService(
 
         var totalCount = await tasks.CountAsync(cancellationToken);
         var rows = await Sort(tasks, query.SortBy, query.SortDirection)
-            .Skip((query.Page - 1) * query.PageSize)
+            .Skip(query.CalculateOffset())
             .Take(query.PageSize)
             .Select(task => new
             {

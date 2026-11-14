@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using ProjectManager.Application.Common;
 using ProjectManager.Domain.Projects;
 
 namespace ProjectManager.Application.Planning;
@@ -25,6 +26,7 @@ public sealed class UpdatePhaseRequest
     private readonly DateOnly? _startDate;
     private readonly DateOnly? _endDate;
 
+    [NotWhiteSpace(ErrorMessage = "Informe o nome da fase.")]
     [StringLength(ProjectPhase.NameMaxLength, MinimumLength = 1, ErrorMessage = "O nome deve ter de {2} a {1} caracteres.")]
     public string? Name { get; init; }
 
@@ -111,6 +113,7 @@ public sealed class UpdateMilestoneRequest
     private readonly DateOnly? _dueDate;
     private readonly Guid? _phaseId;
 
+    [NotWhiteSpace(ErrorMessage = "Informe o nome do marco.")]
     [StringLength(Milestone.NameMaxLength, MinimumLength = 1, ErrorMessage = "O nome deve ter de {2} a {1} caracteres.")]
     public string? Name { get; init; }
 

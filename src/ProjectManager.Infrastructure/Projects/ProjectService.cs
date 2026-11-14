@@ -92,7 +92,7 @@ internal sealed partial class ProjectService(
         var rows = await projects
             .OrderBy(p => p.Name)
             .ThenBy(p => p.Id)
-            .Skip((query.Page - 1) * query.PageSize)
+            .Skip(query.CalculateOffset())
             .Take(query.PageSize)
             .Select(p => new
             {

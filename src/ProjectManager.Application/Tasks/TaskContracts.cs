@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using ProjectManager.Application.Common;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Tasks;
 
@@ -39,6 +40,7 @@ public sealed class UpdateTaskRequest
     private readonly Guid? _phaseId;
     private readonly Guid? _milestoneId;
 
+    [NotWhiteSpace(ErrorMessage = "Informe o título da tarefa.")]
     [StringLength(ProjectTask.TitleMaxLength, MinimumLength = 1, ErrorMessage = "O título deve ter de {2} a {1} caracteres.")]
     public string? Title { get; init; }
 
@@ -120,17 +122,9 @@ public enum SortDirection
     Desc,
 }
 
-public sealed class TaskListQuery
+public sealed class TaskListQuery : PageQuery
 {
-    public const int DefaultPageSize = 50;
-    public const int MaxPageSize = 100;
     public const int SearchMaxLength = 200;
-
-    [Range(1, int.MaxValue, ErrorMessage = "A página deve ser maior que zero.")]
-    public int Page { get; init; } = 1;
-
-    [Range(1, MaxPageSize, ErrorMessage = "O tamanho da página deve ficar entre {1} e {2}.")]
-    public int PageSize { get; init; } = DefaultPageSize;
 
     public Guid? PhaseId { get; init; }
 
