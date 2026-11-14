@@ -24,7 +24,7 @@ A especificação mestre exige ASP.NET Core Identity, autenticação segura, tok
 | Refresh token | 256 bits aleatórios (Base64Url). No banco fica **somente o hash SHA-256**. Uso único, com rotação a cada renovação. |
 | Sessão | Tabela `user_sessions`, com expiração **absoluta** de 30 dias (a renovação não estende) |
 | Validação | Além de assinatura, emissor, público e validade, **cada requisição confere se a sessão está ativa**. O logout revoga a sessão e o mesmo access token passa a receber 401 imediatamente. |
-| Reuso | Reapresentar um refresh token já trocado **revoga a sessão inteira** (indício de roubo). Exceção: dentro de uma **janela de 30 s** (configurável), trata-se como requisição concorrente do mesmo cliente e responde só 401, sem revogar. |
+| Reuso | Reapresentar um refresh token já trocado **revoga a sessão inteira** (indício de roubo). ~~Exceção: dentro de uma janela de 30 s, responde só 401, sem revogar.~~ **Substituído pelo [ADR-012](ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md):** dentro de 10 s, e só se o sucessor ainda não foi usado, a troca é repetida e devolve o mesmo sucessor. Qualquer outro reuso revoga a sessão. |
 | Concorrência | Dois usos simultâneos do mesmo refresh token: o `xmin` garante que só um vence |
 | Chave | Mínimo de 256 bits, validado na inicialização; nunca versionada (user-secrets ou variável de ambiente) |
 
@@ -63,6 +63,10 @@ O login só é permitido com e-mail confirmado. Os links de confirmação e de r
 ## Consequências
 
 - A validação de sessão faz uma consulta por chave primária a cada requisição autenticada. Um cache curto pode ser avaliado na Fase 13.
-- **Multi-instância da Web:** o coordenador de renovação é por processo, e a janela de tolerância da API cobre o restante. O Data Protection precisará de um repositório de chaves compartilhado (Fase 14).
+- **Multi-instância da Web:** o coordenador de renovação é por processo. ~~A janela de tolerância da API cobre o restante.~~ (Incorreto: a instância que perdia a corrida recebia 401 e desconectava o usuário. Corrigido pelo [ADR-012](ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md), em que as outras instâncias recebem o mesmo sucessor.) O Data Protection precisará de um repositório de chaves compartilhado (Fase 14).
 - **Proxy reverso:** o rate limiting por IP exige forwarded headers configurados (Fase 14).
 - **Interatividade:** componentes Interactive Server que chamem a API em nome do usuário precisarão de um provedor de token com escopo de circuito (Fase 09). Por enquanto, todas as chamadas autenticadas ocorrem em SSR.
+
+## Revisão de 2026-11-14
+
+A regra de reuso foi substituída pelo [ADR-012](ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md), depois que a auditoria técnica mostrou que a janela de 30 s com 401 sem revogar permitia que um invasor que usasse o token primeiro mantivesse a sessão, enquanto a vítima era desconectada. As demais decisões deste ADR continuam válidas.

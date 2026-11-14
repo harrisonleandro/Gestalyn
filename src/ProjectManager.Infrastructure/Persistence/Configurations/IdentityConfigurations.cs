@@ -75,6 +75,15 @@ internal sealed class UserRefreshTokenConfiguration : IEntityTypeConfiguration<U
 
         builder.HasIndex(token => token.TokenHash).IsUnique();
 
+        // Cadeia de rotação (ADR-012): cada token tem no máximo um sucessor, e cada sucessor um antecessor.
+        // NO ACTION: a exclusão da sessão apaga a cadeia inteira no mesmo comando.
+        builder.HasOne<UserRefreshToken>()
+            .WithOne()
+            .HasForeignKey<UserRefreshToken>(token => token.ReplacedByTokenId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        builder.Property(token => token.ReplayCount).HasDefaultValue(0);
+
         builder.HasOne(token => token.Session)
             .WithMany()
             .HasForeignKey(token => token.SessionId)

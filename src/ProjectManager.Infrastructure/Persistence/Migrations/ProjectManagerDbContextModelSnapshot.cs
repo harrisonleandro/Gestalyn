@@ -1195,6 +1195,16 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaced_by_token_id");
+
+                    b.Property<int>("ReplayCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("replay_count");
+
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("session_id");
@@ -1217,6 +1227,10 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_user_refresh_tokens");
+
+                    b.HasIndex("ReplacedByTokenId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_refresh_tokens_replaced_by_token_id");
 
                     b.HasIndex("SessionId")
                         .HasDatabaseName("ix_user_refresh_tokens_session_id");
@@ -1646,6 +1660,12 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("ProjectManager.Infrastructure.Identity.UserRefreshToken", b =>
                 {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.UserRefreshToken", null)
+                        .WithOne()
+                        .HasForeignKey("ProjectManager.Infrastructure.Identity.UserRefreshToken", "ReplacedByTokenId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("fk_user_refresh_tokens_user_refresh_tokens_replaced_by_token_id");
+
                     b.HasOne("ProjectManager.Infrastructure.Identity.UserSession", "Session")
                         .WithMany()
                         .HasForeignKey("SessionId")

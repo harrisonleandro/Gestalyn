@@ -8,7 +8,7 @@ namespace ProjectManager.Web.Authentication;
 /// <summary>
 /// Garante uma única renovação por refresh token nesta instância da Web: requisições paralelas do
 /// mesmo navegador compartilham o resultado, em vez de reapresentar o token já trocado.
-/// Em múltiplas instâncias, a janela de tolerância da API cobre o caso (Fase 14).
+/// Em múltiplas instâncias, a API devolve o mesmo sucessor às requisições simultâneas (ADR-012).
 /// </summary>
 internal sealed class TokenRefreshCoordinator(TimeProvider timeProvider)
 {

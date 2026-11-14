@@ -32,7 +32,7 @@ Contratos da Fase 03. Os endpoints de confirmação, reenvio e recuperação de 
 ```
 
 - **Access token:** JWT de 15 minutos com `sub` (usuário) e `sid` (sessão).
-- **Refresh token:** uso único. Guarde o novo token a cada renovação. Reapresentar um token já trocado (fora da janela de 30 s para requisições concorrentes) **encerra a sessão**.
+- **Refresh token:** uso único. Guarde o novo token a cada renovação. Requisições simultâneas com o mesmo token, em até 10 s, recebem **o mesmo** novo refresh token. Reapresentar um token já trocado fora dessa janela, ou depois que o novo token já foi usado, **encerra a sessão** ([ADR-012](../decisions/ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md)).
 - **`refreshTokenExpiresAt`:** expiração absoluta da sessão; a renovação não a estende.
 
 ## Perfil (`200` de `GET /me`)

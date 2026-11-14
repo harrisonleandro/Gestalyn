@@ -8,19 +8,25 @@ using ProjectManager.Infrastructure.Persistence;
 namespace ProjectManager.Infrastructure.Identity;
 
 /// <summary>
-/// Ciclo de vida das sessões: criação, rotação de refresh tokens com detecção de reuso e revogação.
+/// Ciclo de vida das sessões: criação, rotação idempotente de refresh tokens com detecção de reuso e
+/// revogação (ADR-012).
 /// </summary>
 internal sealed partial class SessionManager(
     ProjectManagerDbContext dbContext,
     AccessTokenIssuer accessTokenIssuer,
+    RefreshTokenDerivation derivation,
     IOptions<JwtOptions> options,
     TimeProvider timeProvider,
     ILogger<SessionManager> logger)
 {
+    /// <summary>Tentativas quando outra requisição altera o mesmo token ao mesmo tempo.</summary>
+    private const int MaxRefreshAttempts = 3;
+
     public async Task<AuthTokens> CreateAsync(Guid userId, CancellationToken cancellationToken)
     {
         var session = new UserSession(userId, timeProvider.GetUtcNow() + options.Value.SessionLifetime);
-        var refreshToken = AddRefreshToken(session);
+        var refreshToken = OpaqueTokens.Generate();
+        dbContext.UserRefreshTokens.Add(new UserRefreshToken(session, OpaqueTokens.Hash(refreshToken)));
 
         dbContext.UserSessions.Add(session);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -28,55 +34,93 @@ internal sealed partial class SessionManager(
         return CreateTokens(session, refreshToken);
     }
 
-    /// <returns>Novos tokens, ou <c>null</c> se o refresh token for inválido.</returns>
+    /// <summary>
+    /// Troca o refresh token. O sucessor é derivado do token apresentado, então requisições simultâneas
+    /// recebem o mesmo sucessor (repetição). Reapresentar um token fora da janela, ou depois que o
+    /// sucessor já foi usado, revoga a sessão: a cadeia divergiu, o que indica roubo.
+    /// </summary>
+    /// <returns>Novos tokens, ou <c>null</c> se o refresh token for inválido ou reutilizado.</returns>
     public async Task<AuthTokens?> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
-        var now = timeProvider.GetUtcNow();
         var tokenHash = OpaqueTokens.Hash(refreshToken);
+        var successorToken = derivation.Successor(refreshToken);
+        var successorHash = OpaqueTokens.Hash(successorToken);
 
-        var stored = await dbContext.UserRefreshTokens
-            .Include(token => token.Session)
-            .SingleOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);
-
-        if (stored is null)
+        for (var attempt = 1; attempt <= MaxRefreshAttempts; attempt++)
         {
-            return null;
-        }
+            var now = timeProvider.GetUtcNow();
+            var stored = await dbContext.UserRefreshTokens
+                .Include(token => token.Session)
+                .SingleOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);
 
-        if (stored.ConsumedAt is { } consumedAt)
-        {
-            if (now - consumedAt <= options.Value.RefreshReuseGracePeriod)
+            if (stored is null)
             {
-                // Requisições paralelas do mesmo cliente com o mesmo token: só a primeira renova.
                 return null;
             }
 
-            // Um token já trocado foi reapresentado: trate a sessão como comprometida.
-            stored.Session.Revoke(now, SessionRevocationReason.RefreshTokenReuse);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            LogRefreshTokenReuse(logger, stored.Session.UserId, stored.SessionId);
-            return null;
+            var successorReplayable = stored.ReplacedByTokenId is { } successorId
+                && await dbContext.UserRefreshTokens.AnyAsync(
+                    token => token.Id == successorId && token.ConsumedAt == null && token.TokenHash == successorHash,
+                    cancellationToken);
+
+            var action = RefreshDecision.Decide(
+                stored,
+                successorReplayable,
+                now,
+                options.Value.RefreshReplayWindow,
+                options.Value.MaxRefreshReplays);
+
+            switch (action)
+            {
+                case RefreshAction.Rotate:
+                    var successor = new UserRefreshToken(stored.Session, successorHash);
+                    dbContext.UserRefreshTokens.Add(successor);
+                    stored.ReplaceWith(successor, now);
+                    break;
+
+                case RefreshAction.Replay:
+                    // Incremento atômico e condicional: repetições simultâneas não conflitam entre si, e
+                    // passar do limite cai na revogação na próxima decisão.
+                    var maxReplays = options.Value.MaxRefreshReplays;
+                    var replayed = await dbContext.UserRefreshTokens
+                        .Where(token => token.Id == stored.Id && token.ReplayCount < maxReplays)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.ReplayCount, token => token.ReplayCount + 1), cancellationToken);
+                    if (replayed == 0)
+                    {
+                        dbContext.ChangeTracker.Clear();
+                        continue;
+                    }
+
+                    LogRefreshReplay(logger, stored.Session.UserId, stored.SessionId, stored.ReplayCount + 1);
+                    return CreateTokens(stored.Session, successorToken);
+
+                case RefreshAction.RevokeForReuse:
+                    stored.Session.Revoke(now, SessionRevocationReason.RefreshTokenReuse);
+                    break;
+
+                default:
+                    return null;
+            }
+
+            // Conflito: outra requisição trocou o mesmo token ao mesmo tempo. Relê o estado e decide de
+            // novo (em geral, vira uma repetição com o sucessor que a outra gravou).
+            if (!await dbContext.TrySaveChangesAsync(cancellationToken))
+            {
+                dbContext.ChangeTracker.Clear();
+                continue;
+            }
+
+            if (action == RefreshAction.RevokeForReuse)
+            {
+                LogRefreshTokenReuse(logger, stored.Session.UserId, stored.SessionId);
+                return null;
+            }
+
+            return CreateTokens(stored.Session, successorToken);
         }
 
-        if (!stored.Session.IsActive(now) || stored.ExpiresAt <= now)
-        {
-            return null;
-        }
-
-        stored.Consume(now);
-        var newRefreshToken = AddRefreshToken(stored.Session);
-
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // Outra requisição trocou o mesmo token ao mesmo tempo; somente a primeira vence.
-            return null;
-        }
-
-        return CreateTokens(stored.Session, newRefreshToken);
+        LogRefreshContended(logger, MaxRefreshAttempts);
+        return null;
     }
 
     public async Task RevokeAsync(Guid userId, Guid sessionId, SessionRevocationReason reason, CancellationToken cancellationToken)
@@ -117,14 +161,6 @@ internal sealed partial class SessionManager(
             cancellationToken);
     }
 
-    private string AddRefreshToken(UserSession session)
-    {
-        var refreshToken = OpaqueTokens.Generate();
-        dbContext.UserRefreshTokens.Add(new UserRefreshToken(session, OpaqueTokens.Hash(refreshToken)));
-
-        return refreshToken;
-    }
-
     private AuthTokens CreateTokens(UserSession session, string refreshToken)
     {
         var (accessToken, accessTokenExpiresAt) = accessTokenIssuer.Issue(session.UserId, session.Id);
@@ -134,4 +170,10 @@ internal sealed partial class SessionManager(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Reuso de refresh token detectado; sessão {SessionId} do usuário {UserId} revogada.")]
     private static partial void LogRefreshTokenReuse(ILogger logger, Guid userId, Guid sessionId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Refresh repetido dentro da janela na sessão {SessionId} do usuário {UserId} (repetição {ReplayCount}).")]
+    private static partial void LogRefreshReplay(ILogger logger, Guid userId, Guid sessionId, int replayCount);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Refresh recusado depois de {Attempts} conflitos seguidos no mesmo token.")]
+    private static partial void LogRefreshContended(ILogger logger, int attempts);
 }
