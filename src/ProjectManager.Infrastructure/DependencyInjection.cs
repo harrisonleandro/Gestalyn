@@ -110,6 +110,7 @@ public static class DependencyInjection
         services.Configure<DataProtectionTokenProviderOptions>(options => options.TokenLifespan = TimeSpan.FromHours(2));
 
         services.AddScoped<AccessTokenIssuer>();
+        services.AddSingleton<RefreshTokenDerivation>();
         services.AddScoped<SessionManager>();
         services.AddScoped<AccountEmails>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();

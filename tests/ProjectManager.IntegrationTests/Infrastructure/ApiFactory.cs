@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ProjectManager.Infrastructure.Persistence;
@@ -10,12 +12,13 @@ namespace ProjectManager.IntegrationTests.Infrastructure;
 
 /// <summary>
 /// Hospeda a ProjectManager.API em memória, conectada ao banco e, opcionalmente, ao Mailpit.
-/// Usa uma chave de assinatura JWT aleatória por instância.
+/// Usa uma chave de assinatura JWT aleatória por instância e, se informado, um relógio controlado.
 /// </summary>
 public sealed class ApiFactory(
     string connectionString,
     MailpitFixture? mailpit = null,
-    IReadOnlyDictionary<string, string?>? overrides = null) : WebApplicationFactory<Program>
+    IReadOnlyDictionary<string, string?>? overrides = null,
+    TimeProvider? timeProvider = null) : WebApplicationFactory<Program>
 {
     public const string WebBaseUrl = "http://web.test/";
 
@@ -53,6 +56,12 @@ public sealed class ApiFactory(
         // Adicionado por último: prevalece sobre appsettings, user-secrets e variáveis de ambiente.
         builder.ConfigureAppConfiguration(configuration => configuration.AddInMemoryCollection(settings));
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
+
+        // Relógio controlado pelo teste (ex.: janela de repetição do refresh token).
+        if (timeProvider is not null)
+        {
+            builder.ConfigureTestServices(services => services.AddSingleton(timeProvider));
+        }
     }
 
     protected override void Dispose(bool disposing)
