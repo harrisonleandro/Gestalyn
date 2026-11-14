@@ -75,7 +75,7 @@ Contratos da Fase 06 ([ADR-011](../decisions/ADR-011-TAREFAS-E-ANEXOS.md)). Toda
 
 | Parâmetro | Efeito |
 |---|---|
-| `page`, `pageSize` | Paginação (padrão 50, máximo 100) |
+| `page`, `pageSize` | Paginação: `pageSize` de 1 a 100 (padrão 50) e `page` de 1 a 21.474.837; fora disso, 400. Página além do fim: 200 com lista vazia |
 | `phaseId`, `milestoneId`, `assigneeId` | Tarefas da fase, do marco ou do responsável |
 | `assignedToMe=true` | Tarefas do usuário autenticado |
 | `label`, `priority` | Etiqueta (sem diferenciar maiúsculas e minúsculas) e prioridade |
