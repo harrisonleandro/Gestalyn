@@ -4,7 +4,7 @@
 > Estados permitidos: Not Started · Planned · In Progress · Blocked · In Review · Completed.
 > Uma tarefa só fica `Completed` quando seus critérios são verificados.
 
-**Atualizado em:** 2026-11-10
+**Atualizado em:** 2026-11-14
 
 ## Fase atual
 
@@ -13,6 +13,25 @@
 **Fase 06, Fases, marcos e tarefas: Completed.** Validada localmente (195/195 testes, duas mutações detectadas e execução real da API com upload e download de anexo) e no CI ([run 43136119632](https://github.com/harrisonleandro/Gestalyn/actions/runs/43136119632): 0 avisos, 99/99 e 96/96), e integrada em `develop` pelo [PR #7](https://github.com/harrisonleandro/Gestalyn/pull/7) (merge `8025a23`). A próxima é a Fase 07, que depende de autorização.
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
+
+**Correções da auditoria técnica de 2026-11-12: In Progress.** A auditoria do `develop` (`7a5c170`) confirmou cinco problemas. As correções estão em branches locais, ainda sem PR:
+
+| Achado | Branch | Estado |
+|---|---|---|
+| P1: reuso de refresh token dentro da janela de 30 s (o invasor que usa o token primeiro mantém a sessão) | `fix/rotacao-refresh-token` ([ADR-012](decisions/ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md)) | In Review (local aprovado; CI e PR pendentes) |
+| P2: nome em branco no PATCH responde 500 (projeto, fase, marco e tarefa) | `fix/validacao-entrada` | In Review (local aprovado; CI e PR pendentes) |
+| P2: página muito alta responde 500 (projetos e tarefas) | `fix/validacao-entrada` | In Review (local aprovado; CI e PR pendentes) |
+| P2: `main` e `develop` sem proteção no GitHub | Configuração do repositório | Planned (depende de aprovação) |
+| P2: documentação desatualizada | `docs/sincronizar-documentacao` | In Review |
+
+## Estado das branches
+
+| Branch | Commit | Conteúdo |
+|---|---|---|
+| `main` | `c6bd32a` | Fase 01. Recebe `develop` só por PR de release, num marco definido pelo responsável. |
+| `develop` | `7a5c170` | Fases 01 a 06 |
+
+Nenhuma das duas tem proteção no GitHub (verificado em 2026-11-12).
 
 ## Estado das fases
 
@@ -151,11 +170,16 @@ Evidências na [especificação da Fase 06](specifications/FASE-06-TAREFAS.md#ex
 
 ## Tarefas pendentes
 
-Nenhuma tarefa pendente das Fases 01 a 06.
+- Correções da auditoria de 2026-11-12: push, CI e PR das branches `fix/rotacao-refresh-token`, `fix/validacao-entrada` e `docs/sincronizar-documentacao` (com autorização).
+- Proteção de `main` e `develop` no GitHub (com autorização).
 
 ## Bloqueios
 
-Nenhum bloqueio no desenvolvimento local. No GitHub:
+Nenhum bloqueio.
+
+## Histórico de incidentes do CI
+
+Incidentes já resolvidos, mantidos como referência:
 
 - A execução [43095047963](https://github.com/harrisonleandro/Gestalyn/actions/runs/43095047963) do PR #3 falhou na primeira tentativa, só na publicação do artefato: o serviço de artefatos do GitHub respondeu HTML em vez de JSON. Na segunda tentativa, passou.
 - A execução do PR #4 ([43097924272](https://github.com/harrisonleandro/Gestalyn/actions/runs/43097924272)) ficou presa em "queued": o GitHub recusou o cancelamento ("já concluída") e a nova execução ("já em execução"). A validação foi feita por uma execução manual sobre o mesmo commit (`b7b170e`), aprovada.
@@ -218,4 +242,5 @@ Nenhum bloqueio no desenvolvimento local. No GitHub:
 
 ## Próxima atividade
 
-1. Fase 07 (workflow configurável e histórico), somente após autorização: inspeção e especificação com as decisões para aprovação.
+1. Concluir as correções da auditoria: proteção das branches, PRs com CI aprovado e merge em `develop`.
+2. Fase 07 (workflow configurável e histórico), somente após autorização e depois das correções da auditoria.

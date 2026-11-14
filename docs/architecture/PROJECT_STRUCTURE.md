@@ -163,8 +163,8 @@ ProjectManager.CLI/
 
 | Projeto | Referencia | Cobertura atual |
 |---|---|---|
-| `ProjectManager.UnitTests` | `CLI`, `Domain`, `Infrastructure` | `Architecture/ProjectReferenceRulesTests`: regras de dependência entre projetos. `Domain/*Tests`: invariantes das entidades. `Authentication/TokenTests`: refresh tokens, JWT e validação da chave. `Cli/CliApplicationTests`: `--version`, `--help`/`-h`, execução sem argumentos e comando desconhecido. |
-| `ProjectManager.IntegrationTests` | `API`, `Infrastructure` | **Requer Docker.** `Infrastructure/PostgresDatabaseFixture` e `MailpitFixture` sobem PostgreSQL 18 e Mailpit (Testcontainers). `Authentication/*` cobre cadastro, login, sessão, recuperação de senha e proteções. `Persistence/PersistenceTests` e `Persistence/TenantIsolationTests` cobrem persistência e isolamento. `Api/*` cobre health check (com e sem banco), OpenAPI por ambiente e Problem Details. |
+| `ProjectManager.UnitTests` | `CLI`, `Domain`, `Infrastructure` | `Architecture/ProjectReferenceRulesTests`: regras de dependência entre projetos. `Domain/*Tests`: invariantes de organizações, papéis, convites, projetos, fases, marcos, tarefas, dependências (ciclos) e tipos de anexo. `Authentication/TokenTests`: refresh tokens, JWT e validação da chave. `Cli/CliApplicationTests`: `--version`, `--help`/`-h`, execução sem argumentos e comando desconhecido. |
+| `ProjectManager.IntegrationTests` | `API`, `Infrastructure` | **Requer Docker.** `Infrastructure/PostgresDatabaseFixture` e `MailpitFixture` sobem PostgreSQL 18 e Mailpit (Testcontainers). `Authentication/*` cobre cadastro, login, sessão, recuperação de senha e proteções. `Persistence/PersistenceTests` e `Persistence/TenantIsolationTests` cobrem persistência e isolamento. `Api/*` cobre health check (com e sem banco), OpenAPI por ambiente e Problem Details. `Organizations/*`, `Projects/*` e `Tasks/*` cobrem fluxos, permissões por papel, isolamento entre organizações (API, filtro e FKs compostas), migração de dados, anexos e validação de entrada. |
 
 ## `docs/`
 
@@ -193,7 +193,11 @@ Os itens previstos na seção 3 da especificação mestre são criados **quando 
 
 ## Branches
 
-Fluxo da seção 13 da especificação mestre: `main` (estável, protegida por CI), `develop` (integração), `feature/*`, `fix/*` e `hotfix/*`. O CI roda em push para `main` e `develop` e em pull requests.
+Fluxo da seção 13 da especificação mestre: `main` (estável), `develop` (integração), `feature/*`, `fix/*` e `hotfix/*`. O CI roda em push para `main` e `develop` e em pull requests.
+
+- **`main`** está em `c6bd32a` (Fase 01) e só recebe `develop` por um PR de release, num marco definido pelo responsável. Não é sincronizada a cada fase.
+- **`develop`** reúne as Fases 01 a 06.
+- **Proteção:** nenhuma das duas tem regras de proteção no GitHub (verificado em 2026-11-12). A política recomendada (PR obrigatório, CI aprovado, comentários resolvidos, sem force push nem exclusão) está no plano da auditoria e depende de aprovação para ser aplicada.
 
 ## Portas de desenvolvimento
 

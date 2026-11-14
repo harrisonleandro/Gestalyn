@@ -44,7 +44,7 @@ As regras de dependência são verificadas automaticamente por testes (`ProjectR
 ```
 ProjectManager/
 ├── src/
-│   ├── ProjectManager.Domain/          Entidades, regras de negócio, eventos de domínio (vazio na Fase 01)
+│   ├── ProjectManager.Domain/          Entidades e regras de negócio (organizações, projetos, tarefas)
 │   ├── ProjectManager.Application/     Casos de uso, DTOs, validadores, interfaces de serviços
 │   ├── ProjectManager.Infrastructure/  Persistência, integrações externas, implementações técnicas
 │   ├── ProjectManager.API/             ASP.NET Core Web API
