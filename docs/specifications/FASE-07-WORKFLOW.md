@@ -1,6 +1,6 @@
 # Fase 07: Workflow configurável e histórico
 
-- **Estado:** In Progress. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-14.
+- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-14.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 07), seção 4.5 (fluxos de trabalho configuráveis) e seção 5.5 (contratos)
 - **Branch:** `feature/fase-07-workflow` (a partir de `develop`, com as Fases 01 a 06 e as correções da auditoria integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -193,3 +193,31 @@ docs/api/WORKFLOW.md
 - ADR-013 registrado.
 - Documentação atualizada: `docs/api/WORKFLOW.md`, README, AGENTS.md, ARCHITECTURE, `PROJECT_STATUS.md` e relatório da Fase 07.
 - Alterações integradas por PR, com o check "Build e testes" aprovado.
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F07-001 | Completed | `WorkflowDefinition` (um por projeto, `project_id` único) com `requireIndependentApproval` |
+| F07-002 | Completed | `WorkflowState` com nomes únicos no domínio e FKs compostas; `StateNames_AreUniqueIgnoringCase` |
+| F07-003 | Completed | `WorkflowTransition` sem laço (check) nem duplicata (índice único); `Transitions_RejectLoopsDuplicatesAndForeignStates` |
+| F07-004 | Completed | `CreateDefault` em projetos novos; migração de dados testada (`ExistingProjectsAndTasks_ReceiveTheDefaultWorkflow_AndTheInitialState`) e aplicada no banco de desenvolvimento (7 projetos, 5 tarefas) |
+| F07-005 | Completed | `WorkflowController` e `workflow.manage`; `Manager_ConfiguresStatesAndTransitions_WithinTheInvariants`, `Projects_HaveIndependentWorkflows` |
+| F07-006 | Completed | `POST /tasks/{id}/transitions`; `InvalidTransitions_AreRejected_WithoutChangingTheTaskOrTheHistory`; mutação detectada |
+| F07-007 | Completed | Categorias fixas; filtros `category`, `stateId` e `open`, e ordenação `State`; `List_FiltersAndSortsByState` |
+| F07-008 | Completed | Somente leitura em estado final; conclusão exige dependências resolvidas; `OpenDependencies_BlockCompletion_UntilTheyReachAFinalState`; 2 mutações detectadas |
+| F07-009 | Completed | `tasks.approve` e a regra do próprio trabalho; `IndependentApproval_StopsAssigneesFromApprovingTheirOwnWork`; teste unitário com agentes; mutação detectada |
+| F07-010 | Completed | `TaskStatusHistory` e `GET /tasks/{id}/history`; `History_StaysReadable_AfterStatesAreRenamedOrDeleted` |
+| F07-011 | Completed | Estado em uso, estado inicial, invariantes, concorrência (`SimultaneousTransitions_LetOnlyOneWin`, estável em 5 execuções) e projeto arquivado |
+| F07-012 | Completed | 21 casos unitários novos e 15 testes de integração novos; 4 mutações detectadas |
+| CI | **In Review** | Depende do push de `feature/fase-07-workflow`, autorizado pelo responsável |
+
+**Critério "agentes não aprovam o próprio trabalho por padrão":** a regra está implementada (`TransitionRules`) e coberta por teste unitário. O teste de integração com agentes reais depende das credenciais de agente da Fase 10 e deve ser critério dela.
+
+Ajustes feitos durante a implementação, dentro das decisões aprovadas:
+
+1. **Sem índice único parcial para o estado inicial:** trocar o estado inicial violava o índice no meio da gravação. A regra ficou no domínio, e toda edição do workflow trava a linha do workflow (`xmin`). A migration foi gerada de novo, com a migração de dados reaplicada.
+2. **Migration ajustada à mão:** o EF criaria `state_id` obrigatório com o GUID vazio, o que falharia com tarefas existentes. A coluna nasce opcional, recebe os estados e só então vira obrigatória.
+3. **Exclusão explícita de estados e transições:** sair da coleção do workflow deixava órfãos numa relação obrigatória (500). O serviço marca as linhas como excluídas, e o domínio renumera as posições.
+4. **`ProjectAccessGrant.UserId`:** necessário para calcular, nos detalhes da tarefa, se o usuário é responsável por ela, sem passar o usuário por todas as chamadas.
+5. **Dependência arquivada conta como resolvida:** uma tarefa arquivada saiu do fluxo e não deve impedir a conclusão das que dependiam dela.

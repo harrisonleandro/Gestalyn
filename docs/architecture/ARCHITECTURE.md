@@ -1,6 +1,6 @@
 # Arquitetura do Gestalyn
 
-> Estado: Fases 01 a 06 concluídas (fundação, persistência, identidade, organizações, projetos e tarefas). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
+> Estado: Fases 01 a 06 concluídas (fundação, persistência, identidade, organizações, projetos e tarefas); Fase 07 (workflow) em revisão. Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
 
 ## 1. Visão geral
 
@@ -173,6 +173,23 @@ erDiagram
 - Responsáveis só da equipe do projeto (cascata ao sair dela). As dependências ficam no mesmo projeto e não podem formar ciclos, o que é verificado numa transação serializável.
 - Anexos em `IFileStorage` (disco local, chave `attachments/{organização}/{anexo}`), com tipo conferido pelo conteúdo e download só pela API ([ADR-011](../decisions/ADR-011-TAREFAS-E-ANEXOS.md)).
 
+### 3.6 Workflow e histórico de estados (Fase 07)
+
+```mermaid
+erDiagram
+    projects ||--|| workflows : "(organization_id, project_id)"
+    workflows ||--o{ workflow_states : "(organization_id, project_id)"
+    workflows ||--o{ workflow_transitions : "(organization_id, project_id)"
+    workflow_states ||--o{ workflow_transitions : "(project_id, from_state_id) e (project_id, to_state_id)"
+    workflow_states ||--o{ tasks : "(project_id, state_id)"
+    tasks ||--o{ task_status_history : "(organization_id, project_id, task_id)"
+```
+
+- **Workflow:** um por projeto, criado com ele. Estados com categoria fixa (`Todo`, `InProgress`, `Blocked`, `Done`, `Canceled`); `Done` e `Canceled` são finais, e a tarefa num deles é somente leitura.
+- **Transições:** explícitas, validadas por `TransitionRules`: transição existente, aprovação com `tasks.approve`, sem aprovar o próprio trabalho (agentes sempre; pessoas se o workflow exigir) e dependências resolvidas para concluir.
+- **Histórico:** `task_status_history` guarda os nomes dos estados na data e o tipo de autor (pessoa ou agente), sem FK para os estados.
+- **Edições do workflow:** travam a linha do workflow (`xmin`), o que protege as invariantes que ficam no domínio ([ADR-013](../decisions/ADR-013-WORKFLOW-CONFIGURAVEL.md)).
+
 ## 4. Módulos (evolução prevista)
 
 A modularização será **vertical por contexto de negócio** dentro de cada camada (por exemplo `Application/Projects`, `Application/Tasks`, `Infrastructure/Persistence/Projects`). Cada módulo expõe seus casos de uso pela camada `Application` e não acessa diretamente os dados de outro módulo. A comunicação entre módulos ocorre por interfaces de aplicação ou eventos de domínio.
@@ -239,7 +256,8 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |
 | ~~Papéis, permissões e convites~~ (ADR-009) | 04 (concluída) |
 | ~~Acesso a projetos, papéis de projeto e cabeçalho de organização~~ (ADR-010) | 05 (concluída) |
-| ~~Fases, marcos, tarefas e armazenamento de anexos~~ (ADR-011) | 06 |
+| ~~Fases, marcos, tarefas e armazenamento de anexos~~ (ADR-011) | 06 (concluída) |
+| ~~Workflow configurável, aprovação e histórico de estados~~ (ADR-013) | 07 |
 | Armazenamento de anexos em object storage compatível com S3 | 14 |
 | Cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso; papéis de projeto | 05 |
 | Credenciais de agentes, escopos e idempotência | 10 |
