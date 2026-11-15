@@ -8,6 +8,8 @@
 
 ## Fase atual
 
+**Fase 10, API e autenticação de agentes: Planned.** A [especificação](specifications/FASE-10-AGENTES.md) aguarda a aprovação das decisões D1 a D10; nada foi implementado. Ela inclui a interface de agentes transferida da Fase 09 (F09-018) e o teste "agentes não aprovam o próprio trabalho" com um agente real, e mantém o tempo real fora, sem necessidade comprovada.
+
 **Fase 05, Projetos e equipes: Completed.** Validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais) e no CI ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): 0 avisos, 59/59 e 77/77), e integrada em `develop` pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) (merge `6a32f58`).
 
 **Fase 06, Fases, marcos e tarefas: Completed.** Validada localmente (195/195 testes, duas mutações detectadas e execução real da API com upload e download de anexo) e no CI ([run 43136119632](https://github.com/harrisonleandro/Gestalyn/actions/runs/43136119632): 0 avisos, 99/99 e 96/96), e integrada em `develop` pelo [PR #7](https://github.com/harrisonleandro/Gestalyn/pull/7) (merge `8025a23`).
@@ -58,7 +60,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 07 | Workflow configurável e histórico | Completed | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
 | 08 | Auditoria, documentação e dashboards | Completed | [FASE-08-AUDITORIA.md](specifications/FASE-08-AUDITORIA.md) | [FASE-08-RELATORIO.md](reports/FASE-08-RELATORIO.md) |
 | 09 | Interface web completa | Completed | [FASE-09-WEB.md](specifications/FASE-09-WEB.md) | [FASE-09-RELATORIO.md](reports/FASE-09-RELATORIO.md) |
-| 10 | API e autenticação de agentes | Not Started | — | — |
+| 10 | API e autenticação de agentes | Planned | [FASE-10-AGENTES.md](specifications/FASE-10-AGENTES.md) | — |
 | 11 | CLI gestalyn | Not Started | — | — |
 | 12 | MCP e integrações com agentes | Not Started | — | — |
 | 13 | Testes integrados e hardening | Not Started | — | — |
@@ -249,10 +251,8 @@ Evidências na [especificação da Fase 09](specifications/FASE-09-WEB.md#execu�
 
 ## Tarefas pendentes
 
-- Fase 10: interface de agentes, credenciais e relatórios de trabalho (F09-018 transferida); reavaliar o tempo real.
+- Fase 10: aprovação das decisões D1 a D10 da [especificação](specifications/FASE-10-AGENTES.md). Ela já cobre a interface de agentes (F09-018), o teste "agentes não aprovam o próprio trabalho" e a reavaliação do tempo real.
 
-
-- Fase 10: incluir como critério o teste de integração "agentes não aprovam o próprio trabalho" com agentes reais.
 
 - Configurações recomendadas pela auditoria e ainda não aplicadas (dependem de decisão):
   - alertas e atualizações de segurança do Dependabot;
@@ -347,4 +347,4 @@ Incidentes já resolvidos, mantidos como referência:
 
 ## Próxima atividade
 
-1. Fase 10 (API e autenticação de agentes): especificação para aprovação, depois de autorizada pelo responsável. Inclui as telas de agentes transferidas da Fase 09 e o teste de integração "agentes não aprovam o próprio trabalho".
+1. Fase 10: aprovação das decisões D1 a D10 da [especificação](specifications/FASE-10-AGENTES.md) e, em seguida, implementação em `feature/fase-10-agentes`.
