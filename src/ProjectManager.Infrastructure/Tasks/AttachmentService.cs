@@ -5,8 +5,10 @@ using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Abstractions.Storage;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Tasks;
+using ProjectManager.Domain.Activity;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Tasks;
+using ProjectManager.Infrastructure.Activity;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Tasks;
@@ -18,6 +20,7 @@ namespace ProjectManager.Infrastructure.Tasks;
 internal sealed partial class AttachmentService(
     ProjectManagerDbContext dbContext,
     IFileStorage storage,
+    ActivityRecorder activity,
     ILogger<AttachmentService> logger) : IAttachmentService
 {
     private const string TaskNotFoundMessage = "Tarefa não encontrada.";
@@ -97,6 +100,13 @@ internal sealed partial class AttachmentService(
         await storage.SaveAsync(attachment.StorageKey, buffer, cancellationToken);
 
         dbContext.TaskAttachments.Add(attachment);
+        activity.Record(
+            ActivityActions.TaskAttachmentAdded,
+            ActivityEntityTypes.Attachment,
+            attachment.Id,
+            $"Anexo '{attachment.FileName}' enviado na tarefa #{task.Number}",
+            task.ProjectId,
+            task.Id);
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -156,6 +166,13 @@ internal sealed partial class AttachmentService(
         }
 
         dbContext.TaskAttachments.Remove(attachment);
+        activity.Record(
+            ActivityActions.TaskAttachmentDeleted,
+            ActivityEntityTypes.Attachment,
+            attachment.Id,
+            $"Anexo '{attachment.FileName}' excluído da tarefa #{task.Number}",
+            task.ProjectId,
+            task.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // A linha já saiu: o arquivo deixou de ser acessível. Uma falha aqui só deixa um órfão no disco.

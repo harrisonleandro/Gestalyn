@@ -3,10 +3,12 @@ using Microsoft.Extensions.Logging;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Projects;
+using ProjectManager.Domain.Activity;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Workflows;
+using ProjectManager.Infrastructure.Activity;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Projects;
@@ -19,6 +21,7 @@ namespace ProjectManager.Infrastructure.Projects;
 internal sealed partial class ProjectService(
     ProjectManagerDbContext dbContext,
     TimeProvider timeProvider,
+    ActivityRecorder activity,
     ILogger<ProjectService> logger) : IProjectService
 {
     private const string NotFoundMessage = "Projeto não encontrado.";
@@ -52,6 +55,7 @@ internal sealed partial class ProjectService(
 
         // Todo projeto nasce com a configuração inicial do workflow (ADR-013, D3).
         dbContext.Workflows.Add(WorkflowDefinition.CreateDefault(project));
+        activity.Record(ActivityActions.ProjectCreated, ActivityEntityTypes.Project, project.Id, $"Projeto '{project.Name}' criado", project.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         LogProjectCreated(logger, project.Id, actor.OrganizationId, actor.UserId);
@@ -165,6 +169,7 @@ internal sealed partial class ProjectService(
             return Result.Failure<ProjectDetails>(ErrorKind.Validation, tagError!);
         }
 
+        var tagsBefore = project.Tags.Select(tag => tag.Name).ToList();
         if (request.Name is not null)
         {
             project.Rename(request.Name);
@@ -189,7 +194,12 @@ internal sealed partial class ProjectService(
 
         // A alteração das etiquetas não muda a linha do projeto; marcá-la como alterada faz o xmin
         // detectar edições simultâneas do mesmo projeto.
+        var changes = activity.ChangesOf(project).List("tags", tagsBefore, project.Tags.Select(tag => tag.Name));
         dbContext.Entry(project).State = EntityState.Modified;
+        if (!changes.IsEmpty)
+        {
+            activity.Record(ActivityActions.ProjectUpdated, ActivityEntityTypes.Project, project.Id, $"Projeto '{project.Name}' alterado", project.Id, changes: changes);
+        }
 
         return await TrySaveAsync(cancellationToken) is { } error
             ? Result.Failure<ProjectDetails>(ErrorKind.Conflict, error)
@@ -212,6 +222,7 @@ internal sealed partial class ProjectService(
         }
 
         project.Archive(actor.UserId, timeProvider.GetUtcNow());
+        activity.Record(ActivityActions.ProjectArchived, ActivityEntityTypes.Project, project.Id, $"Projeto '{project.Name}' arquivado", project.Id);
         if (await TrySaveAsync(cancellationToken) is { } error)
         {
             return Result.Failure(ErrorKind.Conflict, error);
@@ -246,6 +257,13 @@ internal sealed partial class ProjectService(
 
         var member = new ProjectMember(project.Value!, request.UserId, request.Role);
         dbContext.ProjectMembers.Add(member);
+        activity.Record(
+            ActivityActions.ProjectMemberAdded,
+            ActivityEntityTypes.ProjectMember,
+            request.UserId,
+            $"Membro adicionado à equipe como '{request.Role}'",
+            projectId,
+            changes: new ActivityChanges().Set("role", null, request.Role).Set("isResponsible", null, request.IsResponsible));
 
         var error = await SaveMemberAsync(member, request.IsResponsible, cancellationToken);
 
@@ -274,6 +292,7 @@ internal sealed partial class ProjectService(
             return Result.Failure<ProjectMemberDetails>(ErrorKind.NotFound, MemberNotFoundMessage);
         }
 
+        var (roleBefore, responsibleBefore) = (member.Role, member.IsResponsible);
         if (request.Role is { } role)
         {
             member.ChangeRole(role);
@@ -282,6 +301,14 @@ internal sealed partial class ProjectService(
         if (request.IsResponsible == false)
         {
             member.UnmarkAsResponsible();
+        }
+
+        var memberChanges = new ActivityChanges()
+            .Set("role", roleBefore, member.Role)
+            .Set("isResponsible", responsibleBefore, request.IsResponsible ?? responsibleBefore);
+        if (!memberChanges.IsEmpty)
+        {
+            activity.Record(ActivityActions.ProjectMemberUpdated, ActivityEntityTypes.ProjectMember, userId, "Participação na equipe alterada", projectId, changes: memberChanges);
         }
 
         var error = await SaveMemberAsync(member, request.IsResponsible == true, cancellationToken);
@@ -306,6 +333,7 @@ internal sealed partial class ProjectService(
         }
 
         dbContext.ProjectMembers.Remove(member);
+        activity.Record(ActivityActions.ProjectMemberRemoved, ActivityEntityTypes.ProjectMember, userId, $"Membro com o papel '{member.Role}' removido da equipe", projectId);
 
         return await TrySaveAsync(cancellationToken) is { } error
             ? Result.Failure(ErrorKind.Conflict, error)
@@ -355,6 +383,7 @@ internal sealed partial class ProjectService(
         }
 
         var repository = project.Value.AddRepository(url, request.Name);
+        activity.Record(ActivityActions.ProjectRepositoryAdded, ActivityEntityTypes.Repository, repository.Id, $"Repositório '{repository.Url}' associado", projectId);
 
         return await TrySaveAsync(cancellationToken) is { } error
             ? Result.Failure<ProjectRepositoryDetails>(ErrorKind.Conflict, error)
@@ -369,10 +398,13 @@ internal sealed partial class ProjectService(
             return Result.Failure(project.Error.Kind, project.Error.Message);
         }
 
-        if (!project.Value!.RemoveRepository(repositoryId))
+        var removed = project.Value!.Repositories.FirstOrDefault(repository => repository.Id == repositoryId);
+        if (removed is null || !project.Value.RemoveRepository(repositoryId))
         {
             return Result.Failure(ErrorKind.NotFound, "Repositório não encontrado.");
         }
+
+        activity.Record(ActivityActions.ProjectRepositoryRemoved, ActivityEntityTypes.Repository, repositoryId, $"Repositório '{removed.Url}' desassociado", projectId);
 
         return await TrySaveAsync(cancellationToken) is { } error
             ? Result.Failure(ErrorKind.Conflict, error)

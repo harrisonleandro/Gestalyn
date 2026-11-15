@@ -103,6 +103,184 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("action");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("actor_kind");
+
+                    b.Property<string>("Changes")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("changes");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("origin");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_activity_events");
+
+                    b.HasIndex("OrganizationId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_events_organization_id_occurred_at");
+
+                    b.HasIndex("ProjectId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_events_project_id_occurred_at");
+
+                    b.HasIndex("TaskId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_events_task_id_occurred_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_activity_events_organization_id_project_id_task_id");
+
+                    b.ToTable("activity_events", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("actor_kind");
+
+                    b.Property<Guid?>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
+                        .HasColumnName("details");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("origin");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_activity_logs");
+
+                    b.HasIndex("ProjectId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_logs_project_id_occurred_at");
+
+                    b.HasIndex("TaskId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_logs_task_id_occurred_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_activity_logs_organization_id_project_id_task_id");
+
+                    b.ToTable("activity_logs", (string)null);
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Organizations.Invitation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1602,6 +1780,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         {
                             Code = "projects.manage_all",
                             Description = "Administrar todos os projetos da organização"
+                        },
+                        new
+                        {
+                            Code = "activity.read_all",
+                            Description = "Consultar as atividades de toda a organização"
                         });
                 });
 
@@ -1633,6 +1816,48 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityEvent", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_activity_events_organizations_organization_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_activity_events_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_activity_events_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityLog", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_activity_logs_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_activity_logs_tasks_organization_id_project_id_task_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Organizations.Invitation", b =>

@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.Application.Abstractions.MultiTenancy;
+using ProjectManager.Domain.Activity;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Projects;
@@ -53,6 +54,10 @@ public sealed class ProjectManagerDbContext(
     public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
 
     public DbSet<TaskStatusHistory> TaskStatusHistory => Set<TaskStatusHistory>();
+
+    public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
+
+    public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 

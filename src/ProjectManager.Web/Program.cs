@@ -66,4 +66,7 @@ static void ConfigureApiClient(IServiceProvider serviceProvider, HttpClient clie
     var options = serviceProvider.GetRequiredService<IOptions<ApiOptions>>().Value;
     client.BaseAddress = options.BaseUrl;
     client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+
+    // Origem das alterações na auditoria da API (ADR-014): informativa, não concede acesso.
+    client.DefaultRequestHeaders.Add("X-Gestalyn-Client", "web");
 }

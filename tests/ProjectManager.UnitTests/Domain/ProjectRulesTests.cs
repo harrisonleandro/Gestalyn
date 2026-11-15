@@ -133,7 +133,7 @@ public sealed class ProjectRulesTests
     {
         Assert.Equal(ProjectPermissions.All, ProjectPermissions.For(ProjectRole.Manager));
         Assert.Equal(
-            [ProjectPermissions.Read, ProjectPermissions.Update, ProjectPermissions.TasksWrite, ProjectPermissions.TasksComment],
+            [ProjectPermissions.Read, ProjectPermissions.Update, ProjectPermissions.TasksWrite, ProjectPermissions.TasksComment, ProjectPermissions.DocumentsWrite],
             ProjectPermissions.For(ProjectRole.Contributor));
         Assert.Equal([ProjectPermissions.Read], ProjectPermissions.For(ProjectRole.Viewer));
     }

@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Planning;
+using ProjectManager.Domain.Activity;
 using ProjectManager.Domain.Projects;
+using ProjectManager.Infrastructure.Activity;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Planning;
@@ -9,7 +11,7 @@ namespace ProjectManager.Infrastructure.Planning;
 /// <summary>
 /// Fases e marcos. Tudo passa pelo filtro da organização ativa; o projeto arquivado é somente leitura.
 /// </summary>
-internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimeProvider timeProvider) : IPlanningService
+internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimeProvider timeProvider, ActivityRecorder activity) : IPlanningService
 {
     private const string ProjectNotFoundMessage = "Projeto não encontrado.";
     private const string PhaseNotFoundMessage = "Fase não encontrada.";
@@ -50,6 +52,7 @@ internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimePro
         var phase = project.Value.AddPhase(request.Name);
         phase.ChangeDescription(request.Description);
         phase.Schedule(request.StartDate, request.EndDate);
+        activity.Record(ActivityActions.PhaseCreated, ActivityEntityTypes.Phase, phase.Id, $"Fase '{phase.Name}' criada", projectId);
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success(ToDetails(phase))
@@ -90,6 +93,11 @@ internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimePro
         }
 
         phase.Schedule(startDate, endDate);
+        var phaseChanges = activity.ChangesOf(phase);
+        if (!phaseChanges.IsEmpty)
+        {
+            activity.Record(ActivityActions.PhaseUpdated, ActivityEntityTypes.Phase, phase.Id, $"Fase '{phase.Name}' alterada", projectId, changes: phaseChanges);
+        }
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success(ToDetails(phase))
@@ -134,6 +142,14 @@ internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimePro
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         dbContext.Entry(project.Value!).State = EntityState.Modified;
+        var order = current.OrderBy(phase => phase.Position).Select(phase => phase.Id.ToString()).ToList();
+        activity.Record(
+            ActivityActions.PhasesReordered,
+            ActivityEntityTypes.Project,
+            projectId,
+            "Fases reordenadas",
+            projectId,
+            changes: new ActivityChanges().Set("phaseIds", order, requested.Select(id => id.ToString()).ToList()));
         if (!await dbContext.TrySaveChangesAsync(cancellationToken))
         {
             return Result.Failure<IReadOnlyList<PhaseDetails>>(ErrorKind.Conflict, ConflictMessage);
@@ -183,6 +199,7 @@ internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimePro
         var milestones = await dbContext.Milestones.Where(m => m.ProjectId == projectId && m.PhaseId == phaseId).ToListAsync(cancellationToken);
         milestones.ForEach(milestone => milestone.LinkToPhase(null));
         dbContext.ProjectPhases.Remove(phase);
+        activity.Record(ActivityActions.PhaseDeleted, ActivityEntityTypes.Phase, phase.Id, $"Fase '{phase.Name}' excluída", projectId);
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success()
@@ -228,6 +245,7 @@ internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimePro
         milestone.ChangeDueDate(request.DueDate);
         milestone.LinkToPhase(phase);
         dbContext.Milestones.Add(milestone);
+        activity.Record(ActivityActions.MilestoneCreated, ActivityEntityTypes.Milestone, milestone.Id, $"Marco '{milestone.Name}' criado", projectId);
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success(ToDetails(milestone))
@@ -289,6 +307,12 @@ internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimePro
             milestone.MarkAsNotReached();
         }
 
+        var milestoneChanges = activity.ChangesOf(milestone);
+        if (!milestoneChanges.IsEmpty)
+        {
+            activity.Record(ActivityActions.MilestoneUpdated, ActivityEntityTypes.Milestone, milestone.Id, $"Marco '{milestone.Name}' alterado", projectId, changes: milestoneChanges);
+        }
+
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success(ToDetails(milestone))
             : Result.Failure<MilestoneDetails>(ErrorKind.Conflict, ConflictMessage);
@@ -314,6 +338,7 @@ internal sealed class PlanningService(ProjectManagerDbContext dbContext, TimePro
         }
 
         dbContext.Milestones.Remove(milestone);
+        activity.Record(ActivityActions.MilestoneDeleted, ActivityEntityTypes.Milestone, milestone.Id, $"Marco '{milestone.Name}' excluído", projectId);
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success()
