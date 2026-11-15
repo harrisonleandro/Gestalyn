@@ -60,6 +60,26 @@ internal sealed partial class OrganizationService(
             : Result.Success(ToDetails(organization));
     }
 
+    public async Task<Result<MyMembership>> GetMyMembershipAsync(ActiveMembership actor, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        var organization = await FindActiveOrganizationAsync(cancellationToken);
+        var role = await dbContext.Roles.AsNoTracking().SingleOrDefaultAsync(r => r.Id == actor.RoleId, cancellationToken);
+        if (organization is null || role is null)
+        {
+            return Result.Failure<MyMembership>(ErrorKind.NotFound, "Organização não encontrada.");
+        }
+
+        return Result.Success(new MyMembership(
+            organization.Id,
+            organization.Name,
+            role.Id,
+            role.Name,
+            actor.IsOwner,
+            actor.Permissions.Order(StringComparer.Ordinal).ToList()));
+    }
+
     public async Task<Result<OrganizationDetails>> RenameActiveAsync(OrganizationNameRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

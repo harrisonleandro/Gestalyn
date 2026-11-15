@@ -1,0 +1,143 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/quadro"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits ProjectPage
+@inject TasksApi Tasks
+@inject WorkflowApi Workflow
+
+<PageTitle>Quadro · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Quadro" Trail="@([("Quadro", (string?)null)])">
+    <Actions>
+        @if (Writable)
+        {
+            <a class="btn btn-primary" href="@($"{ProjectPath}/tarefas/nova")"><Icon Name="plus" /> Nova tarefa</a>
+        }
+    </Actions>
+    <ChildContent>
+        <TaskFilters Values="Filters" ShowState="false" />
+        <ApiErrors Result="ActionResult" />
+
+        @if (_columns is null)
+        {
+            <States Ready="false" />
+        }
+        else
+        {
+            <p class="pm-muted small">
+                "Mover para…" oferece as transições que saem de cada estado no workflow. As marcadas exigem aprovação;
+                a API confere a permissão e as regras de cada movimento.
+            </p>
+            <div class="pm-board">
+                @foreach (var (state, tasks) in _columns)
+                {
+                    <section class="pm-column" aria-labelledby="@($"col-{state.Id}")">
+                        <div class="pm-column-header">
+                            <h2 id="@($"col-{state.Id}")"><StateBadge Name="@state.Name" Category="state.Category" /></h2>
+                            <span class="pm-muted small" aria-label="@($"{tasks.TotalCount} tarefas")">@tasks.TotalCount</span>
+                        </div>
+                        @if (tasks.Items.Count == 0)
+                        {
+                            <p class="pm-muted small mb-0">Nenhuma tarefa.</p>
+                        }
+                        @foreach (var task in tasks.Items)
+                        {
+                            <article class="pm-task-card">
+                                <a href="@($"{OrgPath}/tarefas/{task.Id}")">#@task.Number @task.Title</a>
+                                <div class="pm-task-meta">
+                                    <span>@Display.Name(task.Priority)</span>
+                                    @if (task.DueDate is { } due)
+                                    {
+                                        <span class="@(IsOverdue(task) ? "pm-overdue" : null)">@(IsOverdue(task) ? "Atrasada:" : "Prazo:") @Display.Date(due)</span>
+                                    }
+                                    @if (task.AssigneeIds.Count > 0)
+                                    {
+                                        <span>@task.AssigneeIds.Count responsável(is)</span>
+                                    }
+                                    @foreach (var label in task.Labels) { <span class="pm-label">@label</span> }
+                                </div>
+                                @{ var targets = Targets(state.Id); }
+                                @if (Writable && targets.Count > 0)
+                                {
+                                    <details class="pm-disclosure mt-2 mb-0">
+                                        <summary class="small">Mover para…</summary>
+                                        <div class="d-flex flex-column gap-1">
+                                            @foreach (var (target, transition) in targets)
+                                            {
+                                                <ActionForm Name="@($"move-{task.Id}-{target.Id}")"
+                                                            Label="@(target.Name + (transition.RequiresApproval ? " (exige aprovação)" : string.Empty))"
+                                                            ButtonClass="btn btn-outline-secondary btn-sm w-100"
+                                                            OnSubmit="() => MoveAsync(task, target)" />
+                                            }
+                                        </div>
+                                    </details>
+                                }
+                            </article>
+                        }
+                        @if (tasks.TotalCount > tasks.Items.Count)
+                        {
+                            <a class="small" href="@($"{ProjectPath}/tarefas?estado={state.Id}")">Ver todas as @tasks.TotalCount</a>
+                        }
+                    </section>
+                }
+            </div>
+        }
+    </ChildContent>
+</ProjectFrame>
+
+@code {
+    private const int ColumnSize = 50;
+
+    [SupplyParameterFromQuery(Name = "busca")] private string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "prioridade")] private string? PriorityText { get; set; }
+    [SupplyParameterFromQuery(Name = "etiqueta")] private string? Label { get; set; }
+    [SupplyParameterFromQuery(Name = "minhas")] private bool Mine { get; set; }
+    [SupplyParameterFromQuery(Name = "atrasadas")] private bool Overdue { get; set; }
+
+    private WorkflowDetails? _workflow;
+    private List<(WorkflowStateDetails State, Paged<TaskSummary> Tasks)>? _columns;
+
+    private TaskFilterValues Filters => new(Search, null, null, PriorityText, Label, Mine, Overdue, false, false, null);
+
+    private bool Writable => Project?.ArchivedAt is null && Can(Permissions.TasksWrite);
+
+    protected override async Task LoadProjectAsync()
+    {
+        _workflow = Take(await Workflow.GetAsync(OrganizationId, ProjectId));
+        if (_workflow is null)
+        {
+            return;
+        }
+
+        var columns = new List<(WorkflowStateDetails, Paged<TaskSummary>)>();
+        foreach (var state in _workflow.States)
+        {
+            var filter = Filters.ToFilter(1, ColumnSize) with { StateId = state.Id };
+            var tasks = Take(await Tasks.ListAsync(OrganizationId, ProjectId, filter));
+            if (tasks is null)
+            {
+                return;
+            }
+
+            columns.Add((state, tasks));
+        }
+
+        _columns = columns;
+    }
+
+    /// <summary>
+    /// Destinos a partir do estado, pela estrutura do workflow. As transições que exigem aprovação só aparecem para quem
+    /// tem a permissão de aprovar no projeto; a regra do próprio trabalho continua sendo da API.
+    /// </summary>
+    private List<(WorkflowStateDetails Target, WorkflowTransitionDetails Transition)> Targets(Guid fromStateId) =>
+        _workflow!.Transitions
+            .Where(t => t.FromStateId == fromStateId && (!t.RequiresApproval || Can(Permissions.TasksApprove)))
+            .Join(_workflow.States, t => t.ToStateId, s => s.Id, (t, s) => (s, t))
+            .OrderBy(pair => pair.s.Position)
+            .ToList();
+
+    private async Task MoveAsync(TaskSummary task, WorkflowStateDetails target) =>
+        Complete(await Tasks.TransitionAsync(OrganizationId, task.Id, target.Id, task.State.Id, comment: null), "movida");
+
+    private static bool IsOverdue(TaskSummary task) => task.DueDate < DateOnly.FromDateTime(DateTime.UtcNow) && !task.State.IsFinal;
+}

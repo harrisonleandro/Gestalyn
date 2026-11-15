@@ -1,0 +1,248 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/workflow"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject WorkflowApi Workflow
+
+<PageTitle>Workflow · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Workflow" Trail="@([("Workflow", (string?)null)])">
+    @if (_workflow is not null)
+    {
+        <ApiErrors Result="ActionResult" />
+        @if (Unreachable.Count > 0)
+        {
+            <div class="alert alert-warning" role="status">
+                Estes estados não têm caminho até um estado final, e as tarefas neles não poderão ser concluídas:
+                <strong>@string.Join(", ", Unreachable.Select(s => s.Name))</strong>.
+            </div>
+        }
+
+        <section class="pm-card" aria-labelledby="estados">
+            <h2 id="estados">Estados</h2>
+            <table class="table pm-table align-middle">
+                <thead><tr><th scope="col">Ordem</th><th scope="col">Estado</th><th scope="col">Tarefas</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+                <tbody>
+                    @foreach (var state in _workflow.States)
+                    {
+                        <tr>
+                            <td data-label="Ordem">@state.Position</td>
+                            <td data-label="Estado">
+                                <StateBadge Name="@state.Name" Category="state.Category" />
+                                @if (state.IsInitial) { <span class="pm-label ms-1">Inicial</span> }
+                                @if (state.IsFinal) { <span class="pm-label ms-1">Final</span> }
+                            </td>
+                            <td data-label="Tarefas">@state.TaskCount</td>
+                            <td>
+                                @if (Manage)
+                                {
+                                    <div class="pm-actions">
+                                        @if (state.Position > 1)
+                                        {
+                                            <ActionForm Name="@($"up-{state.Id}")" Label="Subir" AriaLabel="@($"Subir {state.Name}")" OnSubmit="() => MoveAsync(state, state.Position - 1)" />
+                                        }
+                                        @if (state.Position < _workflow.States.Count)
+                                        {
+                                            <ActionForm Name="@($"down-{state.Id}")" Label="Descer" AriaLabel="@($"Descer {state.Name}")" OnSubmit="() => MoveAsync(state, state.Position + 1)" />
+                                        }
+                                        <details class="pm-disclosure mb-0">
+                                            <summary class="small">Editar</summary>
+                                            <form method="post" @formname="@($"edit-state-{state.Id}")" @onsubmit="() => UpdateStateAsync(state)" data-enhance class="d-flex flex-wrap gap-2">
+                                                <AntiforgeryToken />
+                                                <label class="visually-hidden" for="@($"state-name-{state.Id}")">Nome</label>
+                                                <input id="@($"state-name-{state.Id}")" name="F.Text" class="form-control form-control-sm" value="@state.Name" maxlength="60" required />
+                                                <label class="visually-hidden" for="@($"state-cat-{state.Id}")">Categoria</label>
+                                                <select id="@($"state-cat-{state.Id}")" name="F.Value" class="form-select form-select-sm">
+                                                    @foreach (var category in Enum.GetValues<StateCategory>())
+                                                    {
+                                                        <option value="@category" selected="@(category == state.Category)">@Display.Name(category)</option>
+                                                    }
+                                                </select>
+                                                <button type="submit" class="btn btn-outline-secondary btn-sm">Salvar</button>
+                                            </form>
+                                        </details>
+                                        @if (!state.IsInitial && state.TaskCount == 0)
+                                        {
+                                            <ActionForm Name="@($"delete-state-{state.Id}")" Label="Excluir" ButtonClass="btn btn-outline-danger btn-sm"
+                                                        Confirm="@($"Excluir o estado {state.Name}? As transições dele também são removidas.")" ConfirmLabel="Excluir"
+                                                        OnSubmit="() => DeleteStateAsync(state)" />
+                                        }
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (Manage)
+            {
+                <form method="post" @formname="add-state" @onsubmit="AddStateAsync" data-enhance class="pm-form-grid">
+                    <AntiforgeryToken />
+                    <div><label for="new-state" class="form-label">Novo estado</label><input id="new-state" name="F.Text" class="form-control" maxlength="60" required /></div>
+                    <div>
+                        <label for="new-state-category" class="form-label">Categoria</label>
+                        <select id="new-state-category" name="F.Value" class="form-select">
+                            @foreach (var category in Enum.GetValues<StateCategory>())
+                            {
+                                <option value="@category">@Display.Name(category)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-end"><button type="submit" class="btn btn-primary"><Icon Name="plus" /> Adicionar estado</button></div>
+                </form>
+            }
+        </section>
+
+        <section class="pm-card" aria-labelledby="transicoes">
+            <h2 id="transicoes">Transições (@_workflow.Transitions.Count)</h2>
+            <table class="table pm-table align-middle">
+                <thead><tr><th scope="col">De</th><th scope="col">Para</th><th scope="col">Aprovação</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+                <tbody>
+                    @foreach (var transition in _workflow.Transitions.OrderBy(t => State(t.FromStateId).Position).ThenBy(t => State(t.ToStateId).Position))
+                    {
+                        <tr>
+                            <td data-label="De">@State(transition.FromStateId).Name</td>
+                            <td data-label="Para">@State(transition.ToStateId).Name</td>
+                            <td data-label="Aprovação">@(transition.RequiresApproval ? "Exige aprovação" : "—")</td>
+                            <td>
+                                @if (Manage)
+                                {
+                                    <ActionForm Name="@($"remove-transition-{transition.Id}")" Label="Remover" ButtonClass="btn btn-outline-danger btn-sm"
+                                                Confirm="Remover esta transição? As tarefas deixam de poder seguir por ela." ConfirmLabel="Remover"
+                                                OnSubmit="() => RemoveTransitionAsync(transition)" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (Manage)
+            {
+                <form method="post" @formname="add-transition" @onsubmit="AddTransitionAsync" data-enhance class="pm-form-grid">
+                    <AntiforgeryToken />
+                    <div>
+                        <label for="from-state" class="form-label">De</label>
+                        <select id="from-state" name="F.Value" class="form-select">
+                            @foreach (var state in _workflow.States) { <option value="@state.Id">@state.Name</option> }
+                        </select>
+                    </div>
+                    <div>
+                        <label for="to-state" class="form-label">Para</label>
+                        <select id="to-state" name="F.Text" class="form-select">
+                            @foreach (var state in _workflow.States) { <option value="@state.Id">@state.Name</option> }
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-end gap-3">
+                        <div class="form-check"><input id="requires-approval" type="checkbox" class="form-check-input" name="F.Flag" value="true" /><label for="requires-approval" class="form-check-label">Exige aprovação</label></div>
+                        <button type="submit" class="btn btn-primary">Adicionar</button>
+                    </div>
+                </form>
+            }
+        </section>
+
+        <section class="pm-card" aria-labelledby="configuracoes">
+            <h2 id="configuracoes">Configurações</h2>
+            @if (Manage)
+            {
+                <form method="post" @formname="settings" @onsubmit="SaveSettingsAsync" data-enhance class="pm-form-grid">
+                    <AntiforgeryToken />
+                    <div>
+                        <label for="initial-state" class="form-label">Estado inicial das tarefas novas</label>
+                        <select id="initial-state" name="F.Value" class="form-select">
+                            @foreach (var state in _workflow.States.Where(s => !s.IsFinal))
+                            {
+                                <option value="@state.Id" selected="@state.IsInitial">@state.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-end">
+                        <div class="form-check">
+                            <input id="independent" type="checkbox" class="form-check-input" name="F.Flag" value="true" checked="@_workflow.RequireIndependentApproval" />
+                            <label for="independent" class="form-check-label">Quem é responsável pela tarefa não aprova o próprio trabalho</label>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-end"><button type="submit" class="btn btn-primary">Salvar</button></div>
+                </form>
+            }
+            else
+            {
+                <p class="mb-0">Aprovação independente: @(_workflow.RequireIndependentApproval ? "ligada" : "desligada"). Alterar o workflow exige a permissão de gerenciá-lo.</p>
+            }
+        </section>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    private WorkflowDetails? _workflow;
+
+    private bool Manage => Project?.ArchivedAt is null && Can(Permissions.WorkflowManage);
+
+    /// <summary>
+    /// Estados sem caminho até um estado final, pela estrutura que a API devolve (só um aviso de configuração; a API
+    /// continua aceitando o workflow assim, ADR-013).
+    /// </summary>
+    private List<WorkflowStateDetails> Unreachable
+    {
+        get
+        {
+            var reaching = _workflow!.States.Where(s => s.IsFinal).Select(s => s.Id).ToHashSet();
+            bool added;
+            do
+            {
+                added = false;
+                foreach (var transition in _workflow.Transitions.Where(t => reaching.Contains(t.ToStateId) && !reaching.Contains(t.FromStateId)))
+                {
+                    added |= reaching.Add(transition.FromStateId);
+                }
+            }
+            while (added);
+
+            return _workflow.States.Where(s => !reaching.Contains(s.Id)).ToList();
+        }
+    }
+
+    protected override void OnInitialized() => Row ??= new RowForm();
+
+    protected override async Task LoadProjectAsync() => _workflow = Take(await Workflow.GetAsync(OrganizationId, ProjectId));
+
+    private WorkflowStateDetails State(Guid id) => _workflow!.States.First(s => s.Id == id);
+
+    private async Task MoveAsync(WorkflowStateDetails state, int position) =>
+        Complete(await Workflow.MoveStateAsync(OrganizationId, state.Id, position), "salvo");
+
+    private async Task UpdateStateAsync(WorkflowStateDetails state)
+    {
+        var category = Enum.TryParse<StateCategory>(Row.Value, out var parsed) ? parsed : state.Category;
+        var name = string.IsNullOrWhiteSpace(Row.Text) || Row.Text == state.Name ? null : Row.Text;
+        Complete(await Workflow.UpdateStateAsync(OrganizationId, state.Id, name, category == state.Category ? null : category), "salvo");
+    }
+
+    private async Task DeleteStateAsync(WorkflowStateDetails state) => Complete(await Workflow.DeleteStateAsync(OrganizationId, state.Id), "excluido");
+
+    private async Task AddStateAsync()
+    {
+        if (Enum.TryParse<StateCategory>(Row.Value, out var category))
+        {
+            Complete(await Workflow.AddStateAsync(OrganizationId, ProjectId, Row.Text ?? string.Empty, category), "criado");
+        }
+    }
+
+    private async Task AddTransitionAsync()
+    {
+        if (Guid.TryParse(Row.Value, out var from) && Guid.TryParse(Row.Text, out var to))
+        {
+            Complete(await Workflow.AddTransitionAsync(OrganizationId, from, to, Row.Flag), "criado");
+        }
+    }
+
+    private async Task RemoveTransitionAsync(WorkflowTransitionDetails transition) =>
+        Complete(await Workflow.RemoveTransitionAsync(OrganizationId, transition.Id), "removido");
+
+    private async Task SaveSettingsAsync()
+    {
+        var initial = Guid.TryParse(Row.Value, out var id) ? id : (Guid?)null;
+        Complete(await Workflow.UpdateSettingsAsync(OrganizationId, ProjectId, initial, Row.Flag), "salvo");
+    }
+}

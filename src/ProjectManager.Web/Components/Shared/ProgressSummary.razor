@@ -1,0 +1,38 @@
+@*
+    Progresso pela regra única da API (concluídas ÷ (tarefas − canceladas), ADR-014), sempre com as contagens que o
+    explicam. Sem tarefas na conta, "Sem dados": nunca 0% nem 100%.
+*@
+<div class="pm-progress-summary">
+    <div class="d-flex justify-content-between align-items-baseline">
+        <span class="pm-progress-value">@Display.Percent(Value.Percent)</span>
+        @if (!Compact)
+        {
+            <span class="pm-muted small">@Value.Counts.Done de @(Value.Counts.Total - Value.Counts.Canceled) concluídas</span>
+        }
+    </div>
+    <div class="progress pm-progress" role="progressbar" aria-label="@Label" aria-valuemin="0" aria-valuemax="100"
+         aria-valuenow="@((int)Math.Round(Value.Percent ?? 0))" aria-valuetext="@Display.Percent(Value.Percent)">
+        <div class="progress-bar" style="width: @(((Value.Percent ?? 0)).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div>
+    </div>
+    @if (!Compact)
+    {
+        <ul class="pm-counts" aria-label="Tarefas por categoria">
+            <li><span class="pm-dot pm-cat-todo"></span>A fazer @Value.Counts.Todo</li>
+            <li><span class="pm-dot pm-cat-inprogress"></span>Em andamento @Value.Counts.InProgress</li>
+            <li><span class="pm-dot pm-cat-blocked"></span>Bloqueadas @Value.Counts.Blocked</li>
+            <li><span class="pm-dot pm-cat-done"></span>Concluídas @Value.Counts.Done</li>
+            <li><span class="pm-dot pm-cat-canceled"></span>Canceladas @Value.Counts.Canceled</li>
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Progress Value { get; set; } = default!;
+
+    [Parameter]
+    public bool Compact { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "Progresso";
+}

@@ -1,0 +1,79 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/documentos"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject DocumentsApi Documents
+
+<PageTitle>Documentos · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Documentos" Trail="@([("Documentos", (string?)null)])">
+    <ApiErrors Result="ActionResult" />
+    @if (Project!.ArchivedAt is null && Can(Permissions.DocumentsWrite))
+    {
+        <details class="pm-card pm-disclosure">
+            <summary>Novo documento</summary>
+            <EditForm Model="NewDocument" FormName="create-document" OnValidSubmit="CreateAsync" Enhance>
+                <DataAnnotationsValidator />
+                <label for="doc-title" class="form-label">Título</label>
+                <InputText id="doc-title" class="form-control" @bind-Value="NewDocument.Title" />
+                <ValidationMessage For="() => NewDocument.Title" />
+                <label for="doc-body" class="form-label mt-3">Conteúdo (Markdown)</label>
+                <InputTextArea id="doc-body" class="form-control font-monospace" rows="10" @bind-Value="NewDocument.Body" />
+                <button type="submit" class="btn btn-primary mt-3">Criar documento</button>
+            </EditForm>
+        </details>
+    }
+
+    <form method="get" class="mb-3">
+        <div class="form-check">
+            <input id="with-archived" class="form-check-input" type="checkbox" name="arquivados" value="true" checked="@IncludeArchived" />
+            <label for="with-archived" class="form-check-label">Incluir arquivados</label>
+            <button type="submit" class="btn btn-link btn-sm">Aplicar</button>
+        </div>
+    </form>
+
+    @if (_documents is { Count: 0 })
+    {
+        <EmptyState Title="Nenhum documento." Message="Documentos do projeto ficam aqui, com o histórico de versões." />
+    }
+    else if (_documents is not null)
+    {
+        <div class="pm-card">
+            <table class="table pm-table align-middle">
+                <thead><tr><th scope="col">Título</th><th scope="col">Versão</th><th scope="col">Atualizado em</th></tr></thead>
+                <tbody>
+                    @foreach (var document in _documents)
+                    {
+                        <tr>
+                            <td data-label="Título">
+                                <a href="@($"{OrgPath}/documentos/{document.Id}")">@document.Title</a>
+                                @if (document.ArchivedAt is not null) { <span class="pm-label ms-1">Arquivado</span> }
+                            </td>
+                            <td data-label="Versão">@document.CurrentVersion</td>
+                            <td data-label="Atualizado em">@Display.DateTime(document.UpdatedAt)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromQuery(Name = "arquivados")]
+    private bool IncludeArchived { get; set; }
+
+    [SupplyParameterFromForm(FormName = "create-document")]
+    private MarkdownForm NewDocument { get; set; } = default!;
+
+    private List<DocumentSummary>? _documents;
+
+    protected override void OnInitialized() => NewDocument ??= new MarkdownForm();
+
+    protected override async Task LoadProjectAsync() => _documents = Take(await Documents.ListAsync(OrganizationId, ProjectId, IncludeArchived));
+
+    private async Task CreateAsync()
+    {
+        var response = await Documents.CreateAsync(OrganizationId, ProjectId, NewDocument.Title, NewDocument.Body ?? string.Empty);
+        Complete(response, "criado", response.Value is { } document ? $"{OrgPath}/documentos/{document.Id}" : null);
+    }
+}

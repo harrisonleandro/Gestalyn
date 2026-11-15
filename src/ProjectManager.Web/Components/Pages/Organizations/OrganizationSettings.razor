@@ -1,0 +1,227 @@
+@page "/o/{OrganizationId:guid}/configuracoes"
+@attribute [Authorize]
+@inherits OrganizationPage
+@using System.Security.Claims
+
+<PageTitle>Organização · Gestalyn</PageTitle>
+
+<OrgFrame Membership="Membership" Error="LoadError" Ready="Membership is not null">
+    <PageHeader Title="Organização" Subtitle="@($"Seu papel: {Membership!.RoleName}")" />
+    <ApiErrors Result="ActionResult" />
+
+    <div class="pm-card">
+        <h2>Dados</h2>
+        @if (Membership.Can(Permissions.OrganizationUpdate))
+        {
+            <EditForm Model="Rename" FormName="rename-organization" OnValidSubmit="RenameAsync" Enhance class="d-flex gap-2 flex-wrap align-items-end">
+                <DataAnnotationsValidator />
+                <div class="flex-grow-1">
+                    <label for="org-name" class="form-label">Nome</label>
+                    <InputText id="org-name" class="form-control" @bind-Value="Rename.Name" />
+                    <ValidationMessage For="() => Rename.Name" />
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </EditForm>
+        }
+        else
+        {
+            <p class="mb-0">@Membership.Name</p>
+        }
+    </div>
+
+    @if (_members is not null)
+    {
+        <div class="pm-card">
+            <h2>Membros (@_members.Count)</h2>
+            <table class="table pm-table align-middle">
+                <thead><tr><th scope="col">Nome</th><th scope="col">E-mail</th><th scope="col">Papel</th><th scope="col">Desde</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+                <tbody>
+                    @foreach (var member in _members)
+                    {
+                        var isMe = member.UserId == _userId;
+                        <tr>
+                            <td data-label="Nome">@member.DisplayName @(isMe ? "(você)" : null)</td>
+                            <td data-label="E-mail">@member.Email</td>
+                            <td data-label="Papel">
+                                @if (Membership.Can(Permissions.MembersUpdateRole) && _roles is not null && !isMe)
+                                {
+                                    <form method="post" @formname="@($"role-{member.UserId}")" @onsubmit="() => ChangeRoleAsync(member)" data-enhance class="d-flex gap-2">
+                                        <AntiforgeryToken />
+                                        <label class="visually-hidden" for="@($"role-{member.UserId}")">Papel de @member.DisplayName</label>
+                                        <select id="@($"role-{member.UserId}")" name="F.Value" class="form-select form-select-sm">
+                                            @foreach (var role in _roles)
+                                            {
+                                                <option value="@role.Id" selected="@(role.Id == member.RoleId)">@role.Name</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Alterar</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    @member.RoleName
+                                }
+                            </td>
+                            <td data-label="Desde">@Display.Date(member.JoinedAt)</td>
+                            <td>
+                                @if (isMe)
+                                {
+                                    <ActionForm Name="leave-organization" Label="Sair da organização" ButtonClass="btn btn-outline-danger btn-sm"
+                                                Confirm="@($"Sair de {Membership.Name}? Você perde o acesso aos projetos dela até ser convidado de novo.")" ConfirmLabel="Sair"
+                                                OnSubmit="() => RemoveAsync(member, leaving: true)" />
+                                }
+                                else if (Membership.Can(Permissions.MembersRemove))
+                                {
+                                    <ActionForm Name="@($"remove-{member.UserId}")" Label="Remover" ButtonClass="btn btn-outline-danger btn-sm"
+                                                Confirm="@($"Remover {member.DisplayName} da organização? A pessoa perde o acesso aos projetos dela.")" ConfirmLabel="Remover"
+                                                OnSubmit="() => RemoveAsync(member, leaving: false)" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Membership.Can(Permissions.MembersInvite) && _roles is not null)
+    {
+        <div class="pm-card">
+            <h2>Convites</h2>
+            <EditForm Model="Invite" FormName="invite" OnValidSubmit="InviteAsync" Enhance class="pm-form-grid mb-3">
+                <DataAnnotationsValidator />
+                <div>
+                    <label for="invite-email" class="form-label">E-mail</label>
+                    <InputText id="invite-email" type="email" class="form-control" @bind-Value="Invite.Email" />
+                    <ValidationMessage For="() => Invite.Email" />
+                </div>
+                <div>
+                    <label for="invite-role" class="form-label">Papel</label>
+                    <InputSelect id="invite-role" class="form-select" @bind-Value="Invite.RoleId">
+                        <option value="">Escolha…</option>
+                        @foreach (var role in _roles.Where(r => !r.IsOwnerRole() || Membership.IsOwner))
+                        {
+                            <option value="@role.Id">@role.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Invite.RoleId" />
+                </div>
+                <div class="d-flex align-items-end"><button type="submit" class="btn btn-primary">Enviar convite</button></div>
+            </EditForm>
+
+            @if (_invitations is { Count: > 0 })
+            {
+                <table class="table pm-table align-middle">
+                    <thead><tr><th scope="col">E-mail</th><th scope="col">Papel</th><th scope="col">Situação</th><th scope="col">Expira em</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+                    <tbody>
+                        @foreach (var invitation in _invitations)
+                        {
+                            <tr>
+                                <td data-label="E-mail">@invitation.Email</td>
+                                <td data-label="Papel">@invitation.RoleName</td>
+                                <td data-label="Situação">@Display.InvitationStatus(invitation.Status)</td>
+                                <td data-label="Expira em">@Display.DateTime(invitation.ExpiresAt)</td>
+                                <td>
+                                    @if (invitation.Status == "Pending")
+                                    {
+                                        <ActionForm Name="@($"revoke-{invitation.Id}")" Label="Revogar" ButtonClass="btn btn-outline-danger btn-sm"
+                                                    Confirm="@($"Revogar o convite para {invitation.Email}? O link enviado deixa de funcionar.")" ConfirmLabel="Revogar"
+                                                    OnSubmit="() => RevokeAsync(invitation)" />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="pm-muted mb-0">Nenhum convite enviado.</p>
+            }
+        </div>
+    }
+
+    @if (_roles is not null)
+    {
+        <div class="pm-card">
+            <details class="pm-disclosure">
+                <summary>Papéis e permissões</summary>
+                <dl class="mb-0">
+                    @foreach (var role in _roles)
+                    {
+                        <dt>@role.Name</dt>
+                        <dd class="pm-muted small">@string.Join(", ", role.Permissions)</dd>
+                    }
+                </dl>
+            </details>
+        </div>
+    }
+</OrgFrame>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    [SupplyParameterFromForm(FormName = "rename-organization")]
+    private NameForm Rename { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "invite")]
+    private InvitationForm Invite { get; set; } = default!;
+
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    private List<MemberDetails>? _members;
+    private List<RoleDetails>? _roles;
+    private List<InvitationDetails>? _invitations;
+    private Guid _userId;
+
+    protected override void OnInitialized()
+    {
+        Rename ??= new NameForm();
+        Invite ??= new InvitationForm();
+        Row ??= new RowForm();
+    }
+
+    protected override async Task LoadAsync()
+    {
+        var user = AuthenticationState is null ? null : (await AuthenticationState).User;
+        _userId = Guid.TryParse(user?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : Guid.Empty;
+        if (string.IsNullOrEmpty(Rename.Name))
+        {
+            Rename.Name = Membership!.Name;
+        }
+
+        // Cada lista só é pedida com a permissão que a API exige; sem ela, a seção não aparece.
+        if (Membership!.Can(Permissions.MembersRead))
+        {
+            _members = (await Organizations.ListMembersAsync(OrganizationId)).Value;
+            _roles = (await Organizations.ListRolesAsync(OrganizationId)).Value;
+        }
+
+        if (Membership.Can(Permissions.MembersInvite))
+        {
+            _invitations = (await Organizations.ListInvitationsAsync(OrganizationId)).Value;
+        }
+    }
+
+    private async Task RenameAsync() => Complete(await Organizations.RenameAsync(OrganizationId, Rename.Name), "salvo");
+
+    private async Task InviteAsync() => Complete(await Organizations.InviteAsync(OrganizationId, Invite.Email, Invite.RoleId!.Value), "convidado");
+
+    private async Task ChangeRoleAsync(MemberDetails member)
+    {
+        if (!Guid.TryParse(Row.Value, out var roleId))
+        {
+            return;
+        }
+
+        Complete(await Organizations.ChangeRoleAsync(OrganizationId, member.UserId, roleId), "salvo");
+    }
+
+    private async Task RemoveAsync(MemberDetails member, bool leaving) =>
+        Complete(await Organizations.RemoveMemberAsync(OrganizationId, member.UserId), "removido", leaving ? "/organizacoes" : null);
+
+    private async Task RevokeAsync(InvitationDetails invitation) =>
+        Complete(await Organizations.RevokeInvitationAsync(OrganizationId, invitation.Id), "revogado");
+}

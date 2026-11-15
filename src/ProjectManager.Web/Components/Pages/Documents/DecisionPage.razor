@@ -1,0 +1,167 @@
+@page "/o/{OrganizationId:guid}/decisoes/{DecisionId:guid}"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject DocumentsApi Documents
+
+<PageTitle>@(_decision?.Title ?? "Decisão") · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="@(_decision?.Title ?? "Decisão")"
+              Subtitle="@(_decision is null ? null : Display.Name(_decision.Status))"
+              Trail="@([("Decisões", $"{ProjectPath}/decisoes"), (_decision?.Title ?? string.Empty, (string?)null)])">
+    @if (_decision is not null)
+    {
+        <ApiErrors Result="ActionResult" />
+        @if (_decision.Status == DecisionStatus.Superseded && _decision.SupersededById is { } replacement)
+        {
+            <div class="alert alert-warning" role="status">
+                Esta decisão foi substituída. <a href="@($"{OrgPath}/decisoes/{replacement}")">Ver a decisão que a substitui</a>.
+            </div>
+        }
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <article class="pm-card">
+                    <h2>Contexto</h2>
+                    <MarkdownView Source="@_decision.Context" />
+                    <h2 class="mt-4">Decisão</h2>
+                    <MarkdownView Source="@_decision.Outcome" />
+                    <h2 class="mt-4">Alternativas consideradas</h2>
+                    <MarkdownView Source="@_decision.Alternatives" EmptyText="Não informadas." />
+                    <h2 class="mt-4">Consequências</h2>
+                    <MarkdownView Source="@_decision.Consequences" EmptyText="Não informadas." />
+                </article>
+
+                @if (Proposed && Writable && Can(Permissions.DocumentsWrite))
+                {
+                    <details class="pm-card pm-disclosure" open="@(ActionResult is not null)">
+                        <summary>Editar proposta</summary>
+                        <EditForm Model="Edit" FormName="edit-decision" OnValidSubmit="SaveAsync" Enhance>
+                            <DataAnnotationsValidator />
+                            <DecisionFields Model="Edit" Prefix="Edit" />
+                            <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+                        </EditForm>
+                    </details>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <section class="pm-card" aria-labelledby="situacao">
+                    <h2 id="situacao">Situação</h2>
+                    <p><span class="pm-label">@Display.Name(_decision.Status)</span></p>
+                    <dl class="small mb-0">
+                        <dt class="pm-muted fw-normal">Proposta em</dt><dd>@Display.DateTime(_decision.CreatedAt)</dd>
+                        @if (_decision.DecidedAt is { } decidedAt)
+                        {
+                            <dt class="pm-muted fw-normal">Decidida em</dt><dd>@Display.DateTime(decidedAt)</dd>
+                        }
+                    </dl>
+                </section>
+
+                @if (Writable && Can(Permissions.DocumentsManage))
+                {
+                    <section class="pm-card" aria-labelledby="decidir">
+                        <h2 id="decidir">Decidir</h2>
+                        @if (Proposed)
+                        {
+                            <div class="pm-actions">
+                                <ActionForm Name="accept" Label="Aceitar" ButtonClass="btn btn-primary btn-sm"
+                                            Confirm="Aceitar esta decisão? Depois de decidida, ela não pode mais ser editada." ConfirmLabel="Aceitar"
+                                            OnSubmit="@(() => DecideAsync("accept"))" />
+                                <ActionForm Name="reject" Label="Rejeitar" ButtonClass="btn btn-outline-danger btn-sm"
+                                            Confirm="Rejeitar esta decisão? Depois de decidida, ela não pode mais ser editada." ConfirmLabel="Rejeitar"
+                                            OnSubmit="@(() => DecideAsync("reject"))" />
+                            </div>
+                        }
+                        else if (_decision.Status == DecisionStatus.Accepted && _replacements is { Count: > 0 })
+                        {
+                            <form method="post" @formname="supersede" @onsubmit="SupersedeAsync" data-enhance
+                                  data-confirm="Marcar esta decisão como substituída? A mudança não pode ser desfeita." data-confirm-action="Substituir">
+                                <AntiforgeryToken />
+                                <label for="replacement" class="form-label">Substituir por outra decisão aceita</label>
+                                <select id="replacement" name="F.Value" class="form-select form-select-sm">
+                                    @foreach (var candidate in _replacements)
+                                    {
+                                        <option value="@candidate.Id">@candidate.Title</option>
+                                    }
+                                </select>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm mt-2">Substituir</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <p class="pm-muted small mb-0">Nenhuma ação disponível nesta situação.</p>
+                        }
+                    </section>
+                }
+            </div>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [Parameter]
+    public Guid DecisionId { get; set; }
+
+    [SupplyParameterFromForm(FormName = "edit-decision")]
+    private DecisionForm Edit { get; set; } = default!;
+
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    private DecisionDetails? _decision;
+    private List<DecisionSummary>? _replacements;
+
+    private bool Proposed => _decision?.Status == DecisionStatus.Proposed;
+
+    private bool Writable => Project?.ArchivedAt is null;
+
+    protected override void OnInitialized()
+    {
+        Edit ??= new DecisionForm();
+        Row ??= new RowForm();
+    }
+
+    protected override async Task<Guid?> ResolveProjectIdAsync()
+    {
+        _decision = Take(await Documents.GetDecisionAsync(OrganizationId, DecisionId));
+        return _decision?.ProjectId;
+    }
+
+    protected override async Task LoadProjectAsync()
+    {
+        if (string.IsNullOrEmpty(Edit.Title))
+        {
+            Edit.Title = _decision!.Title;
+            Edit.Context = _decision.Context;
+            Edit.Outcome = _decision.Outcome;
+            Edit.Alternatives = _decision.Alternatives;
+            Edit.Consequences = _decision.Consequences;
+        }
+
+        if (_decision!.Status == DecisionStatus.Accepted && Can(Permissions.DocumentsManage))
+        {
+            _replacements = (await Documents.ListDecisionsAsync(OrganizationId, _decision.ProjectId, DecisionStatus.Accepted)).Value?
+                .Where(d => d.Id != DecisionId)
+                .ToList();
+        }
+    }
+
+    private async Task SaveAsync() => Complete(await Documents.UpdateDecisionAsync(OrganizationId, DecisionId, new
+    {
+        title = Edit.Title,
+        context = Edit.Context,
+        outcome = Edit.Outcome,
+        alternatives = Edit.Alternatives,
+        consequences = Edit.Consequences,
+    }), "salvo");
+
+    private async Task DecideAsync(string verb) => Complete(await Documents.DecideAsync(OrganizationId, DecisionId, verb), "decidido");
+
+    private async Task SupersedeAsync()
+    {
+        if (Guid.TryParse(Row.Value, out var replacement))
+        {
+            Complete(await Documents.SupersedeAsync(OrganizationId, DecisionId, replacement), "decidido");
+        }
+    }
+}

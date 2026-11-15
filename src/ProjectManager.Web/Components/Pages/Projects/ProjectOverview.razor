@@ -1,0 +1,132 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits ProjectPage
+
+<PageTitle>@(Project?.Name ?? "Projeto") · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" Subtitle="@Subtitle">
+    @if (_dashboard is not null)
+    {
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <section class="pm-card" aria-labelledby="progresso">
+                    <h2 id="progresso">Progresso</h2>
+                    <ProgressSummary Value="_dashboard.Progress" />
+                    <p class="pm-muted small mt-2 mb-0">Regra: concluídas ÷ (tarefas − canceladas), sem contar as arquivadas.</p>
+                </section>
+
+                <section class="pm-card" aria-labelledby="por-estado">
+                    <h2 id="por-estado">Tarefas por estado</h2>
+                    <ul class="pm-counts">
+                        @foreach (var state in _dashboard.ByState)
+                        {
+                            <li><a href="@($"{ProjectPath}/tarefas?estado={state.StateId}")"><StateBadge Name="@state.Name" Category="state.Category" /></a> @state.Count</li>
+                        }
+                    </ul>
+                </section>
+
+                <section class="pm-card" aria-labelledby="atencao">
+                    <h2 id="atencao">Pedem atenção</h2>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <h3 class="h6">Atrasadas (@_dashboard.OverdueCount)</h3>
+                            @if (_dashboard.Overdue.Count == 0) { <p class="pm-muted small">Nenhuma.</p> }
+                            else { <TaskBriefList Tasks="_dashboard.Overdue" OrganizationId="OrganizationId" Today="_dashboard.Today" /> }
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="h6">Vencem em 7 dias (@_dashboard.DueSoonCount)</h3>
+                            @if (_dashboard.DueSoon.Count == 0) { <p class="pm-muted small">Nenhuma.</p> }
+                            else { <TaskBriefList Tasks="_dashboard.DueSoon" OrganizationId="OrganizationId" Today="_dashboard.Today" /> }
+                        </div>
+                        <div class="col-md-4">
+                            <h3 class="h6">Bloqueadas (@_dashboard.BlockedCount)</h3>
+                            @if (_dashboard.Blocked.Count == 0) { <p class="pm-muted small">Nenhuma.</p> }
+                            else { <TaskBriefList Tasks="_dashboard.Blocked" OrganizationId="OrganizationId" Today="_dashboard.Today" /> }
+                        </div>
+                    </div>
+                </section>
+
+                @if (_statistics is not null)
+                {
+                    <section class="pm-card" aria-labelledby="ritmo">
+                        <h2 id="ritmo">Ritmo das últimas @_statistics.Weeks semanas</h2>
+                        <table class="table pm-table table-sm">
+                            <thead><tr><th scope="col">Semana de</th><th scope="col">Criadas</th><th scope="col">Concluídas</th></tr></thead>
+                            <tbody>
+                                @foreach (var week in _statistics.Weekly)
+                                {
+                                    <tr><td data-label="Semana de">@Display.Date(week.WeekStart)</td><td data-label="Criadas">@week.Created</td><td data-label="Concluídas">@week.Completed</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                        <p class="mb-0 small">
+                            Tempo de ciclo (criação até a primeira conclusão):
+                            @if (_statistics.CycleTime.SampleSize == 0)
+                            {
+                                <span class="pm-muted">sem conclusões no período.</span>
+                            }
+                            else
+                            {
+                                <span>mediana de @Number(_statistics.CycleTime.MedianDays) dias e percentil 85 de @Number(_statistics.CycleTime.Percentile85Days) dias (@_statistics.CycleTime.SampleSize tarefas).</span>
+                            }
+                        </p>
+                    </section>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <section class="pm-card" aria-labelledby="sobre">
+                    <h2 id="sobre">Sobre</h2>
+                    <MarkdownView Source="@Project!.Description" EmptyText="Sem descrição." />
+                    <dl class="row small mt-3 mb-0">
+                        <dt class="col-5 pm-muted fw-normal">Prioridade</dt><dd class="col-7">@Display.Name(Project.Priority)</dd>
+                        <dt class="col-5 pm-muted fw-normal">Início</dt><dd class="col-7">@Display.Date(Project.StartDate)</dd>
+                        <dt class="col-5 pm-muted fw-normal">Prazo</dt><dd class="col-7">@Display.Date(Project.DueDate)</dd>
+                        <dt class="col-5 pm-muted fw-normal">Responsável</dt><dd class="col-7">@(Project.Responsible?.DisplayName ?? "—")</dd>
+                        <dt class="col-5 pm-muted fw-normal">Etiquetas</dt><dd class="col-7">@foreach (var tag in Project.Tags) { <span class="pm-label me-1">@tag</span> }</dd>
+                    </dl>
+                </section>
+
+                <section class="pm-card" aria-labelledby="marcos">
+                    <h2 id="marcos">Próximos marcos</h2>
+                    @if (_dashboard.UpcomingMilestones.Count == 0)
+                    {
+                        <p class="pm-muted mb-0">Nenhum marco pendente.</p>
+                    }
+                    else
+                    {
+                        @foreach (var milestone in _dashboard.UpcomingMilestones)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between"><strong>@milestone.Name</strong><span class="pm-muted small">@Display.Date(milestone.DueDate)</span></div>
+                                <ProgressSummary Value="milestone.Progress" Compact Label="@($"Progresso de {milestone.Name}")" />
+                            </div>
+                        }
+                    }
+                </section>
+
+                <section class="pm-card" aria-labelledby="recentes">
+                    <h2 id="recentes">Atividade recente</h2>
+                    <ActivityList Items="_dashboard.RecentActivity" OrganizationId="OrganizationId" Compact />
+                    <a class="small" href="@($"{ProjectPath}/atividades")">Ver todas</a>
+                </section>
+            </div>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    private ProjectDashboard? _dashboard;
+    private ProjectStatistics? _statistics;
+
+    private string? Subtitle => Project?.MyRole is { } role ? $"Seu papel: {Display.Name(role)}" : "Você não está na equipe deste projeto.";
+
+    protected override async Task LoadProjectAsync()
+    {
+        _dashboard = Take(await Projects.DashboardAsync(OrganizationId, ProjectId));
+        _statistics = (await Projects.StatisticsAsync(OrganizationId, ProjectId, 6)).Value;
+    }
+
+    private static string Number(double? value) => value?.ToString("0.#", ProjectManager.Web.Display.Culture) ?? "—";
+}

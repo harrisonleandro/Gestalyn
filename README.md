@@ -4,7 +4,7 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 08 (auditoria, documentação e dashboards) concluída.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas e gerenciar membros e papéis. Pela API, também é possível gerenciar projetos (equipe, papéis, etiquetas, repositórios), fases e marcos, e tarefas com número por projeto, vários responsáveis, prioridade, prazo, etiquetas, comentários, dependências e anexos. Cada projeto tem o próprio workflow de estados, com transições validadas no backend, aprovação e histórico. Toda alteração fica registrada numa auditoria imutável, com autor e origem; cada projeto tem documentos com versões, decisões técnicas e dashboards com progresso e estatísticas calculados a partir dos dados reais. O isolamento multi-tenant é testado com usuários reais. A interface web completa chega na Fase 09.
+**Estado atual: Fase 09 (interface web completa) em revisão.** Pela Web e pela API, já é possível criar conta e entrar, criar organizações, convidar pessoas e gerenciar membros e papéis, e também gerenciar projetos (equipe, papéis, etiquetas, repositórios), fases e marcos, e tarefas com número por projeto, vários responsáveis, prioridade, prazo, etiquetas, comentários, dependências e anexos. Cada projeto tem o próprio workflow de estados, com transições validadas no backend, aprovação e histórico. Toda alteração fica registrada numa auditoria imutável, com autor e origem; cada projeto tem documentos com versões, decisões técnicas e dashboards com progresso e estatísticas calculados a partir dos dados reais. A Web traz todas essas telas, com quadro de tarefas por estado, permissões refletidas na interface e Markdown seguro ([docs/web/TELAS.md](docs/web/TELAS.md)). O isolamento multi-tenant é testado com usuários reais. A API e a autenticação de agentes chegam na Fase 10.
 
 A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 
@@ -15,7 +15,7 @@ A referência funcional e técnica é a [especificação mestre](docs/specificat
 | Linguagem / plataforma | C# · .NET 10 LTS |
 | API | ASP.NET Core Web API (controllers), OpenAPI nativo, Problem Details (RFC 9457), Health Checks, rate limiting |
 | Identidade | ASP.NET Core Identity · JWT de curta duração com sessão revogável · refresh token com rotação · e-mail via SMTP (MailKit; Mailpit em desenvolvimento) |
-| Interface | Blazor Web App (Interactive Server) · Bootstrap 5.3 em tema escuro |
+| Interface | Blazor Web App (SSR com navegação aprimorada, BFF) · Bootstrap 5.3 em tema escuro · Markdig |
 | CLI | `gestalyn` · System.CommandLine |
 | Testes | xUnit v3 · `WebApplicationFactory` (Microsoft.AspNetCore.Mvc.Testing) |
 | CI | GitHub Actions |
@@ -162,7 +162,7 @@ Inicie a API primeiro e, em outro terminal:
 dotnet run --project src/ProjectManager.Web
 ```
 
-Acesse http://localhost:5200. A página **Status do sistema** consulta o `/health` da API por HTTP. Em **Criar conta** e **Entrar** ficam o cadastro, o login, a recuperação de senha e o perfil. Os tokens da API ficam só no servidor da Web, dentro de um cookie HttpOnly.
+Acesse http://localhost:5200. Depois de entrar, crie uma organização e um projeto: as telas de projetos, quadro, tarefas, workflow, fases e marcos, atividades, documentos, decisões e configurações ficam nas abas do projeto ([docs/web/TELAS.md](docs/web/TELAS.md)). A página **Status do sistema**, no rodapé do menu, consulta o `/health` da API. Os tokens da API ficam só no servidor da Web, dentro de um cookie HttpOnly; o navegador nunca fala com a API.
 
 A URL da API é configurada em `Api:BaseUrl` (em Development: `appsettings.Development.json`). Fora de Development, a configuração é obrigatória e a aplicação não inicia sem ela. Exemplo por variável de ambiente:
 
@@ -189,6 +189,7 @@ dotnet test
 ```
 
 - **UnitTests**: regras de dependência entre projetos, invariantes do domínio e comportamento da CLI.
+- **WebTests**: componentes da Web com bUnit (Markdown seguro, estados, permissões refletidas na tela, quadro), com a API substituída por respostas falsas.
 - **IntegrationTests** (**requer Docker**): sobem PostgreSQL e Mailpit descartáveis com Testcontainers e aplicam as migrations. Cobrem persistência, isolamento multi-tenant, autenticação (fluxos completos com e-mail real, sessão, lockout, rate limiting, logs sem segredos) e a API hospedada em memória.
 
 ## Integração contínua

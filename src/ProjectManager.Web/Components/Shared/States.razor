@@ -1,0 +1,56 @@
+@* Estado de uma área da página: carregando, erro (com a mensagem da API) ou o conteúdo (ADR-015, D1). *@
+@if (Error is not null)
+{
+    <div class="pm-state pm-state-error" role="alert">
+        <Icon Name="alert" />
+        <div>
+            <h2 class="h5 mb-1">@ErrorTitle(Error)</h2>
+            <p class="mb-0">@ErrorDetail(Error)</p>
+            @if (Error.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                <a class="btn btn-outline-secondary btn-sm mt-3" href="organizacoes">Ver suas organizações</a>
+            }
+            @if (Error.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                <a class="btn btn-primary btn-sm mt-3" href="conta/entrar">Entrar novamente</a>
+            }
+        </div>
+    </div>
+}
+else if (!Ready)
+{
+    <div class="pm-state" role="status" aria-live="polite">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span>Carregando…</span>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter]
+    public ApiResult? Error { get; set; }
+
+    [Parameter]
+    public bool Ready { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private static string ErrorTitle(ApiResult error) => error.StatusCode switch
+    {
+        System.Net.HttpStatusCode.NotFound => "Não encontrado",
+        System.Net.HttpStatusCode.Forbidden => "Sem permissão",
+        System.Net.HttpStatusCode.Unauthorized => "Sessão expirada",
+        null => "Serviço indisponível",
+        _ => "Não foi possível carregar",
+    };
+
+    private static string ErrorDetail(ApiResult error) => error.StatusCode switch
+    {
+        System.Net.HttpStatusCode.NotFound => "O item não existe ou você não tem acesso a ele.",
+        _ => error.Message ?? "Tente novamente em instantes.",
+    };
+}

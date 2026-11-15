@@ -1,0 +1,233 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/configuracoes"
+@attribute [Authorize]
+@inherits ProjectPage
+
+<PageTitle>Configurações · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Configurações do projeto" Trail="@([("Configurações", (string?)null)])">
+    <ApiErrors Result="ActionResult" />
+    @{ var writable = Project!.ArchivedAt is null; }
+
+    <section class="pm-card" aria-labelledby="dados">
+        <h2 id="dados">Dados do projeto</h2>
+        @if (writable && Can(Permissions.ProjectUpdate))
+        {
+            <EditForm Model="Edit" FormName="edit-project" OnValidSubmit="SaveAsync" Enhance>
+                <DataAnnotationsValidator />
+                <ProjectFields Model="Edit" Prefix="Edit" />
+                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+            </EditForm>
+        }
+        else
+        {
+            <p class="pm-muted mb-0">Você pode ver os dados na visão geral; editar exige a permissão de alterar o projeto.</p>
+        }
+    </section>
+
+    <section class="pm-card" aria-labelledby="equipe">
+        <h2 id="equipe">Equipe (@(_members?.Count ?? 0))</h2>
+        @if (_members is not null)
+        {
+            var manage = writable && Can(Permissions.ProjectMembersManage);
+            <table class="table pm-table align-middle">
+                <thead><tr><th scope="col">Pessoa</th><th scope="col">Papel</th><th scope="col">Responsável</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+                <tbody>
+                    @foreach (var member in _members)
+                    {
+                        <tr>
+                            <td data-label="Pessoa">@member.DisplayName <span class="pm-muted small d-block">@member.Email</span></td>
+                            <td data-label="Papel">
+                                @if (manage)
+                                {
+                                    <form method="post" @formname="@($"member-role-{member.UserId}")" @onsubmit="() => ChangeRoleAsync(member)" data-enhance class="d-flex gap-2">
+                                        <AntiforgeryToken />
+                                        <label class="visually-hidden" for="@($"member-role-{member.UserId}")">Papel de @member.DisplayName</label>
+                                        <select id="@($"member-role-{member.UserId}")" name="F.Value" class="form-select form-select-sm">
+                                            @foreach (var role in Enum.GetValues<ProjectRole>())
+                                            {
+                                                <option value="@role" selected="@(role == member.Role)">@Display.Name(role)</option>
+                                            }
+                                        </select>
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Alterar</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    @Display.Name(member.Role)
+                                }
+                            </td>
+                            <td data-label="Responsável">
+                                @if (member.IsResponsible)
+                                {
+                                    <span class="pm-label">Responsável</span>
+                                }
+                                else if (manage)
+                                {
+                                    <ActionForm Name="@($"responsible-{member.UserId}")" Label="Tornar responsável" OnSubmit="() => MakeResponsibleAsync(member)" />
+                                }
+                            </td>
+                            <td>
+                                @if (manage)
+                                {
+                                    <ActionForm Name="@($"remove-member-{member.UserId}")" Label="Remover" ButtonClass="btn btn-outline-danger btn-sm"
+                                                Confirm="@($"Remover {member.DisplayName} da equipe? A pessoa deixa de ser responsável pelas tarefas deste projeto.")" ConfirmLabel="Remover"
+                                                OnSubmit="() => RemoveMemberAsync(member)" />
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (manage && _candidates is { Count: > 0 })
+            {
+                <form method="post" @formname="add-member" @onsubmit="AddMemberAsync" data-enhance class="pm-form-grid mt-2">
+                    <AntiforgeryToken />
+                    <div>
+                        <label for="new-member" class="form-label">Adicionar pessoa da organização</label>
+                        <select id="new-member" name="F.Value" class="form-select">
+                            @foreach (var candidate in _candidates)
+                            {
+                                <option value="@candidate.UserId">@candidate.DisplayName</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label for="new-member-role" class="form-label">Papel</label>
+                        <select id="new-member-role" name="F.Text" class="form-select">
+                            @foreach (var role in Enum.GetValues<ProjectRole>())
+                            {
+                                <option value="@role" selected="@(role == ProjectRole.Contributor)">@Display.Name(role)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="d-flex align-items-end"><button type="submit" class="btn btn-primary"><Icon Name="plus" /> Adicionar</button></div>
+                </form>
+            }
+        }
+    </section>
+
+    <section class="pm-card" aria-labelledby="repositorios">
+        <h2 id="repositorios">Repositórios</h2>
+        @if (_repositories is { Count: > 0 })
+        {
+            <ul class="pm-timeline mb-3">
+                @foreach (var repository in _repositories)
+                {
+                    <li class="d-flex justify-content-between gap-2 flex-wrap align-items-center">
+                        <span><a href="@repository.Url" rel="noopener noreferrer nofollow" target="_blank">@(repository.Name ?? repository.Url)</a> <span class="pm-muted small">@repository.Provider</span></span>
+                        @if (writable && Can(Permissions.ProjectUpdate))
+                        {
+                            <ActionForm Name="@($"remove-repo-{repository.Id}")" Label="Remover" ButtonClass="btn btn-outline-danger btn-sm"
+                                        Confirm="Desassociar este repositório do projeto? O repositório em si não é alterado." ConfirmLabel="Remover"
+                                        OnSubmit="() => RemoveRepositoryAsync(repository)" />
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="pm-muted">Nenhum repositório associado.</p>
+        }
+        @if (writable && Can(Permissions.ProjectUpdate))
+        {
+            <form method="post" @formname="add-repository" @onsubmit="AddRepositoryAsync" data-enhance class="pm-form-grid">
+                <AntiforgeryToken />
+                <div><label for="repo-url" class="form-label">URL</label><input id="repo-url" name="F.Value" type="url" class="form-control" required /></div>
+                <div><label for="repo-name" class="form-label">Nome (opcional)</label><input id="repo-name" name="F.Text" class="form-control" /></div>
+                <div class="d-flex align-items-end"><button type="submit" class="btn btn-outline-secondary">Associar</button></div>
+            </form>
+        }
+    </section>
+
+    @if (writable && Can(Permissions.ProjectArchive))
+    {
+        <section class="pm-card" aria-labelledby="arquivar">
+            <h2 id="arquivar">Arquivar projeto</h2>
+            <p class="pm-muted">O projeto fica somente leitura: tarefas, documentos e workflow deixam de aceitar alterações. A API não oferece restauração.</p>
+            <ActionForm Name="archive-project" Label="Arquivar projeto" ButtonClass="btn btn-danger"
+                        Confirm="@($"Arquivar {Project.Name}? O projeto fica somente leitura e não há como desfazer pela interface.")" ConfirmLabel="Arquivar"
+                        OnSubmit="ArchiveAsync" />
+        </section>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromForm(FormName = "edit-project")]
+    private ProjectForm Edit { get; set; } = default!;
+
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    private List<ProjectMemberDetails>? _members;
+    private List<MemberDetails>? _candidates;
+    private List<ProjectRepositoryDetails>? _repositories;
+
+    protected override void OnInitialized()
+    {
+        Edit ??= new ProjectForm();
+        Row ??= new RowForm();
+    }
+
+    protected override async Task LoadProjectAsync()
+    {
+        if (string.IsNullOrEmpty(Edit.Name))
+        {
+            Edit.Name = Project!.Name;
+            Edit.Description = Project.Description;
+            Edit.Priority = Project.Priority;
+            Edit.StartDate = Project.StartDate;
+            Edit.DueDate = Project.DueDate;
+            Edit.Tags = string.Join(", ", Project.Tags);
+        }
+
+        _members = (await Projects.ListMembersAsync(OrganizationId, ProjectId)).Value;
+        _repositories = (await Projects.ListRepositoriesAsync(OrganizationId, ProjectId)).Value;
+        if (Can(Permissions.ProjectMembersManage) && Membership!.Can(Permissions.MembersRead))
+        {
+            var organizationMembers = (await Organizations.ListMembersAsync(OrganizationId)).Value ?? [];
+            _candidates = organizationMembers.Where(m => _members?.All(t => t.UserId != m.UserId) == true).ToList();
+        }
+    }
+
+    private async Task SaveAsync() => Complete(await Projects.UpdateAsync(OrganizationId, ProjectId, new
+    {
+        name = Edit.Name,
+        description = Edit.Description,
+        priority = Edit.Priority,
+        startDate = Edit.StartDate,
+        dueDate = Edit.DueDate,
+        tags = Edit.TagList,
+    }), "salvo");
+
+    private async Task ChangeRoleAsync(ProjectMemberDetails member)
+    {
+        if (Enum.TryParse<ProjectRole>(Row.Value, out var role))
+        {
+            Complete(await Projects.UpdateMemberAsync(OrganizationId, ProjectId, member.UserId, role, null), "salvo");
+        }
+    }
+
+    private async Task MakeResponsibleAsync(ProjectMemberDetails member) =>
+        Complete(await Projects.UpdateMemberAsync(OrganizationId, ProjectId, member.UserId, null, true), "salvo");
+
+    private async Task RemoveMemberAsync(ProjectMemberDetails member) =>
+        Complete(await Projects.RemoveMemberAsync(OrganizationId, ProjectId, member.UserId), "removido");
+
+    private async Task AddMemberAsync()
+    {
+        if (Guid.TryParse(Row.Value, out var userId) && Enum.TryParse<ProjectRole>(Row.Text, out var role))
+        {
+            Complete(await Projects.AddMemberAsync(OrganizationId, ProjectId, userId, role, false), "salvo");
+        }
+    }
+
+    private async Task AddRepositoryAsync() =>
+        Complete(await Projects.AddRepositoryAsync(OrganizationId, ProjectId, Row.Value ?? string.Empty, string.IsNullOrWhiteSpace(Row.Text) ? null : Row.Text), "salvo");
+
+    private async Task RemoveRepositoryAsync(ProjectRepositoryDetails repository) =>
+        Complete(await Projects.RemoveRepositoryAsync(OrganizationId, ProjectId, repository.Id), "removido");
+
+    private async Task ArchiveAsync() => Complete(await Projects.ArchiveAsync(OrganizationId, ProjectId), "arquivado", ProjectPath);
+}

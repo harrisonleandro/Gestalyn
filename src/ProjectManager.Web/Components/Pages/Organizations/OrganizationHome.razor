@@ -1,0 +1,73 @@
+@page "/o/{OrganizationId:guid}"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits OrganizationPage
+
+<PageTitle>Visão geral · Gestalyn</PageTitle>
+
+<OrgFrame Membership="Membership" Error="LoadError" Ready="_dashboard is not null">
+    <PageHeader Title="@Membership!.Name" Subtitle="Visão geral dos projetos que você acompanha.">
+        <Actions>
+            @if (Membership.Can(Permissions.ProjectsCreate))
+            {
+                <a class="btn btn-primary" href="@($"{OrgPath}/projetos/novo")"><Icon Name="plus" /> Novo projeto</a>
+            }
+        </Actions>
+    </PageHeader>
+
+    <section class="pm-grid mb-4" aria-label="Resumo">
+        <div class="pm-card pm-stat"><span class="pm-muted">Projetos ativos</span><span class="pm-stat-value">@_dashboard!.ProjectCount</span></div>
+        <div class="pm-card pm-stat"><span class="pm-muted">Tarefas abertas</span><span class="pm-stat-value">@_dashboard.OpenCount</span></div>
+        <div class="pm-card pm-stat"><span class="pm-muted">Atrasadas</span><span class="pm-stat-value @(_dashboard.OverdueCount > 0 ? "pm-overdue" : null)">@_dashboard.OverdueCount</span></div>
+        <div class="pm-card pm-stat"><span class="pm-muted">Concluídas nos últimos 7 dias</span><span class="pm-stat-value">@_dashboard.CompletedLast7Days</span></div>
+    </section>
+
+    <div class="row g-4">
+        <section class="col-lg-7" aria-labelledby="projetos-titulo">
+            <div class="pm-card">
+                <h2 id="projetos-titulo">Projetos</h2>
+                @if (_dashboard.Projects.Count == 0)
+                {
+                    <EmptyState Title="Nenhum projeto ativo visível para você." Message="Projetos aparecem aqui quando você entra na equipe deles." />
+                }
+                else
+                {
+                    <table class="table pm-table align-middle">
+                        <thead><tr><th scope="col">Projeto</th><th scope="col">Progresso</th><th scope="col">Abertas</th><th scope="col">Atrasadas</th></tr></thead>
+                        <tbody>
+                            @foreach (var project in _dashboard.Projects)
+                            {
+                                <tr>
+                                    <td data-label="Projeto"><a href="@($"{OrgPath}/projetos/{project.ProjectId}")">@project.Name</a></td>
+                                    <td data-label="Progresso" style="min-width: 10rem"><ProgressSummary Value="project.Progress" Compact Label="@($"Progresso de {project.Name}")" /></td>
+                                    <td data-label="Abertas">@project.OpenCount</td>
+                                    <td data-label="Atrasadas" class="@(project.OverdueCount > 0 ? "pm-overdue" : null)">@project.OverdueCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </section>
+
+        <section class="col-lg-5" aria-labelledby="minhas-titulo">
+            <div class="pm-card">
+                <h2 id="minhas-titulo">Minhas tarefas abertas (@_dashboard.MyOpenCount)</h2>
+                @if (_dashboard.MyOpenTasks.Count == 0)
+                {
+                    <p class="pm-muted mb-0">Nenhuma tarefa aberta em que você seja responsável.</p>
+                }
+                else
+                {
+                    <TaskBriefList Tasks="_dashboard.MyOpenTasks" OrganizationId="OrganizationId" Today="_dashboard.Today" />
+                }
+            </div>
+        </section>
+    </div>
+</OrgFrame>
+
+@code {
+    private OrganizationDashboard? _dashboard;
+
+    protected override async Task LoadAsync() => _dashboard = Take(await Organizations.DashboardAsync(OrganizationId));
+}

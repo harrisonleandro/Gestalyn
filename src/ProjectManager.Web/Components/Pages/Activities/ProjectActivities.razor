@@ -1,0 +1,73 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/atividades"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits ProjectPage
+
+<PageTitle>Atividades · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Atividades" Trail="@([("Atividades", (string?)null)])">
+    <ApiErrors Result="ActionResult" />
+    @if (Project!.ArchivedAt is null && Can(Permissions.DocumentsWrite))
+    {
+        <details class="pm-card pm-disclosure">
+            <summary>Registrar atividade (reunião, nota)</summary>
+            <form method="post" @formname="log" @onsubmit="LogAsync" data-enhance>
+                <AntiforgeryToken />
+                <div class="pm-form-grid">
+                    <div>
+                        <label for="log-kind" class="form-label">Tipo</label>
+                        <select id="log-kind" name="F.Value" class="form-select">
+                            @foreach (var kind in Enum.GetValues<ActivityLogKind>()) { <option value="@kind">@Display.Name(kind)</option> }
+                        </select>
+                    </div>
+                    <div>
+                        <label for="log-summary" class="form-label">Resumo</label>
+                        <input id="log-summary" name="F.Text" class="form-control" required maxlength="500" />
+                    </div>
+                </div>
+                <label for="log-details" class="form-label mt-3">Detalhes (Markdown, opcional)</label>
+                <textarea id="log-details" name="Detalhes" class="form-control" rows="3" maxlength="10000"></textarea>
+                <p class="pm-muted small mt-2 mb-0">Registros manuais não podem ser alterados depois; uma correção é um novo registro.</p>
+                <button type="submit" class="btn btn-primary mt-2">Registrar</button>
+            </form>
+        </details>
+    }
+
+    <ActivityFiltersForm Source="@SourceText" Origin="@OriginText" Action="@ActionText" From="From" To="To" />
+
+    @if (_items is not null)
+    {
+        <div class="pm-card">
+            <ActivityList Items="_items.Items" OrganizationId="OrganizationId" />
+            <Pager Page="_items.Page" PageCount="_items.PageCount" TotalCount="_items.TotalCount" />
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromQuery(Name = "tipo")] private string? SourceText { get; set; }
+    [SupplyParameterFromQuery(Name = "origem")] private string? OriginText { get; set; }
+    [SupplyParameterFromQuery(Name = "acao")] private string? ActionText { get; set; }
+    [SupplyParameterFromQuery(Name = "de")] private DateOnly? From { get; set; }
+    [SupplyParameterFromQuery(Name = "ate")] private DateOnly? To { get; set; }
+    [SupplyParameterFromQuery(Name = "pagina")] private int? Page { get; set; }
+
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "log", Name = "Detalhes")]
+    private string? Details { get; set; }
+
+    private Paged<ActivityItem>? _items;
+
+    protected override void OnInitialized() => Row ??= new RowForm();
+
+    protected override async Task LoadProjectAsync() =>
+        _items = Take(await Projects.ActivitiesAsync(OrganizationId, ProjectId, ActivityFiltersForm.ToFilter(SourceText, OriginText, ActionText, From, To, Page)));
+
+    private async Task LogAsync()
+    {
+        var kind = Enum.TryParse<ActivityLogKind>(Row.Value, out var parsed) ? parsed : ActivityLogKind.Note;
+        Complete(await Projects.LogActivityAsync(OrganizationId, ProjectId, new { kind, summary = Row.Text, details = Details }), "registrado");
+    }
+}

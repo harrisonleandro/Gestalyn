@@ -1,0 +1,35 @@
+@* Paginação por links: mantém os filtros da URL e troca só a página. *@
+@inject NavigationManager Navigation
+
+@if (PageCount > 1)
+{
+    <nav aria-label="Paginação" class="pm-pager">
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(Page <= 1 ? "disabled" : null)">
+                <a class="page-link" href="@UrlFor(Page - 1)" aria-disabled="@(Page <= 1)">Anterior</a>
+            </li>
+            <li class="page-item active" aria-current="page"><span class="page-link">@Page de @PageCount</span></li>
+            <li class="page-item @(Page >= PageCount ? "disabled" : null)">
+                <a class="page-link" href="@UrlFor(Page + 1)" aria-disabled="@(Page >= PageCount)">Próxima</a>
+            </li>
+        </ul>
+        <span class="pm-muted small">@TotalCount itens</span>
+    </nav>
+}
+
+@code {
+    [Parameter]
+    public int Page { get; set; } = 1;
+
+    [Parameter]
+    public int PageCount { get; set; } = 1;
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    private string UrlFor(int page) => Navigation.GetUriWithQueryParameters(new Dictionary<string, object?>
+    {
+        ["pagina"] = page <= 1 ? null : page,
+        [Flash.QueryName] = null,
+    });
+}

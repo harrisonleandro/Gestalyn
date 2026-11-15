@@ -1,0 +1,81 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/tarefas"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits ProjectPage
+@inject TasksApi Tasks
+@inject WorkflowApi Workflow
+
+<PageTitle>Tarefas · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Tarefas" Trail="@([("Tarefas", (string?)null)])">
+    <Actions>
+        @if (Project!.ArchivedAt is null && Can(Permissions.TasksWrite))
+        {
+            <a class="btn btn-primary" href="@($"{ProjectPath}/tarefas/nova")"><Icon Name="plus" /> Nova tarefa</a>
+        }
+    </Actions>
+    <ChildContent>
+        <TaskFilters States="_states" Values="Filters" />
+
+        @if (_tasks is null)
+        {
+            <States Ready="false" />
+        }
+        else if (_tasks.Items.Count == 0)
+        {
+            <EmptyState Title="Nenhuma tarefa encontrada." Message="Crie uma tarefa ou ajuste os filtros." />
+        }
+        else
+        {
+            <div class="pm-card">
+                <table class="table pm-table align-middle">
+                    <thead><tr><th scope="col">#</th><th scope="col">Título</th><th scope="col">Estado</th><th scope="col">Prioridade</th><th scope="col">Prazo</th><th scope="col">Etiquetas</th></tr></thead>
+                    <tbody>
+                        @foreach (var task in _tasks.Items)
+                        {
+                            <tr>
+                                <td data-label="#">@task.Number</td>
+                                <td data-label="Título">
+                                    <a href="@($"{OrgPath}/tarefas/{task.Id}")">@task.Title</a>
+                                    @if (task.ArchivedAt is not null) { <span class="pm-label ms-1">Arquivada</span> }
+                                </td>
+                                <td data-label="Estado"><StateBadge Name="@task.State.Name" Category="task.State.Category" /></td>
+                                <td data-label="Prioridade">@Display.Name(task.Priority)</td>
+                                <td data-label="Prazo" class="@(IsOverdue(task) ? "pm-overdue" : null)">@Display.Date(task.DueDate)@(IsOverdue(task) ? " (atrasada)" : null)</td>
+                                <td data-label="Etiquetas">@foreach (var label in task.Labels) { <span class="pm-label me-1">@label</span> }</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <Pager Page="_tasks.Page" PageCount="_tasks.PageCount" TotalCount="_tasks.TotalCount" />
+            </div>
+        }
+    </ChildContent>
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromQuery(Name = "busca")] private string? Search { get; set; }
+    [SupplyParameterFromQuery(Name = "estado")] private Guid? StateId { get; set; }
+    [SupplyParameterFromQuery(Name = "categoria")] private string? Category { get; set; }
+    [SupplyParameterFromQuery(Name = "prioridade")] private string? PriorityText { get; set; }
+    [SupplyParameterFromQuery(Name = "etiqueta")] private string? Label { get; set; }
+    [SupplyParameterFromQuery(Name = "minhas")] private bool Mine { get; set; }
+    [SupplyParameterFromQuery(Name = "atrasadas")] private bool Overdue { get; set; }
+    [SupplyParameterFromQuery(Name = "abertas")] private bool Open { get; set; }
+    [SupplyParameterFromQuery(Name = "arquivadas")] private bool Archived { get; set; }
+    [SupplyParameterFromQuery(Name = "ordem")] private string? Sort { get; set; }
+    [SupplyParameterFromQuery(Name = "pagina")] private int? Page { get; set; }
+
+    private Paged<TaskSummary>? _tasks;
+    private IReadOnlyList<WorkflowStateDetails> _states = [];
+
+    private TaskFilterValues Filters => new(Search, StateId, Category, PriorityText, Label, Mine, Overdue, Open, Archived, Sort);
+
+    protected override async Task LoadProjectAsync()
+    {
+        _states = (await Workflow.GetAsync(OrganizationId, ProjectId)).Value?.States ?? [];
+        _tasks = Take(await Tasks.ListAsync(OrganizationId, ProjectId, Filters.ToFilter(Page)));
+    }
+
+    private bool IsOverdue(TaskSummary task) => task.DueDate < DateOnly.FromDateTime(DateTime.UtcNow) && !task.State.IsFinal;
+}

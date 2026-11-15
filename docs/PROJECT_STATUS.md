@@ -14,7 +14,9 @@
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
-**Fase 08, Auditoria, documentação e dashboards: Completed.** Validada localmente (328/328 testes, quatro mutações detectadas, migrations aplicadas no banco de desenvolvimento e execução real da API com atividades, documentos, decisões e dashboards) e no CI ([run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): 0 avisos, 178/178 e 150/150), e integrada em `develop` pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) (merge `0e9dbdd`). A próxima é a Fase 09, que depende de autorização.
+**Fase 09, Interface web completa: In Review.** Decisões D1 a D8 aprovadas em 2026-11-15 e implementadas em `feature/fase-09-web`. Validada localmente (372/372 testes, quatro mutações da interface detectadas e execução real no navegador com Gerente, Colaboradora e Observador, em 375 px e 1440 px). A interface de agentes (F09-018) foi transferida para a Fase 10 e o tempo real (F09-021) não foi implementado, por falta de necessidade comprovada (ADR-015). Faltam o push, o CI no GitHub e o PR para `develop`, que dependem de autorização.
+
+**Fase 08, Auditoria, documentação e dashboards: Completed.** Validada localmente (328/328 testes, quatro mutações detectadas, migrations aplicadas no banco de desenvolvimento e execução real da API com atividades, documentos, decisões e dashboards) e no CI ([run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): 0 avisos, 178/178 e 150/150), e integrada em `develop` pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) (merge `0e9dbdd`).
 
 **Fase 07, Workflow configurável e histórico: Completed.** Validada localmente (280/280 testes, quatro mutações detectadas, migração de dados aplicada no banco de desenvolvimento e execução real da API com aprovação e dependências) e no CI ([run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): 0 avisos, 148/148 e 132/132), e integrada em `develop` pelo [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) (merge `a6f87f9`).
 
@@ -55,7 +57,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 06 | Fases, marcos e tarefas | Completed | [FASE-06-TAREFAS.md](specifications/FASE-06-TAREFAS.md) | [FASE-06-RELATORIO.md](reports/FASE-06-RELATORIO.md) |
 | 07 | Workflow configurável e histórico | Completed | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
 | 08 | Auditoria, documentação e dashboards | Completed | [FASE-08-AUDITORIA.md](specifications/FASE-08-AUDITORIA.md) | [FASE-08-RELATORIO.md](reports/FASE-08-RELATORIO.md) |
-| 09 | Interface web completa | Not Started | — | — |
+| 09 | Interface web completa | In Review | [FASE-09-WEB.md](specifications/FASE-09-WEB.md) | [FASE-09-RELATORIO.md](reports/FASE-09-RELATORIO.md) |
 | 10 | API e autenticação de agentes | Not Started | — | — |
 | 11 | CLI gestalyn | Not Started | — | — |
 | 12 | MCP e integrações com agentes | Not Started | — | — |
@@ -217,7 +219,38 @@ Evidências na [especificação da Fase 07](specifications/FASE-07-WORKFLOW.md#e
 
 Evidências na [especificação da Fase 08](specifications/FASE-08-AUDITORIA.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-08-RELATORIO.md).
 
+## Tarefas da Fase 09
+
+| ID | Tarefa | Estado |
+|---|---|---|
+| F09-001 | Definir design system | Completed |
+| F09-002 | Criar layout principal | Completed |
+| F09-003 | Criar navegação | Completed |
+| F09-004 | Implementar autenticação visual | Completed |
+| F09-005 | Implementar seleção de organização | Completed |
+| F09-006 | Implementar dashboard | Completed |
+| F09-007 | Implementar lista de projetos | Completed |
+| F09-008 | Implementar detalhes de projeto | Completed |
+| F09-009 | Implementar gestão de membros | Completed |
+| F09-010 | Implementar quadro de tarefas | Completed |
+| F09-011 | Implementar lista de tarefas | Completed |
+| F09-012 | Implementar detalhes de tarefa | Completed |
+| F09-013 | Implementar configuração de workflow | Completed |
+| F09-014 | Implementar fases e marcos | Completed |
+| F09-015 | Implementar atividades | Completed |
+| F09-016 | Implementar documentos e decisões | Completed |
+| F09-017 | Implementar configurações | Completed |
+| F09-018 | Implementar interface de agentes | Transferida para a Fase 10 (ADR-015, D7) |
+| F09-019 | Implementar estados de carregamento e erro | Completed |
+| F09-020 | Implementar responsividade e acessibilidade | Completed |
+| F09-021 | Implementar atualizações em tempo real quando justificadas | Não implementada: sem necessidade comprovada (ADR-015, D2) |
+
+Evidências na [especificação da Fase 09](specifications/FASE-09-WEB.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-09-RELATORIO.md). A fase fica **In Review** até o CI e o merge em `develop`.
+
 ## Tarefas pendentes
+
+- Fase 09: push de `feature/fase-09-web`, CI no GitHub e PR para `develop` (dependem de autorização).
+- Fase 10: interface de agentes, credenciais e relatórios de trabalho (F09-018 transferida); reavaliar o tempo real.
 
 
 - Fase 10: incluir como critério o teste de integração "agentes não aprovam o próprio trabalho" com agentes reais.
@@ -244,7 +277,8 @@ Incidentes já resolvidos, mantidos como referência:
 | Projeto | Testes | Cobertura |
 |---|---|---|
 | ProjectManager.UnitTests | 178 | Regras de dependência (7), domínio (entidades da Fase 02; organizações, papéis e convites; projetos, etiquetas, repositórios, arquivamento e acesso efetivo; fases, marcos, tarefas, comentários, ciclos de dependência, tipos e nomes de anexos; workflow, invariantes e regras de transição com pessoas e agentes; atividades, origem e alterações campo a campo; documentos, versões e decisões; regra de progresso, tempo de ciclo e semanas), validação de entrada e paginação, CLI e tokens |
-| ProjectManager.IntegrationTests | 150 | Persistência (7), isolamento por filtro (8), autenticação (22), organizações (17: fluxos, convites com e-mail real, permissões, isolamento com usuários reais), projetos (17: fluxos, visibilidade, papéis de projeto, equipe, cabeçalho de organização, isolamento, FKs compostas e migração de dados), fases, marcos e tarefas (planejamento, número sob concorrência, responsáveis, filtros, comentários, dependências e ciclos, anexos protegidos, permissões e isolamento), workflow (15: migração de dados, configuração e invariantes, transições, aprovação, dependências, estado final, histórico, concorrência e isolamento), atividades (10: cobertura de todas as rotas de escrita, autor e origem, operações recusadas, imutabilidade no banco, filtros, registros manuais, permissões, migração da permissão nova e isolamento), documentos e decisões (4), dashboards (4: progresso, painel do projeto, estatísticas e visão da organização), rotação de refresh token, health check (3), OpenAPI (2) e erros (2). Requer Docker (PostgreSQL e Mailpit). |
+| ProjectManager.WebTests | 43 | Componentes com bUnit: Markdown seguro (HTML cru, links perigosos, imagens), estados (carregando, erros por código, progresso sem dados), permissões refletidas na tela (menu, novo projeto, configurações do projeto, transições e comentários da tarefa), quadro (colunas, movimentos, aprovação) e mensagem de movimento recusado. API substituída por respostas falsas. |
+| ProjectManager.IntegrationTests | 151 | Persistência (7), isolamento por filtro (8), autenticação (22), organizações (18: fluxos, convites com e-mail real, permissões, isolamento com usuários reais, papel e permissões do usuário), projetos (17: fluxos, visibilidade, papéis de projeto, equipe, cabeçalho de organização, isolamento, FKs compostas e migração de dados), fases, marcos e tarefas (planejamento, número sob concorrência, responsáveis, filtros, comentários, dependências e ciclos, anexos protegidos, permissões e isolamento), workflow (15: migração de dados, configuração e invariantes, transições, aprovação, dependências, estado final, histórico, concorrência e isolamento), atividades (10: cobertura de todas as rotas de escrita, autor e origem, operações recusadas, imutabilidade no banco, filtros, registros manuais, permissões, migração da permissão nova e isolamento), documentos e decisões (4), dashboards (4: progresso, painel do projeto, estatísticas e visão da organização), rotação de refresh token, health check (3), OpenAPI (2) e erros (2). Requer Docker (PostgreSQL e Mailpit). |
 
 ## Última validação
 
@@ -269,6 +303,7 @@ Incidentes já resolvidos, mantidos como referência:
 | Local, branches da auditoria combinadas | 2026-11-14 | `3f8d20a` (verificação local) | build Release 0 avisos · testes 244/244 (127 unitários, 117 de integração) · 5 mutações detectadas · API executada com o cenário do invasor |
 | GitHub Actions (`ubuntu-latest`), PR #13 | 2026-11-15 | `f3d000a` | [run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): success, 0 avisos, 148/148 e 132/132 (PostgreSQL e Mailpit via Testcontainers) |
 | GitHub Actions (`ubuntu-latest`), PR #15 | 2026-11-15 | `558c1d8` | [run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): success, 0 avisos, 178/178 e 150/150 (PostgreSQL e Mailpit via Testcontainers) |
+| Local, `feature/fase-09-web` | 2026-11-15 | `409d642` | restore exit 0 · build Release 0 avisos e 0 erros · testes 372/372 (178 unitários, 43 de componentes, 151 de integração) · 4 mutações da interface detectadas · Web e API executadas no navegador com três papéis, em 375 px e 1440 px |
 | Local, `feature/fase-08-auditoria` | 2026-11-15 | `2d20219` | restore exit 0 · build Release 0 avisos e 0 erros · testes 328/328 (178 unitários, 150 de integração) · 4 mutações detectadas · migrations aplicadas no banco local · API executada com atividades, documentos, decisões e dashboards |
 | Local, `feature/fase-07-workflow` | 2026-11-15 | `93e33e1` | restore exit 0 · build Release 0 avisos e 0 erros · testes 280/280 (148 unitários, 132 de integração) · 4 mutações detectadas · migration aplicada no banco local · API executada com aprovação, dependências e histórico |
 | Local, `feature/fase-06-tarefas` | 2026-11-12 01:38 | `b452cdb` | restore exit 0 · build Release 0 avisos e 0 erros · testes 195/195 (99 unitários, 96 de integração) · API executada com upload e download de anexo · migrations aplicadas no banco local |
@@ -304,10 +339,12 @@ Incidentes já resolvidos, mantidos como referência:
 | 2026-11-14 | Proteção de `main` e `develop` por rulesets: PR obrigatório, CI "Build e testes" obrigatório, sem force push nem exclusão | Rulesets 27277722 e 27277724 |
 | 2026-11-15 | Fase 07 integrada em `develop` (PR #13, merge `a6f87f9`) | [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) |
 | 2026-11-15 | Fase 08 integrada em `develop` (PR #15, merge `0e9dbdd`) | [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) |
+| 2026-11-15 | Fase 09: Web SSR (BFF) com design system próprio sobre o Bootstrap, organização na URL, permissões da API refletidas na tela (`GET /organizations/{id}/me`), quadro por estado, Markdown com Markdig e CSP, testes com bUnit; agentes para a Fase 10 e sem tempo real (D1 a D8) | [ADR-015](decisions/ADR-015-INTERFACE-WEB.md) |
 | 2026-11-15 | Fase 08: auditoria imutável com autor do token e origem declarada, eventos na mesma gravação com teste de cobertura por rota, documentos com versões, decisões no estilo de ADR, regra única de progresso e dashboards calculados na hora (D1 a D8) | [ADR-014](decisions/ADR-014-AUDITORIA-DOCUMENTOS-E-DASHBOARDS.md) |
 | 2026-11-14 | Fase 07: workflow por projeto, categorias fixas com estados finais, transições explícitas, aprovação com `tasks.approve`, agentes nunca aprovam o próprio trabalho, histórico com os nomes na data e migração de dados (D1 a D7) | [ADR-013](decisions/ADR-013-WORKFLOW-CONFIGURAVEL.md) |
 | 2026-11-12 | Fase 06: tarefas sem estado até o workflow, anexos em `IFileStorage` (disco local, tipos conferidos pelo conteúdo), fases e marcos do mesmo projeto, responsáveis da equipe, dependências sem ciclos, permissões de tarefa e número por projeto (D1 a D7) | [ADR-011](decisions/ADR-011-TAREFAS-E-ANEXOS.md) |
 
 ## Próxima atividade
 
-1. Fase 09 (interface web completa): especificação para aprovação, depois de autorizada pelo responsável.
+1. Fase 09: push de `feature/fase-09-web`, CI e PR para `develop`, com autorização do responsável; depois do merge, registrar a fase como Completed.
+2. Fase 10 (API e autenticação de agentes): especificação, depois de autorizada.

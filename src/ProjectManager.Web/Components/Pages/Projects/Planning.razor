@@ -1,0 +1,151 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/planejamento"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject PlanningApi PlanningApi
+
+<PageTitle>Fases e marcos · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Fases e marcos" Trail="@([("Fases e marcos", (string?)null)])">
+    @if (_phases is not null && _milestones is not null)
+    {
+        <ApiErrors Result="ActionResult" />
+        <section class="pm-card" aria-labelledby="fases">
+            <h2 id="fases">Fases</h2>
+            @if (_phases.Count == 0)
+            {
+                <p class="pm-muted">Nenhuma fase.</p>
+            }
+            @foreach (var phase in _phases)
+            {
+                var progress = _progress?.Phases.FirstOrDefault(p => p.PhaseId == phase.Id)?.Progress;
+                <div class="border-bottom border-secondary-subtle pb-3 mb-3">
+                    <div class="d-flex justify-content-between gap-2 flex-wrap">
+                        <h3 class="h6 mb-1">@phase.Position. @phase.Name</h3>
+                        <span class="pm-muted small">@Display.Date(phase.StartDate) a @Display.Date(phase.EndDate)</span>
+                    </div>
+                    @if (progress is not null) { <ProgressSummary Value="progress" Compact Label="@($"Progresso de {phase.Name}")" /> }
+                    <MarkdownView Source="@phase.Description" EmptyText="" />
+                    @if (Plan)
+                    {
+                        <div class="pm-actions mt-2">
+                            @if (phase.Position > 1)
+                            {
+                                <ActionForm Name="@($"phase-up-{phase.Id}")" Label="Subir" AriaLabel="@($"Subir {phase.Name}")" OnSubmit="() => MovePhaseAsync(phase, -1)" />
+                            }
+                            @if (phase.Position < _phases.Count)
+                            {
+                                <ActionForm Name="@($"phase-down-{phase.Id}")" Label="Descer" AriaLabel="@($"Descer {phase.Name}")" OnSubmit="() => MovePhaseAsync(phase, 1)" />
+                            }
+                            <details class="pm-disclosure mb-0">
+                                <summary class="small">Editar</summary>
+                                <form method="post" @formname="@($"edit-phase-{phase.Id}")" @onsubmit="() => UpdatePhaseAsync(phase)" data-enhance class="pm-form-grid">
+                                    <AntiforgeryToken />
+                                    <div><label class="form-label small" for="@($"phase-name-{phase.Id}")">Nome</label><input id="@($"phase-name-{phase.Id}")" name="F.Text" class="form-control form-control-sm" value="@phase.Name" required /></div>
+                                    <div><label class="form-label small" for="@($"phase-end-{phase.Id}")">Fim</label><input id="@($"phase-end-{phase.Id}")" type="date" name="F.Value" class="form-control form-control-sm" value="@phase.EndDate?.ToString("yyyy-MM-dd")" /></div>
+                                    <div class="d-flex align-items-end"><button type="submit" class="btn btn-outline-secondary btn-sm">Salvar</button></div>
+                                </form>
+                            </details>
+                            <ActionForm Name="@($"delete-phase-{phase.Id}")" Label="Excluir" ButtonClass="btn btn-outline-danger btn-sm"
+                                        Confirm="@($"Excluir a fase {phase.Name}? Só é possível sem tarefas; os marcos dela ficam sem fase.")" ConfirmLabel="Excluir"
+                                        OnSubmit="() => DeletePhaseAsync(phase)" />
+                        </div>
+                    }
+                </div>
+            }
+            @if (Plan)
+            {
+                <form method="post" @formname="add-phase" @onsubmit="AddPhaseAsync" data-enhance class="pm-form-grid">
+                    <AntiforgeryToken />
+                    <div><label for="new-phase" class="form-label">Nova fase</label><input id="new-phase" name="F.Text" class="form-control" required maxlength="200" /></div>
+                    <div><label for="new-phase-end" class="form-label">Fim (opcional)</label><input id="new-phase-end" type="date" name="F.Value" class="form-control" /></div>
+                    <div class="d-flex align-items-end"><button type="submit" class="btn btn-primary"><Icon Name="plus" /> Adicionar fase</button></div>
+                </form>
+            }
+        </section>
+
+        <section class="pm-card" aria-labelledby="marcos">
+            <h2 id="marcos">Marcos</h2>
+            @if (_milestones.Count == 0)
+            {
+                <p class="pm-muted">Nenhum marco.</p>
+            }
+            @foreach (var milestone in _milestones)
+            {
+                var progress = _progress?.Milestones.FirstOrDefault(m => m.MilestoneId == milestone.Id)?.Progress;
+                <div class="border-bottom border-secondary-subtle pb-3 mb-3">
+                    <div class="d-flex justify-content-between gap-2 flex-wrap">
+                        <h3 class="h6 mb-1"><Icon Name="flag" /> @milestone.Name @(milestone.ReachedAt is not null ? "(atingido)" : null)</h3>
+                        <span class="pm-muted small">Previsto para @Display.Date(milestone.DueDate)</span>
+                    </div>
+                    @if (progress is not null) { <ProgressSummary Value="progress" Compact Label="@($"Progresso de {milestone.Name}")" /> }
+                    @if (Plan)
+                    {
+                        <div class="pm-actions mt-2">
+                            <ActionForm Name="@($"reach-{milestone.Id}")" Label="@(milestone.ReachedAt is null ? "Marcar como atingido" : "Desmarcar atingido")"
+                                        OnSubmit="() => ToggleReachedAsync(milestone)" />
+                            <ActionForm Name="@($"delete-milestone-{milestone.Id}")" Label="Excluir" ButtonClass="btn btn-outline-danger btn-sm"
+                                        Confirm="@($"Excluir o marco {milestone.Name}? Só é possível sem tarefas ligadas.")" ConfirmLabel="Excluir"
+                                        OnSubmit="() => DeleteMilestoneAsync(milestone)" />
+                        </div>
+                    }
+                </div>
+            }
+            @if (Plan)
+            {
+                <form method="post" @formname="add-milestone" @onsubmit="AddMilestoneAsync" data-enhance class="pm-form-grid">
+                    <AntiforgeryToken />
+                    <div><label for="new-milestone" class="form-label">Novo marco</label><input id="new-milestone" name="F.Text" class="form-control" required maxlength="200" /></div>
+                    <div><label for="new-milestone-due" class="form-label">Data prevista</label><input id="new-milestone-due" type="date" name="F.Value" class="form-control" /></div>
+                    <div class="d-flex align-items-end"><button type="submit" class="btn btn-primary"><Icon Name="plus" /> Adicionar marco</button></div>
+                </form>
+            }
+        </section>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    private List<PhaseDetails>? _phases;
+    private List<MilestoneDetails>? _milestones;
+    private ProjectProgress? _progress;
+
+    private bool Plan => Project?.ArchivedAt is null && Can(Permissions.ProjectPlan);
+
+    protected override void OnInitialized() => Row ??= new RowForm();
+
+    protected override async Task LoadProjectAsync()
+    {
+        _phases = Take(await PlanningApi.ListPhasesAsync(OrganizationId, ProjectId));
+        _milestones = Take(await PlanningApi.ListMilestonesAsync(OrganizationId, ProjectId));
+        _progress = (await Projects.ProgressAsync(OrganizationId, ProjectId)).Value;
+    }
+
+    private DateOnly? RowDate => DateOnly.TryParse(Row.Value, System.Globalization.CultureInfo.InvariantCulture, out var date) ? date : null;
+
+    private async Task AddPhaseAsync() =>
+        Complete(await PlanningApi.CreatePhaseAsync(OrganizationId, ProjectId, new { name = Row.Text, endDate = RowDate }), "criado");
+
+    private async Task UpdatePhaseAsync(PhaseDetails phase) =>
+        Complete(await PlanningApi.UpdatePhaseAsync(OrganizationId, ProjectId, phase.Id, new { name = Row.Text, endDate = RowDate }), "salvo");
+
+    private async Task MovePhaseAsync(PhaseDetails phase, int offset)
+    {
+        var order = _phases!.Select(p => p.Id).ToList();
+        var index = order.IndexOf(phase.Id);
+        (order[index], order[index + offset]) = (order[index + offset], order[index]);
+        Complete(await PlanningApi.ReorderPhasesAsync(OrganizationId, ProjectId, order), "salvo");
+    }
+
+    private async Task DeletePhaseAsync(PhaseDetails phase) => Complete(await PlanningApi.DeletePhaseAsync(OrganizationId, ProjectId, phase.Id), "excluido");
+
+    private async Task AddMilestoneAsync() =>
+        Complete(await PlanningApi.CreateMilestoneAsync(OrganizationId, ProjectId, new { name = Row.Text, dueDate = RowDate }), "criado");
+
+    private async Task ToggleReachedAsync(MilestoneDetails milestone) =>
+        Complete(await PlanningApi.UpdateMilestoneAsync(OrganizationId, ProjectId, milestone.Id, new { isReached = milestone.ReachedAt is null }), "salvo");
+
+    private async Task DeleteMilestoneAsync(MilestoneDetails milestone) =>
+        Complete(await PlanningApi.DeleteMilestoneAsync(OrganizationId, ProjectId, milestone.Id), "excluido");
+}

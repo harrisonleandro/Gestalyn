@@ -1,0 +1,10 @@
+@* Estado da tarefa com a cor da categoria; o nome sempre aparece (a cor nunca é a única informação). *@
+<span class="pm-badge @Display.CategoryClass(Category)" title="Categoria: @Display.Name(Category)">@Name</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public StateCategory Category { get; set; }
+}

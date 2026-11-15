@@ -1,0 +1,27 @@
+@* Lista curta de tarefas dos dashboards, com prazo e estado. *@
+<ul class="pm-timeline">
+    @foreach (var task in Tasks)
+    {
+        <li class="d-flex justify-content-between gap-2 flex-wrap">
+            <a href="@($"o/{OrganizationId}/tarefas/{task.Id}")">#@task.Number @task.Title</a>
+            <span class="d-flex gap-2 align-items-center">
+                @if (task.DueDate is { } due)
+                {
+                    <span class="small @(due < Today ? "pm-overdue" : "pm-muted")">@(due < Today ? "Atrasada desde" : "Prazo") @Display.Date(due)</span>
+                }
+                <StateBadge Name="@task.StateName" Category="task.Category" />
+            </span>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TaskBrief> Tasks { get; set; } = [];
+
+    [Parameter]
+    public Guid OrganizationId { get; set; }
+
+    [Parameter]
+    public DateOnly Today { get; set; }
+}

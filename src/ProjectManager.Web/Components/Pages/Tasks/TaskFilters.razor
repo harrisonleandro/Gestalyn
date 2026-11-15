@@ -1,0 +1,81 @@
+@* Filtros da lista e do quadro, por GET: a URL guarda os filtros e pode ser compartilhada. *@
+<form method="get" class="pm-card mb-3" role="search" aria-label="Filtrar tarefas">
+    <div class="pm-form-grid">
+        <div>
+            <label for="f-search" class="form-label">Busca no título</label>
+            <input id="f-search" name="busca" class="form-control" value="@Values.Search" />
+        </div>
+        @if (ShowState)
+        {
+            <div>
+                <label for="f-state" class="form-label">Estado</label>
+                <select id="f-state" name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    @foreach (var state in States)
+                    {
+                        <option value="@state.Id" selected="@(Values.StateId == state.Id)">@state.Name</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label for="f-category" class="form-label">Categoria</label>
+                <select id="f-category" name="categoria" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach (var category in Enum.GetValues<StateCategory>())
+                    {
+                        <option value="@category" selected="@(Values.Category == category.ToString())">@Display.Name(category)</option>
+                    }
+                </select>
+            </div>
+        }
+        <div>
+            <label for="f-priority" class="form-label">Prioridade</label>
+            <select id="f-priority" name="prioridade" class="form-select">
+                <option value="">Todas</option>
+                @foreach (var priority in Enum.GetValues<Priority>())
+                {
+                    <option value="@priority" selected="@(Values.Priority == priority.ToString())">@Display.Name(priority)</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="f-label" class="form-label">Etiqueta</label>
+            <input id="f-label" name="etiqueta" class="form-control" value="@Values.Label" />
+        </div>
+        @if (ShowState)
+        {
+            <div>
+                <label for="f-sort" class="form-label">Ordenar por</label>
+                <select id="f-sort" name="ordem" class="form-select">
+                    <option value="">Número</option>
+                    <option value="DueDate" selected="@(Values.Sort == "DueDate")">Prazo</option>
+                    <option value="Priority" selected="@(Values.Sort == "Priority")">Prioridade (maior primeiro)</option>
+                    <option value="State" selected="@(Values.Sort == "State")">Estado</option>
+                    <option value="UpdatedAt" selected="@(Values.Sort == "UpdatedAt")">Atualização (mais recente)</option>
+                </select>
+            </div>
+        }
+    </div>
+    <div class="pm-actions mt-3">
+        <div class="form-check"><input id="f-mine" class="form-check-input" type="checkbox" name="minhas" value="true" checked="@Values.Mine" /><label class="form-check-label" for="f-mine">Minhas</label></div>
+        <div class="form-check"><input id="f-overdue" class="form-check-input" type="checkbox" name="atrasadas" value="true" checked="@Values.Overdue" /><label class="form-check-label" for="f-overdue">Atrasadas</label></div>
+        @if (ShowState)
+        {
+            <div class="form-check"><input id="f-open" class="form-check-input" type="checkbox" name="abertas" value="true" checked="@Values.Open" /><label class="form-check-label" for="f-open">Só abertas</label></div>
+            <div class="form-check"><input id="f-archived" class="form-check-input" type="checkbox" name="arquivadas" value="true" checked="@Values.Archived" /><label class="form-check-label" for="f-archived">Incluir arquivadas</label></div>
+        }
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Filtrar</button>
+    </div>
+</form>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<WorkflowStateDetails> States { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public TaskFilterValues Values { get; set; } = default!;
+
+    /// <summary>No quadro, as colunas já são os estados: os filtros de estado não aparecem.</summary>
+    [Parameter]
+    public bool ShowState { get; set; } = true;
+}

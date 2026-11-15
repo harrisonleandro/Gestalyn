@@ -1,0 +1,33 @@
+@*
+    Menu da organização no layout: a organização vem da URL (/o/{id}/...), e o papel do usuário vem da mesma consulta
+    que a página usa (MembershipCache). Fora de uma organização, ou sem associação, o menu não aparece.
+*@
+@inject NavigationManager Navigation
+@inject MembershipCache Memberships
+
+@if (_membership is not null)
+{
+    <OrgNav Membership="_membership" />
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private MyMembership? _membership;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _membership = null;
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?', '#')[0];
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments is not ["o", var id, ..] || !Guid.TryParse(id, out var organizationId) || AuthenticationState is null
+            || (await AuthenticationState).User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        var response = await Memberships.GetAsync(organizationId);
+        _membership = response.Result.Succeeded ? response.Value : null;
+    }
+}

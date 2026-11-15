@@ -1,0 +1,45 @@
+@*
+    Ação de um clique como formulário SSR com antiforgery. Com Confirm, o navegador pede confirmação num diálogo antes
+    de enviar (wwwroot/js/app.js); a ação é sempre validada na API.
+*@
+<form method="post" @formname="@Name" @onsubmit="OnSubmit" data-enhance class="pm-inline-form"
+      data-confirm="@Confirm" data-confirm-action="@ConfirmLabel">
+    <AntiforgeryToken />
+    <button type="submit" class="@ButtonClass" title="@Title" aria-label="@AriaLabel">
+        @if (IconName is not null)
+        {
+            <Icon Name="@IconName" />
+        }
+        @Label
+    </button>
+</form>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    /// <summary>Texto do diálogo de confirmação, com o efeito e se dá para desfazer.</summary>
+    [Parameter]
+    public string? Confirm { get; set; }
+
+    [Parameter]
+    public string ConfirmLabel { get; set; } = "Confirmar";
+
+    [Parameter]
+    public string ButtonClass { get; set; } = "btn btn-outline-secondary btn-sm";
+
+    [Parameter]
+    public string? IconName { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? AriaLabel { get; set; }
+}

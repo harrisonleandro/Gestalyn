@@ -1,6 +1,6 @@
 # Arquitetura do Gestalyn
 
-> Estado: Fases 01 a 08 concluídas (fundação, persistência, identidade, organizações, projetos, tarefas, workflow, auditoria, documentos e dashboards). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
+> Estado: Fases 01 a 08 concluídas (fundação, persistência, identidade, organizações, projetos, tarefas, workflow, auditoria, documentos e dashboards); Fase 09 (interface web) em revisão. Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
 
 ## 1. Visão geral
 
@@ -229,10 +229,13 @@ Módulos previstos (especificação mestre, seção 4): identidade e organizaç�
 
 ### 5.2 Web
 
-- Blazor Web App com renderização **estática no servidor (SSR) por padrão** e **Interactive Server** por componente quando há interatividade.
+- Blazor Web App com renderização **estática no servidor (SSR)**, navegação e formulários aprimorados e streaming rendering nas páginas de leitura ([ADR-015](../decisions/ADR-015-INTERFACE-WEB.md)). Interactive Server só no cartão de status, que não chama a API em nome do usuário.
+- **BFF:** os clientes por área (`OrganizationsApi`, `ProjectsApi`, `TasksApi` etc.) usam o `GestalynApi`, que lê o token do cookie da requisição. O navegador nunca fala com a API.
+- **Organização ativa na URL** (`/o/{id}`), confirmada por `GET /organizations/{id}/me`; o menu e a página compartilham a resposta (`MembershipCache`).
+- **Segurança:** Content-Security-Policy sem scripts inline nem de outras origens, Markdown com Markdig (HTML cru desabilitado, esquemas de link restritos), confirmação de ações destrutivas num `<dialog>` nativo.
 - `ApiOptions` (`Api:BaseUrl`, `Api:TimeoutSeconds`) com validação na inicialização: fora de Development a aplicação não sobe sem a URL da API.
 - `ApiHealthClient`: `HttpClient` tipado via `IHttpClientFactory`. Erros de rede, timeout e resposta inválida são tratados explicitamente e registrados.
-- Tema escuro com Bootstrap 5.3 (`data-bs-theme="dark"`) e tokens CSS próprios em `wwwroot/app.css`.
+- Tema escuro com Bootstrap 5.3 (`data-bs-theme="dark"`), tokens CSS e componentes próprios (design system em `wwwroot/app.css` e `Components/Shared`). Mapa das telas em [docs/web/TELAS.md](../web/TELAS.md).
 
 ### 5.3 CLI
 
@@ -271,6 +274,7 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 |---|---|
 | ~~Modelo de domínio inicial, PostgreSQL + EF Core, migrations, auditoria de persistência, health check do banco~~ (ADR-002, 003 e 004) | 02 (concluída) |
 | ~~Autor e origem das alterações (auditoria imutável), documentos, decisões e dashboards~~ (ADR-014) | 08 (concluída) |
+| ~~Interface web completa, design system e permissões na interface~~ (ADR-015) | 09 |
 | ~~Resolução da organização ativa pela identidade~~ (ADR-008) | 04 (concluída) |
 | Reavaliação de Row-Level Security | 13 |
 | ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |

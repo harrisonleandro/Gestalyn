@@ -1,0 +1,20 @@
+@* Markdown renderizado com segurança (ADR-015, D6): sem HTML cru e com esquemas de link restritos. *@
+@using ProjectManager.Web.Markdown
+@inject MarkdownRenderer Renderer
+
+@if (string.IsNullOrWhiteSpace(Source))
+{
+    <p class="pm-muted fst-italic mb-0">@EmptyText</p>
+}
+else
+{
+    <div class="pm-markdown">@Renderer.Render(Source)</div>
+}
+
+@code {
+    [Parameter]
+    public string? Source { get; set; }
+
+    [Parameter]
+    public string EmptyText { get; set; } = "Sem conteúdo.";
+}

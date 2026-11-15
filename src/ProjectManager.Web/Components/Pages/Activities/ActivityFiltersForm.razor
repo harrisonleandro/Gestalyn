@@ -1,0 +1,50 @@
+@* Filtros de atividades por GET. *@
+<form method="get" class="pm-card pm-form-grid mb-3" role="search" aria-label="Filtrar atividades">
+    <div>
+        <label for="a-source" class="form-label">Tipo</label>
+        <select id="a-source" name="tipo" class="form-select">
+            <option value="">Todos</option>
+            <option value="Event" selected="@(Source == "Event")">Eventos do sistema</option>
+            <option value="Log" selected="@(Source == "Log")">Registros manuais</option>
+        </select>
+    </div>
+    <div>
+        <label for="a-origin" class="form-label">Origem</label>
+        <select id="a-origin" name="origem" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var origin in Enum.GetValues<ActivityOrigin>())
+            {
+                <option value="@origin" selected="@(Origin == origin.ToString())">@Display.Name(origin)</option>
+            }
+        </select>
+    </div>
+    <div>
+        <label for="a-action" class="form-label">Ação</label>
+        <input id="a-action" name="acao" class="form-control" value="@Action" placeholder="ex.: task.transitioned" />
+    </div>
+    <div>
+        <label for="a-from" class="form-label">De</label>
+        <input id="a-from" type="date" name="de" class="form-control" value="@From?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div>
+        <label for="a-to" class="form-label">Até</label>
+        <input id="a-to" type="date" name="ate" class="form-control" value="@To?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="d-flex align-items-end"><button type="submit" class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+
+@code {
+    [Parameter] public string? Source { get; set; }
+    [Parameter] public string? Origin { get; set; }
+    [Parameter] public string? Action { get; set; }
+    [Parameter] public DateOnly? From { get; set; }
+    [Parameter] public DateOnly? To { get; set; }
+
+    public static ActivityFilter ToFilter(string? source, string? origin, string? action, DateOnly? from, DateOnly? to, int? page) => new(
+        Source: Enum.TryParse<ActivitySource>(source, out var s) ? s : null,
+        Action: string.IsNullOrWhiteSpace(action) ? null : action.Trim(),
+        Origin: Enum.TryParse<ActivityOrigin>(origin, out var o) ? o : null,
+        From: from,
+        To: to,
+        Page: Math.Max(page ?? 1, 1));
+}

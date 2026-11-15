@@ -28,6 +28,9 @@ internal static class AccountEndpoints
 
             await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
+            // A próxima pessoa neste navegador não deve ser levada à organização de quem saiu.
+            httpContext.Response.Cookies.Delete(WebEndpoints.LastOrganizationCookie);
+
             return TypedResults.LocalRedirect(ReturnUrls.Sanitize(returnUrl));
         }).RequireAuthorization();
 

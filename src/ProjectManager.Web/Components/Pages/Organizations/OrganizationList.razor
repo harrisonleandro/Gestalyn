@@ -1,0 +1,69 @@
+@page "/organizacoes"
+@attribute [Authorize]
+@inject OrganizationsApi Organizations
+@inject NavigationManager Navigation
+
+<PageTitle>Organizações · Gestalyn</PageTitle>
+
+<PageHeader Title="Organizações" Subtitle="Escolha onde trabalhar ou crie uma organização." />
+
+<States Error="_loadError" Ready="_organizations is not null">
+    @if (_organizations!.Count == 0)
+    {
+        <EmptyState Title="Você ainda não participa de nenhuma organização."
+                    Message="Crie a sua abaixo ou abra o link do convite que recebeu por e-mail." />
+    }
+    else
+    {
+        <div class="pm-grid mb-4">
+            @foreach (var organization in _organizations)
+            {
+                <a class="pm-card text-decoration-none" href="o/@organization.Id">
+                    <h2 class="mb-1">@organization.Name</h2>
+                    <span class="pm-muted">Seu papel: @organization.RoleName</span>
+                </a>
+            }
+        </div>
+    }
+
+    <div class="pm-card" style="max-width: 32rem">
+        <h2>Nova organização</h2>
+        <ApiErrors Result="_actionResult" />
+        <EditForm Model="NewOrganization" FormName="create-organization" OnValidSubmit="CreateAsync" Enhance>
+            <DataAnnotationsValidator />
+            <label for="org-name" class="form-label">Nome</label>
+            <InputText id="org-name" class="form-control" @bind-Value="NewOrganization.Name" />
+            <ValidationMessage For="() => NewOrganization.Name" />
+            <button type="submit" class="btn btn-primary mt-3"><Icon Name="plus" /> Criar organização</button>
+        </EditForm>
+    </div>
+</States>
+
+@code {
+    [SupplyParameterFromForm(FormName = "create-organization")]
+    private NameForm NewOrganization { get; set; } = default!;
+
+    private List<OrganizationSummary>? _organizations;
+    private ApiResult? _loadError;
+    private ApiResult? _actionResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        NewOrganization ??= new NameForm();
+        var response = await Organizations.ListMineAsync();
+        _organizations = response.Value;
+        _loadError = response.Result.Succeeded ? null : response.Result;
+    }
+
+    private async Task CreateAsync()
+    {
+        var response = await Organizations.CreateAsync(NewOrganization.Name);
+        if (!response.Result.Succeeded || response.Value is null)
+        {
+            _actionResult = response.Result;
+            return;
+        }
+
+        Navigation.NavigateTo(Flash.With($"/o/{response.Value.Id}", "criado"));
+    }
+}

@@ -1,0 +1,21 @@
+@*
+    Moldura das páginas de uma organização: mostra o carregamento ou o erro da página no lugar do conteúdo. O menu da
+    organização fica no layout (OrgNavHost).
+*@
+<States Error="Error" Ready="Ready && Membership is not null">
+    @ChildContent
+</States>
+
+@code {
+    [Parameter]
+    public MyMembership? Membership { get; set; }
+
+    [Parameter]
+    public ApiResult? Error { get; set; }
+
+    [Parameter]
+    public bool Ready { get; set; } = true;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

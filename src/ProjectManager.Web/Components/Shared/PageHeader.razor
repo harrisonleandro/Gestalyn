@@ -1,0 +1,49 @@
+@* Cabeçalho de página: trilha de navegação, título e ações (ADR-015, D1). *@
+@if (Breadcrumbs is { Count: > 0 })
+{
+    <nav aria-label="Trilha de navegação">
+        <ol class="breadcrumb pm-breadcrumb">
+            @foreach (var (label, href) in Breadcrumbs)
+            {
+                if (href is null)
+                {
+                    <li class="breadcrumb-item active" aria-current="page">@label</li>
+                }
+                else
+                {
+                    <li class="breadcrumb-item"><a href="@href">@label</a></li>
+                }
+            }
+        </ol>
+    </nav>
+}
+
+<div class="pm-page-header">
+    <div class="pm-page-title">
+        <h1>@Title</h1>
+        @if (Subtitle is not null)
+        {
+            <p class="pm-muted mb-0">@Subtitle</p>
+        }
+    </div>
+    @if (Actions is not null)
+    {
+        <div class="pm-page-actions">@Actions</div>
+    }
+</div>
+
+<FlashMessage />
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<(string Label, string? Href)>? Breadcrumbs { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+}

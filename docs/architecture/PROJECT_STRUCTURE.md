@@ -1,6 +1,6 @@
 # Estrutura do projeto
 
-> Estado: Fase 08. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
+> Estado: Fase 09. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
 
 ## Raiz
 
@@ -151,22 +151,37 @@ ProjectManager.API/
 ProjectManager.Web/
 ├── Program.cs                          Razor Components, ApiOptions, HttpClient tipado
 ├── AppInfo.cs                          Versão da aplicação
+├── Display.cs                          Formatos pt-BR, fuso (Display:TimeZone) e nomes das enumerações
+├── Markdown/MarkdownRenderer.cs        Markdown seguro (Markdig, HTML cru desabilitado, esquemas restritos)
 ├── Api/
 │   ├── ApiOptions.cs                   Seção "Api" (BaseUrl, TimeoutSeconds), validada na inicialização
 │   ├── ApiHealthClient.cs              Cliente HTTP do /health
 │   ├── ApiHealthResult.cs              Resultado da consulta
-│   └── ApiAccountClient.cs (+ modelos) Cliente HTTP de /api/v1/auth
+│   ├── ApiAccountClient.cs (+ modelos) Cliente HTTP de /api/v1/auth
+│   ├── ApiRequests.cs                  Envio, Problem Details e cabeçalho X-Gestalyn-Organization
+│   ├── GestalynApi.cs                  Chamadas autenticadas com o token do cookie (IApiRequestContext)
+│   ├── ApiClients.cs                   Clientes por área (organizações, projetos, planejamento, tarefas, workflow, documentos)
+│   ├── ApiModels.cs                    DTOs da Web (espelho do JSON da API) e códigos de permissão
+│   └── MembershipCache.cs              Papel e permissões por requisição (menu e página)
 ├── Authentication/                     BFF: AccountSession (cookie com tokens), TokenRefreshCookieEvents,
-│                                       TokenRefreshCoordinator, AccountEndpoints (logout), ReturnUrls
+│                                       TokenRefreshCoordinator, AccountEndpoints (logout), ReturnUrls,
+│                                       WebEndpoints (CSP, cookie da última organização, download de anexos)
 ├── Components/
 │   ├── App.razor / Routes.razor        Documento raiz (pt-BR, tema escuro) e roteamento com autorização
-│   ├── Layout/                         MainLayout (usuário logado), NavMenu (ações de conta), ReconnectModal
-│   ├── Pages/                          Home (/), Status (/status), Error, NotFound
+│   ├── Layout/                         MainLayout (menu lateral, diálogo de confirmação), OrgNavHost, ReconnectModal
+│   ├── Pages/                          Home (/), Status (/status), Error, NotFound; OrganizationPage e ProjectPage (bases)
+│   ├── Pages/Organizations/            /organizacoes, /o/{org} (visão geral), /o/{org}/configuracoes
+│   ├── Pages/Projects/                 Lista, novo, visão geral, configurações, workflow, fases e marcos
+│   ├── Pages/Tasks/                    Lista, quadro, nova tarefa, detalhes da tarefa, filtros
+│   ├── Pages/Activities/               Atividades do projeto e da organização
+│   ├── Pages/Documents/                Documentos (versões) e decisões
 │   ├── Pages/Account/                  /conta/cadastro, entrar, confirmar-email, reenviar-confirmacao,
 │   ├── Pages/Invitations/              /convites/aceitar (protegida)
 │   │                                   esqueci-a-senha, redefinir-senha, perfil (protegida)
-│   └── Shared/                         EnvironmentBadge, ApiStatusCard (Interactive Server), ApiErrors
-├── wwwroot/                            app.css (tokens do tema), Bootstrap 5.3, favicon
+│   └── Shared/                         Design system: PageHeader, States, EmptyState, ActionForm, StateBadge,
+│                                       ProgressSummary, Pager, MarkdownView, ActivityList, OrgFrame, ProjectFrame,
+│                                       OrgNav, Icon, Flash; EnvironmentBadge, ApiStatusCard, ApiErrors
+├── wwwroot/                            app.css (design system), js/app.js (confirmação), Bootstrap 5.3, favicon
 ├── Properties/launchSettings.json      Perfis http (5200) e https (7200)
 └── appsettings*.json                   Logs; Api:BaseUrl em Development
 ```
@@ -187,6 +202,7 @@ ProjectManager.CLI/
 | Projeto | Referencia | Cobertura atual |
 |---|---|---|
 | `ProjectManager.UnitTests` | `CLI`, `Domain`, `Infrastructure` | `Architecture/ProjectReferenceRulesTests`: regras de dependência entre projetos. `Domain/*Tests`: invariantes de organizações, papéis, convites, projetos, fases, marcos, tarefas, dependências (ciclos) e tipos de anexo. `Authentication/TokenTests`: refresh tokens, JWT e validação da chave. `Cli/CliApplicationTests`: `--version`, `--help`/`-h`, execução sem argumentos e comando desconhecido. |
+| `ProjectManager.WebTests` | `Web` | Componentes com bUnit: Markdown seguro, estados, permissões refletidas na tela, quadro e erros da API. `Infrastructure/WebTestContext` monta a Web real com uma API falsa (`StubApiHandler`). |
 | `ProjectManager.IntegrationTests` | `API`, `Infrastructure` | **Requer Docker.** `Infrastructure/PostgresDatabaseFixture` e `MailpitFixture` sobem PostgreSQL 18 e Mailpit (Testcontainers). `Authentication/*` cobre cadastro, login, sessão, recuperação de senha e proteções. `Persistence/PersistenceTests` e `Persistence/TenantIsolationTests` cobrem persistência e isolamento. `Api/*` cobre health check (com e sem banco), OpenAPI por ambiente e Problem Details. `Organizations/*`, `Projects/*` e `Tasks/*` cobrem fluxos, permissões por papel, isolamento entre organizações (API, filtro e FKs compostas), migração de dados, anexos e validação de entrada. |
 
 ## `docs/`
@@ -196,6 +212,7 @@ ProjectManager.CLI/
 | `architecture/` | `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` |
 | `api/` | Contratos da API por área (`AUTH.md`, `ORGANIZATIONS.md`, `PROJECTS.md`, `TASKS.md`, `WORKFLOW.md`, `ACTIVITY.md`, `DOCUMENTS.md`, `DASHBOARDS.md`) |
 | `security/` | Modelo de segurança (`AUTENTICACAO.md`) |
+| `web/` | Mapa das telas da Web (`TELAS.md`) |
 | `decisions/` | ADRs (`ADR-NNN-TITULO.md`) |
 | `specifications/` | Especificação mestre (fonte de verdade) e especificação de cada fase (`FASE-NN-*.md`) |
 | `reports/` | Relatórios de execução de cada fase (`FASE-NN-RELATORIO.md`) |

@@ -38,6 +38,9 @@ public sealed record OrganizationSummary(Guid Id, string Name, Guid RoleId, stri
 
 public sealed record OrganizationDetails(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
+/// <summary>Papel e permissões do usuário autenticado na organização ativa (ADR-015), para a interface decidir o que mostrar.</summary>
+public sealed record MyMembership(Guid OrganizationId, string Name, Guid RoleId, string RoleName, bool IsOwner, IReadOnlyList<string> Permissions);
+
 public sealed record MemberDetails(Guid UserId, string DisplayName, string Email, Guid RoleId, string RoleName, DateTimeOffset JoinedAt);
 
 public sealed record RoleDetails(Guid Id, string Name, string? SystemRole, IReadOnlyList<string> Permissions);
