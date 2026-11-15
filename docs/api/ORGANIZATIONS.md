@@ -13,6 +13,7 @@ Contratos da Fase 04 (especificação mestre, seção 5.2, complementados com me
 | `POST /api/v1/organizations` · `{ name }` | autenticado | **201** `OrganizationSummary` (o criador vira Proprietário) · 400 |
 | `GET /api/v1/organizations` | autenticado | **200** `OrganizationSummary[]` (somente as organizações do usuário, com o papel dele) |
 | `GET /api/v1/organizations/{organizationId}` | `organization.read` | **200** `OrganizationDetails` · 404 |
+| `GET /api/v1/organizations/{organizationId}/me` | membro | **200** `{ organizationId, name, roleId, roleName, isOwner, permissions }`: papel e permissões do usuário, para a interface decidir o que mostrar (ADR-015). Não membro: 404 |
 | `PATCH /api/v1/organizations/{organizationId}` · `{ name }` | `organization.update` | **200** · 403 · 404 · 409 (alteração concorrente) |
 
 ## Membros e papéis

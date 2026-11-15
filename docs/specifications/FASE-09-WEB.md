@@ -1,6 +1,6 @@
 # Fase 09: Interface web completa
 
-- **Estado:** Planned. Aguarda a aprovação das decisões D1 a D8.
+- **Estado:** In Review. Implementada e validada localmente (testes de componentes, mutação e execução real no navegador com três papéis); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D8 aprovadas pelo responsável em 2026-11-15.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 09) e seção 8 (experiência de usuário e interface)
 - **Branch:** `feature/fase-09-web` (a partir de `develop` `67144d1`, com as Fases 01 a 08 integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -54,7 +54,7 @@ As telas devem refletir as permissões do usuário, sempre validadas também no 
 - **Tema claro e troca de idioma:** a direção é o tema escuro, e a interface é em pt-BR.
 - **Mudanças de regra de negócio na API:** a única adição prevista é a rota de leitura da D4.
 
-## Decisões (D1 a D8, para aprovação)
+## Decisões (D1 a D8 aprovadas)
 
 | ID | Proposta | Alternativas |
 |---|---|---|
@@ -185,3 +185,41 @@ docs/web/TELAS.md                               Mapa das telas, rotas e permiss�
 - ADR-015 registrado, inclusive o desvio de F09-018 e F09-021, se aprovado.
 - Documentação atualizada: `docs/web/TELAS.md`, README, AGENTS.md, ARCHITECTURE, `PROJECT_STATUS.md` e relatório da Fase 09.
 - Alterações integradas por PR, com o check "Build e testes" aprovado.
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F09-001 | Completed | Tokens em `app.css` e componentes em `Components/Shared`; `StateComponentTests` |
+| F09-002 | Completed | `MainLayout` com menu lateral recolhível, rodapé e diálogo de confirmação |
+| F09-003 | Completed | Trilha (`PageHeader`), abas do projeto, organização na URL; menu pelo `OrgNavHost` |
+| F09-004 | Completed | Telas de conta com o novo layout; entrada e saída exercitadas na execução real |
+| F09-005 | Completed | `/organizacoes`, cookie da última organização, `GET /organizations/{id}/me` (`MyMembershipTests`) |
+| F09-006 | Completed | Visão geral da organização e do projeto com dados reais (100%, 1 de 1 concluída, na execução real) |
+| F09-007 | Completed | Lista de projetos com filtros e paginação; novo projeto |
+| F09-008 | Completed | Visão geral, configurações (dados, repositórios, arquivamento) |
+| F09-009 | Completed | Equipe do projeto e membros, convites e papéis da organização; convites e equipe montados pela tela na execução real |
+| F09-010 | Completed | Quadro por estado e "Mover para…"; `TaskBoardTests`; mutação detectada |
+| F09-011 | Completed | Lista com filtros, ordenação e paginação; nova tarefa |
+| F09-012 | Completed | Detalhes com transições, edição, responsáveis, dependências, comentários, anexos e histórico; `PagePermissionTests` |
+| F09-013 | Completed | Workflow: estados, transições, configurações e aviso de estado sem caminho até um final |
+| F09-014 | Completed | Fases e marcos com progresso, reordenação e marco atingido |
+| F09-015 | Completed | Atividades do projeto (com registro manual) e da organização, com filtros |
+| F09-016 | Completed | Documentos com versões e conflito de versão; decisões com estados; `MarkdownRendererTests`; mutação detectada |
+| F09-017 | Completed | Configurações da organização, do projeto e perfil |
+| F09-018 | **Transferida** | Para a Fase 10 (D7): a API de agentes ainda não existe |
+| F09-019 | Completed | `States`, `EmptyState`, streaming rendering, mensagens da API em 400, 401, 403, 404 e 409 |
+| F09-020 | Completed | Nenhuma rolagem horizontal em 375 px nas 11 telas principais; tabelas em cartões; teclado e foco visível |
+| F09-021 | **Não implementada** | Sem necessidade comprovada de tempo real (D2); reavaliar na Fase 10 |
+| CI | **In Review** | Depende do push de `feature/fase-09-web`, autorizado pelo responsável |
+
+Ajustes feitos durante a implementação, dentro das decisões aprovadas:
+
+1. **`GET /organizations/{id}/me` exige só ser membro**, e não `organization.read`: um papel personalizado sem essa permissão também precisa saber o que pode fazer. A rota não muda nenhuma regra.
+2. **Quadro pela estrutura do workflow (D5):** a listagem da API não traz as transições disponíveis por tarefa, e pedir os detalhes de cada cartão custaria uma chamada por tarefa. O quadro oferece as transições que saem do estado, escondendo as que exigem aprovação de quem não tem `tasks.approve`. A regra do próprio trabalho continua só na API, que recusa com a mensagem. Os detalhes da tarefa usam `availableTransitions`, já filtrado.
+3. **Menu da organização no layout:** a primeira versão usava seções do Blazor (`SectionContent`), mas, com streaming rendering, o conteúdo enviado depois não atualizava o layout, e o menu sumia. O layout passou a ler a organização da URL e a reaproveitar a consulta da página (`MembershipCache`).
+4. **Campos em componentes filhos:** os campos ganhavam o nome `Model.X` em vez de `Input.X`, e o POST chegava vazio. Os componentes de campos recebem o prefixo do formulário (`Prefix`).
+5. **Aviso só na leitura:** depois de um envio que falhou, a URL ainda trazia o aviso anterior, que aparecia junto do erro.
+6. **Cookie da última organização apagado ao sair:** num navegador compartilhado, a próxima pessoa era levada à organização de quem saiu.
+7. **`<ImportMap>` removido do `App.razor`:** é um script inline, bloqueado pela CSP.
+8. **Pasta `Pages/Activities`**, e não `Pages/Activity`: o namespace colidia com `System.Diagnostics.Activity`.

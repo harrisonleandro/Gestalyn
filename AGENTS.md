@@ -76,6 +76,12 @@ Worker → Application (abstrações) + Infrastructure (implementações)
   - A identidade do usuário e da sessão vem das claims `sub`/`sid` do token, nunca do corpo da requisição.
   - Respostas de autenticação não podem revelar se um e-mail está cadastrado.
   - Tokens nunca vão para o navegador: a Web guarda-os no cookie HttpOnly (BFF).
+- **Web** ([ADR-015](docs/decisions/ADR-015-INTERFACE-WEB.md)):
+  - páginas SSR com formulários e antiforgery; nada de Interactive Server ou WebAssembly chamando a API em nome do usuário;
+  - o que aparece na tela depende só das permissões e transições que a API devolve; não recalcule regras de acesso na Web;
+  - use os componentes de `Components/Shared` (estados, `ActionForm` com confirmação para ações destrutivas, `MarkdownView` para todo Markdown);
+  - nenhum script inline (a CSP bloqueia); nenhuma tela para funcionalidade sem API;
+  - tela nova ganha teste de componente em `tests/ProjectManager.WebTests` e entrada em `docs/web/TELAS.md`.
   - Nunca registre senhas, tokens, links de e-mail ou endereços de e-mail em logs; use IDs.
 - Agentes têm permissões limitadas e explícitas e não podem ultrapassá-las, mesmo instruídos a isso.
 - Não crie credenciais reais, não contrate serviços, não registre domínios, não assuma custos e não publique em produção sem aprovação explícita.
