@@ -1,6 +1,6 @@
 # Estrutura do projeto
 
-> Estado: Fase 06. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
+> Estado: Fase 07. Pastas marcadas com *(futuro)* são convenções para as próximas fases e ainda não existem.
 
 ## Raiz
 
@@ -40,6 +40,8 @@ ProjectManager.Domain/
 │                                 ProjectPhase (completa), Milestone
 ├── Tasks/                        ProjectTask, TaskAssignment, TaskLabel, TaskComment, TaskDependency (detecção de ciclos),
 │                                 TaskAttachment, AttachmentFiles (tipos permitidos e limpeza de nomes)
+├── Workflows/                    WorkflowDefinition (configuração inicial e invariantes), WorkflowState, StateCategory,
+│                                 WorkflowTransition, TransitionRules, TaskStatusHistory
 ├── Common/Priority.cs, Labels.cs Prioridade e regras de etiquetas compartilhadas por projetos e tarefas
 ├── Projects/ProjectPhase.cs      Fase do projeto (mínima; completa na Fase 06)
 └── <Modulo>/                     (futuro) Demais entidades por fase
@@ -60,7 +62,9 @@ ProjectManager.Application/
 ├── Projects/                     IProjectService, contratos, IProjectAccess e ProjectAccessGrant (acesso efetivo)
 ├── Common/PagedResult.cs         Página de listagem com total
 ├── Planning/                     IPlanningService e contratos de fases e marcos
-├── Tasks/                        ITaskService, IAttachmentService e contratos de tarefas, comentários e anexos
+├── Tasks/                        ITaskService, IAttachmentService e contratos de tarefas, comentários, anexos,
+│                                 transições e histórico
+├── Workflows/                    IWorkflowService e contratos do workflow
 ├── Abstractions/Storage/         IFileStorage (armazenamento de arquivos por chave)
 └── <Modulo>/                     (futuro) Casos de uso, DTOs, validadores, interfaces de serviços
 ```
@@ -77,7 +81,8 @@ ProjectManager.Infrastructure/
 │                                 PermissionDefinition (catálogo persistido)
 ├── Projects/                     ProjectService, ProjectAccessResolver
 ├── Planning/                     PlanningService (fases, reordenação, marcos)
-├── Tasks/                        TaskService, AttachmentService
+├── Tasks/                        TaskService (inclui transições e histórico), AttachmentService, TaskStates
+├── Workflows/                    WorkflowService (configuração do workflow)
 ├── Storage/                      LocalFileStorage, StorageOptions (Storage:Attachments:RootPath)
 ├── Common/OpaqueTokens.cs        Tokens opacos de 256 bits e hash SHA-256 (sessões e convites)
 ├── MultiTenancy/
@@ -112,9 +117,12 @@ ProjectManager.API/
 │   ├── InvitationsController.cs        /api/v1/invitations/accept
 │   ├── ProjectsController.cs           /api/v1/organizations/{id}/projects e /api/v1/projects/*
 │   ├── PlanningController.cs           /api/v1/projects/{id}/phases e /milestones
-│   └── TasksController.cs              /api/v1/projects/{id}/tasks e /api/v1/tasks/* (comentários, dependências, anexos)
+│   ├── TasksController.cs              /api/v1/projects/{id}/tasks e /api/v1/tasks/* (comentários, dependências, anexos,
+│   │                                   transições e histórico)
+│   └── WorkflowController.cs           /api/v1/projects/{id}/workflow e /api/v1/workflow/*
 ├── Organizations/                      ActiveOrganizationMiddleware (rota ou cabeçalho X-Gestalyn-Organization),
-│                                       OrganizationPermissionAttribute, ProjectPermissionAttribute, TaskPermissionAttribute
+│                                       OrganizationPermissionAttribute, ProjectPermissionAttribute, TaskPermissionAttribute,
+│                                       WorkflowStatePermissionAttribute, WorkflowTransitionPermissionAttribute
 ├── Common/ResultProblems.cs            Result → Problem Details (404/403/409/400)
 ├── Properties/launchSettings.json      Perfis http (5100) e https (7100)
 ├── appsettings.json                    Produção/base: logs JSON, emissor e público do JWT, limites
@@ -171,7 +179,7 @@ ProjectManager.CLI/
 | Pasta | Conteúdo |
 |---|---|
 | `architecture/` | `ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` |
-| `api/` | Contratos da API por área (`AUTH.md`, `ORGANIZATIONS.md`, `PROJECTS.md`, `TASKS.md`) |
+| `api/` | Contratos da API por área (`AUTH.md`, `ORGANIZATIONS.md`, `PROJECTS.md`, `TASKS.md`, `WORKFLOW.md`) |
 | `security/` | Modelo de segurança (`AUTENTICACAO.md`) |
 | `decisions/` | ADRs (`ADR-NNN-TITULO.md`) |
 | `specifications/` | Especificação mestre (fonte de verdade) e especificação de cada fase (`FASE-NN-*.md`) |

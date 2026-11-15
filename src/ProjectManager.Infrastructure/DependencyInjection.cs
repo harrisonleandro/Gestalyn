@@ -12,6 +12,7 @@ using ProjectManager.Application.Organizations;
 using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
+using ProjectManager.Application.Workflows;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
@@ -21,6 +22,7 @@ using ProjectManager.Infrastructure.Planning;
 using ProjectManager.Infrastructure.Projects;
 using ProjectManager.Infrastructure.Storage;
 using ProjectManager.Infrastructure.Tasks;
+using ProjectManager.Infrastructure.Workflows;
 
 namespace ProjectManager.Infrastructure;
 
@@ -59,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<IPlanningService, PlanningService>();
         services.AddScoped<ITaskService, TaskService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
+        services.AddScoped<IWorkflowService, WorkflowService>();
 
         services.AddOptions<StorageOptions>()
             .BindConfiguration(StorageOptions.SectionName)

@@ -4,7 +4,7 @@
 
 Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades, em que **usuários humanos e agentes de inteligência artificial** participam do desenvolvimento dos mesmos projetos. O sistema será hospedado na nuvem, terá arquitetura **multi-tenant** e está sendo preparado para comercialização.
 
-**Estado atual: Fase 06 (fases, marcos e tarefas) concluída.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas e gerenciar membros e papéis. Pela API, também é possível gerenciar projetos (equipe, papéis, etiquetas, repositórios), fases e marcos, e tarefas com número por projeto, vários responsáveis, prioridade, prazo, etiquetas, comentários, dependências e anexos. O isolamento multi-tenant é testado com usuários reais. Os estados configuráveis das tarefas (workflow) chegam na Fase 07.
+**Estado atual: Fase 07 (workflow configurável e histórico) em revisão.** Já é possível criar conta e entrar (Web e API), criar organizações, convidar pessoas e gerenciar membros e papéis. Pela API, também é possível gerenciar projetos (equipe, papéis, etiquetas, repositórios), fases e marcos, e tarefas com número por projeto, vários responsáveis, prioridade, prazo, etiquetas, comentários, dependências e anexos. Cada projeto tem o próprio workflow de estados, com transições validadas no backend, aprovação e histórico. O isolamento multi-tenant é testado com usuários reais. Auditoria e dashboards chegam na Fase 08.
 
 A referência funcional e técnica é a [especificação mestre](docs/specifications/ESPECIFICACAO-MESTRE.md), que define as decisões aprovadas e o roadmap em 14 fases.
 
@@ -150,7 +150,7 @@ A autenticação fica em `/api/v1/auth` (cadastro, confirmação de e-mail, logi
 
 Organizações, membros, papéis e convites ficam em `/api/v1/organizations` e `/api/v1/invitations` ([docs/api/ORGANIZATIONS.md](docs/api/ORGANIZATIONS.md)). As permissões são verificadas no backend: quem não é membro recebe 404, e membro sem permissão recebe 403.
 
-Projetos ficam em `/api/v1/organizations/{organizationId}/projects` (criar e listar) e `/api/v1/projects/{projectId}` (consultar, editar, arquivar, equipe e repositórios). Rotas por ID do projeto exigem o cabeçalho `X-Gestalyn-Organization` com o ID da organização ([docs/api/PROJECTS.md](docs/api/PROJECTS.md)). Fases, marcos e tarefas ficam em `/api/v1/projects/{projectId}/phases`, `/milestones` e `/tasks`, e cada tarefa em `/api/v1/tasks/{taskId}`, com comentários, dependências e anexos ([docs/api/TASKS.md](docs/api/TASKS.md)).
+Projetos ficam em `/api/v1/organizations/{organizationId}/projects` (criar e listar) e `/api/v1/projects/{projectId}` (consultar, editar, arquivar, equipe e repositórios). Rotas por ID do projeto exigem o cabeçalho `X-Gestalyn-Organization` com o ID da organização ([docs/api/PROJECTS.md](docs/api/PROJECTS.md)). Fases, marcos e tarefas ficam em `/api/v1/projects/{projectId}/phases`, `/milestones` e `/tasks`, e cada tarefa em `/api/v1/tasks/{taskId}`, com comentários, dependências e anexos ([docs/api/TASKS.md](docs/api/TASKS.md)). O workflow fica em `/api/v1/projects/{projectId}/workflow` e `/api/v1/workflow/...`, e a tarefa muda de estado por `POST /api/v1/tasks/{taskId}/transitions` ([docs/api/WORKFLOW.md](docs/api/WORKFLOW.md)).
 
 Os anexos são gravados em disco local, no diretório `Storage:Attachments:RootPath`. Em Development, o diretório é `%LOCALAPPDATA%/Gestalyn/storage`; fora de Development, a configuração é obrigatória e a API não inicia sem ela.
 

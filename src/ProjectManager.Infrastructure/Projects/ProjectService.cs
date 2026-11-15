@@ -6,6 +6,7 @@ using ProjectManager.Application.Projects;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
+using ProjectManager.Domain.Workflows;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Projects;
@@ -48,6 +49,9 @@ internal sealed partial class ProjectService(
         var creator = new ProjectMember(project, actor.UserId, ProjectRole.Manager);
         dbContext.Projects.Add(project);
         dbContext.ProjectMembers.Add(creator);
+
+        // Todo projeto nasce com a configuração inicial do workflow (ADR-013, D3).
+        dbContext.Workflows.Add(WorkflowDefinition.CreateDefault(project));
         await dbContext.SaveChangesAsync(cancellationToken);
 
         LogProjectCreated(logger, project.Id, actor.OrganizationId, actor.UserId);

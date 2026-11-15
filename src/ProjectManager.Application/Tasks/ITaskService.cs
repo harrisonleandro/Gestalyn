@@ -40,4 +40,14 @@ public interface ITaskService
         CancellationToken cancellationToken);
 
     Task<Result> RemoveDependencyAsync(Guid taskId, Guid dependsOnTaskId, CancellationToken cancellationToken);
+
+    /// <summary>Muda o estado da tarefa por uma transição do workflow, com todas as validações (ADR-013).</summary>
+    Task<Result<TaskDetails>> TransitionAsync(
+        ActiveMembership actor,
+        ProjectAccessGrant access,
+        Guid taskId,
+        TransitionTaskRequest request,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<TaskHistoryEntry>> ListHistoryAsync(Guid taskId, CancellationToken cancellationToken);
 }

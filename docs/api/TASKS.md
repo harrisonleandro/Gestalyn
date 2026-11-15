@@ -85,13 +85,16 @@ Contratos da Fase 06 ([ADR-011](../decisions/ADR-011-TAREFAS-E-ANEXOS.md)). Toda
 | `includeArchived=true` | Inclui as arquivadas |
 | `sortBy`, `sortDirection` | `Number` (padrão), `DueDate` (sem prazo por último), `Priority` ou `UpdatedAt`; `Asc` (padrão) ou `Desc` |
 
-A resposta tem o formato `{ items, page, pageSize, totalCount }`. Cada item traz `id`, `number`, `title`, `priority`, `dueDate`, `phaseId`, `milestoneId`, `labels`, `assigneeIds`, `archivedAt` e `updatedAt`.
+A resposta tem o formato `{ items, page, pageSize, totalCount }`. Cada item traz `id`, `number`, `title`, `state` ([WORKFLOW.md](WORKFLOW.md)), `priority`, `dueDate`, `phaseId`, `milestoneId`, `labels`, `assigneeIds`, `archivedAt` e `updatedAt`.
 
 **Detalhes:** os campos da listagem, mais:
 - `projectId`, `description`, `createdByUserId`, `archivedByUserId`, `createdAt` e `myPermissions`;
 - `assignees`: `{ userId, displayName, assignedAt }`;
 - `dependsOn`: as tarefas das quais esta depende;
-- `blocks`: as tarefas que dependem desta.
+- `blocks`: as tarefas que dependem desta;
+- `state` e `availableTransitions`: o estado atual e as transições que o usuário pode executar agora ([WORKFLOW.md](WORKFLOW.md)).
+
+A tarefa muda de estado só por `POST /tasks/{taskId}/transitions`. Em estado final, ela fica somente leitura, exceto para comentários e transições.
 
 Nas dependências, cada tarefa aparece como `{ id, number, title, archivedAt }`.
 

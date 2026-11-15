@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using ProjectManager.Application.Common;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Tasks;
+using ProjectManager.Domain.Workflows;
 
 namespace ProjectManager.Application.Tasks;
 
@@ -114,6 +115,9 @@ public enum TaskSortField
     DueDate,
     Priority,
     UpdatedAt,
+
+    /// <summary>Pela posição do estado no workflow.</summary>
+    State,
 }
 
 public enum SortDirection
@@ -144,8 +148,15 @@ public sealed class TaskListQuery : PageQuery
 
     public DateOnly? DueAfter { get; init; }
 
-    /// <summary>Prazo anterior a hoje (UTC).</summary>
+    /// <summary>Prazo anterior a hoje (UTC), fora dos estados finais.</summary>
     public bool Overdue { get; init; }
+
+    public Guid? StateId { get; init; }
+
+    public StateCategory? Category { get; init; }
+
+    /// <summary>Só as tarefas fora dos estados finais.</summary>
+    public bool Open { get; init; }
 
     /// <summary>Texto no título, sem diferenciar maiúsculas e minúsculas.</summary>
     [StringLength(SearchMaxLength)]
@@ -158,11 +169,18 @@ public sealed class TaskListQuery : PageQuery
     public SortDirection SortDirection { get; init; } = SortDirection.Asc;
 }
 
+/// <summary>Estado atual da tarefa no workflow do projeto.</summary>
+public sealed record TaskState(Guid Id, string Name, StateCategory Category, bool IsFinal);
+
+/// <summary>Transição que o usuário pode executar agora na tarefa.</summary>
+public sealed record AvailableTransition(Guid TransitionId, Guid ToStateId, string ToStateName, StateCategory ToCategory, bool RequiresApproval);
+
 /// <summary>Tarefa na listagem.</summary>
 public sealed record TaskSummary(
     Guid Id,
     int Number,
     string Title,
+    TaskState State,
     Priority Priority,
     DateOnly? DueDate,
     Guid? PhaseId,
@@ -192,6 +210,8 @@ public sealed record TaskDetails(
     IReadOnlyList<TaskAssignee> Assignees,
     IReadOnlyList<TaskReference> DependsOn,
     IReadOnlyList<TaskReference> Blocks,
+    TaskState State,
+    IReadOnlyList<AvailableTransition> AvailableTransitions,
     Guid CreatedByUserId,
     DateTimeOffset? ArchivedAt,
     Guid? ArchivedByUserId,
@@ -219,3 +239,28 @@ public sealed class AddDependencyRequest
     [Required]
     public required Guid DependsOnTaskId { get; init; }
 }
+
+public sealed class TransitionTaskRequest
+{
+    [Required(ErrorMessage = "Informe o estado de destino.")]
+    public required Guid ToStateId { get; init; }
+
+    /// <summary>Estado em que o cliente viu a tarefa. Se ela tiver mudado, a transição é recusada (409).</summary>
+    public Guid? ExpectedStateId { get; init; }
+
+    [StringLength(TaskStatusHistory.CommentMaxLength, ErrorMessage = "O comentário deve ter no máximo {1} caracteres.")]
+    public string? Comment { get; init; }
+}
+
+/// <summary>Mudança de estado registrada. Os nomes são os da data da mudança.</summary>
+public sealed record TaskHistoryEntry(
+    Guid Id,
+    Guid? FromStateId,
+    string? FromStateName,
+    Guid ToStateId,
+    string ToStateName,
+    Guid ChangedById,
+    string? ChangedByName,
+    ActorKind ActorKind,
+    string? Comment,
+    DateTimeOffset ChangedAt);

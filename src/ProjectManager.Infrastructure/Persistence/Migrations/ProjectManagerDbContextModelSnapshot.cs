@@ -769,6 +769,10 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
+                    b.Property<Guid>("StateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("state_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -806,6 +810,9 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ProjectId", "PhaseId")
                         .HasDatabaseName("ix_tasks_project_id_phase_id");
+
+                    b.HasIndex("ProjectId", "StateId")
+                        .HasDatabaseName("ix_tasks_project_id_state_id");
 
                     b.ToTable("tasks", null, t =>
                         {
@@ -1080,6 +1087,250 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_task_labels_organization_id_project_id_task_id");
 
                     b.ToTable("task_labels", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.TaskStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("actor_kind");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<Guid>("ChangedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("changed_by_id");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("comment");
+
+                    b.Property<Guid?>("FromStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_state_id");
+
+                    b.Property<string>("FromStateName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("from_state_name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid>("ToStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_state_id");
+
+                    b.Property<string>("ToStateName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("to_state_name");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_task_status_history");
+
+                    b.HasIndex("TaskId", "ChangedAt")
+                        .HasDatabaseName("ix_task_status_history_task_id_changed_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_task_status_history_organization_id_project_id_task_id");
+
+                    b.ToTable("task_status_history", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.WorkflowDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<bool>("RequireIndependentApproval")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_independent_approval");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflows");
+
+                    b.HasAlternateKey("OrganizationId", "ProjectId")
+                        .HasName("ak_workflows_organization_id_project_id");
+
+                    b.HasIndex("ProjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_workflows_project_id");
+
+                    b.ToTable("workflows", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.WorkflowState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsInitial")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_initial");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_states");
+
+                    b.HasAlternateKey("ProjectId", "Id")
+                        .HasName("ak_workflow_states_project_id_id");
+
+                    b.HasIndex("OrganizationId", "ProjectId")
+                        .HasDatabaseName("ix_workflow_states_organization_id_project_id");
+
+                    b.HasIndex("ProjectId", "Position")
+                        .HasDatabaseName("ix_workflow_states_project_id_position");
+
+                    b.ToTable("workflow_states", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_workflow_states_position_positive", "position > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.WorkflowTransition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("FromStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_state_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<bool>("RequiresApproval")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_approval");
+
+                    b.Property<Guid>("ToStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_state_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_transitions");
+
+                    b.HasIndex("OrganizationId", "ProjectId")
+                        .HasDatabaseName("ix_workflow_transitions_organization_id_project_id");
+
+                    b.HasIndex("ProjectId", "ToStateId")
+                        .HasDatabaseName("ix_workflow_transitions_project_id_to_state_id");
+
+                    b.HasIndex("ProjectId", "FromStateId", "ToStateId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_workflow_transitions_project_id_from_state_id_to_state_id");
+
+                    b.ToTable("workflow_transitions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_workflow_transitions_distinct_states", "from_state_id <> to_state_id");
+                        });
                 });
 
             modelBuilder.Entity("ProjectManager.Infrastructure.Identity.ApplicationUser", b =>
@@ -1564,6 +1815,14 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasPrincipalKey("ProjectId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_tasks_project_phases_project_id_phase_id");
+
+                    b.HasOne("ProjectManager.Domain.Workflows.WorkflowState", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId", "StateId")
+                        .HasPrincipalKey("ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tasks_workflow_states_project_id_state_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Tasks.TaskAssignment", b =>
@@ -1658,6 +1917,66 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_task_labels_tasks_organization_id_project_id_task_id");
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.TaskStatusHistory", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_task_status_history_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.WorkflowDefinition", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithOne()
+                        .HasForeignKey("ProjectManager.Domain.Workflows.WorkflowDefinition", "OrganizationId", "ProjectId")
+                        .HasPrincipalKey("ProjectManager.Domain.Projects.Project", "OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflows_projects_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.WorkflowState", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Workflows.WorkflowDefinition", null)
+                        .WithMany("States")
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_states_workflows_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.WorkflowTransition", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Workflows.WorkflowDefinition", null)
+                        .WithMany("Transitions")
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_transitions_workflows_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Workflows.WorkflowState", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId", "FromStateId")
+                        .HasPrincipalKey("ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_transitions_workflow_states_project_id_from_state_");
+
+                    b.HasOne("ProjectManager.Domain.Workflows.WorkflowState", null)
+                        .WithMany()
+                        .HasForeignKey("ProjectId", "ToStateId")
+                        .HasPrincipalKey("ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_transitions_workflow_states_project_id_to_state_id");
+                });
+
             modelBuilder.Entity("ProjectManager.Infrastructure.Identity.UserRefreshToken", b =>
                 {
                     b.HasOne("ProjectManager.Infrastructure.Identity.UserRefreshToken", null)
@@ -1705,6 +2024,13 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.Navigation("Assignments");
 
                     b.Navigation("Labels");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Workflows.WorkflowDefinition", b =>
+                {
+                    b.Navigation("States");
+
+                    b.Navigation("Transitions");
                 });
 #pragma warning restore 612, 618
         }

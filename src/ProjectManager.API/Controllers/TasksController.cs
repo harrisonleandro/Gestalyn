@@ -91,6 +91,32 @@ public sealed class TasksController(ITaskService tasks, IAttachmentService attac
         return result.Succeeded ? NoContent() : this.ToProblem(result.Error!);
     }
 
+    /// <summary>
+    /// Muda o estado da tarefa por uma transição do workflow (ADR-013). Transição inexistente, estado
+    /// esperado diferente ou dependências abertas: 409. Aprovação sem permissão ou do próprio trabalho: 403.
+    /// </summary>
+    [HttpPost("tasks/{taskId:guid}/transitions")]
+    [TaskPermission(ProjectPermissions.TasksWrite)]
+    [ProducesResponseType<TaskDetails>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> TransitionAsync(Guid taskId, TransitionTaskRequest request, CancellationToken cancellationToken)
+    {
+        var result = await tasks.TransitionAsync(Actor, Access, taskId, request, cancellationToken);
+
+        return result.Succeeded ? Ok(result.Value) : this.ToProblem(result.Error!);
+    }
+
+    /// <summary>Histórico de estados da tarefa, em ordem cronológica.</summary>
+    [HttpGet("tasks/{taskId:guid}/history")]
+    [TaskPermission(ProjectPermissions.Read)]
+    [ProducesResponseType<IReadOnlyList<TaskHistoryEntry>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListHistoryAsync(Guid taskId, CancellationToken cancellationToken) =>
+        Ok(await tasks.ListHistoryAsync(taskId, cancellationToken));
+
     /// <summary>Torna um membro da equipe do projeto responsável pela tarefa.</summary>
     [HttpPost("tasks/{taskId:guid}/assignments")]
     [TaskPermission(ProjectPermissions.TasksWrite)]

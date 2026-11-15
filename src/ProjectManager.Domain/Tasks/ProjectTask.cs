@@ -1,14 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
+using ProjectManager.Domain.Workflows;
 
 namespace ProjectManager.Domain.Tasks;
 
 /// <summary>
 /// Tarefa de um projeto ("task" na API e no banco; o nome evita colidir com
 /// <see cref="System.Threading.Tasks.Task"/>). Tem número sequencial no projeto, fase e marco opcionais
-/// do mesmo projeto, vários responsáveis da equipe e arquivamento lógico. O estado da tarefa chega com o
-/// workflow da Fase 07 (ADR-011).
+/// do mesmo projeto, vários responsáveis da equipe, arquivamento lógico e um estado do workflow do projeto
+/// (ADR-011 e ADR-013).
 /// </summary>
 public sealed class ProjectTask : Entity, IOrganizationOwned, IAuditable
 {
@@ -55,6 +56,9 @@ public sealed class ProjectTask : Entity, IOrganizationOwned, IAuditable
     public Guid? PhaseId { get; private set; }
 
     public Guid? MilestoneId { get; private set; }
+
+    /// <summary>Estado atual no workflow do projeto. Muda só por transição validada (ADR-013).</summary>
+    public Guid StateId { get; private set; }
 
     public Guid CreatedByUserId { get; private set; }
 
@@ -173,6 +177,22 @@ public sealed class ProjectTask : Entity, IOrganizationOwned, IAuditable
     {
         EnsureNotArchived();
         return _assignments.RemoveAll(assignment => assignment.UserId == userId) > 0;
+    }
+
+    /// <summary>
+    /// Coloca a tarefa num estado do workflow do mesmo projeto. A validação da transição é de
+    /// <see cref="TransitionRules"/>; aqui só se garante que o estado é do projeto.
+    /// </summary>
+    public void EnterState(WorkflowState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        EnsureNotArchived();
+        if (state.ProjectId != ProjectId)
+        {
+            throw new ArgumentException("O estado pertence a outro projeto.", nameof(state));
+        }
+
+        StateId = state.Id;
     }
 
     /// <summary>Arquiva a tarefa. Arquivar de novo não muda nada.</summary>

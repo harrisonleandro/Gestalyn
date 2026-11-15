@@ -22,6 +22,7 @@ internal sealed partial class AttachmentService(
 {
     private const string TaskNotFoundMessage = "Tarefa não encontrada.";
     private const string AttachmentNotFoundMessage = "Anexo não encontrado.";
+    private const string FinalStateMessage = "A tarefa está num estado final e é somente leitura. Para alterá-la, reabra-a pela transição configurada.";
 
     public async Task<IReadOnlyList<AttachmentDetails>> ListAsync(Guid taskId, CancellationToken cancellationToken)
     {
@@ -58,6 +59,11 @@ internal sealed partial class AttachmentService(
         if (await dbContext.Projects.AnyAsync(p => p.Id == task.ProjectId && p.ArchivedAt != null, cancellationToken))
         {
             return Result.Failure<AttachmentDetails>(ErrorKind.Conflict, Project.ArchivedMessage);
+        }
+
+        if (await TaskStates.IsFinalAsync(dbContext, task.StateId, cancellationToken))
+        {
+            return Result.Failure<AttachmentDetails>(ErrorKind.Conflict, FinalStateMessage);
         }
 
         if (await dbContext.TaskAttachments.CountAsync(a => a.TaskId == taskId, cancellationToken) >= TaskAttachment.MaxPerTask)
@@ -136,6 +142,11 @@ internal sealed partial class AttachmentService(
         if (task.IsArchived || await dbContext.Projects.AnyAsync(p => p.Id == task.ProjectId && p.ArchivedAt != null, cancellationToken))
         {
             return Result.Failure(ErrorKind.Conflict, task.IsArchived ? ProjectTask.ArchivedMessage : Project.ArchivedMessage);
+        }
+
+        if (await TaskStates.IsFinalAsync(dbContext, task.StateId, cancellationToken))
+        {
+            return Result.Failure(ErrorKind.Conflict, FinalStateMessage);
         }
 
         var attachment = await dbContext.TaskAttachments.SingleOrDefaultAsync(a => a.TaskId == taskId && a.Id == attachmentId, cancellationToken);
