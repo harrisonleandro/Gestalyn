@@ -36,6 +36,7 @@ public sealed class WebTestContext : BunitContext
         Services.AddScoped<WorkflowApi>();
         Services.AddScoped<DocumentsApi>();
         Services.AddSingleton<MarkdownRenderer>();
+        Services.AddSingleton<Microsoft.AspNetCore.Http.IHttpContextAccessor>(new Microsoft.AspNetCore.Http.HttpContextAccessor());
         Services.AddSingleton(new Display(Options.Create(new DisplayOptions { TimeZone = "UTC" })));
 
         var authorization = AddAuthorization();

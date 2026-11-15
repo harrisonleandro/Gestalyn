@@ -1,5 +1,9 @@
-@* Aviso de sucesso depois do redirecionamento. Só mensagens conhecidas (Flash.MessageFor). *@
+@*
+    Aviso de sucesso depois do redirecionamento. Só mensagens conhecidas (Flash.MessageFor), e só na leitura da página:
+    num envio de formulário que falhou, a URL ainda traz o aviso anterior, que não deve aparecer junto do erro.
+*@
 @inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
 
 @if (_message is not null)
 {
@@ -13,6 +17,12 @@
 
     protected override void OnParametersSet()
     {
+        if (!HttpMethods.IsGet(HttpContextAccessor.HttpContext?.Request.Method ?? HttpMethods.Get))
+        {
+            _message = null;
+            return;
+        }
+
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
         _message = query.TryGetValue(Flash.QueryName, out var key) ? Flash.MessageFor(key.ToString()) : null;
