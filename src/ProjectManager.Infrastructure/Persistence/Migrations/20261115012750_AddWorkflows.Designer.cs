@@ -12,7 +12,7 @@ using ProjectManager.Infrastructure.Persistence;
 namespace ProjectManager.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ProjectManagerDbContext))]
-    [Migration("20261115011724_AddWorkflows")]
+    [Migration("20261115012750_AddWorkflows")]
     partial class AddWorkflows
     {
         /// <inheritdoc />
@@ -1264,11 +1264,6 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
 
                     b.HasAlternateKey("ProjectId", "Id")
                         .HasName("ak_workflow_states_project_id_id");
-
-                    b.HasIndex("ProjectId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_workflow_states_initial")
-                        .HasFilter("is_initial");
 
                     b.HasIndex("OrganizationId", "ProjectId")
                         .HasDatabaseName("ix_workflow_states_organization_id_project_id");

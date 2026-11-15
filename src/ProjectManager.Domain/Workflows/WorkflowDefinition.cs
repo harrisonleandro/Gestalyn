@@ -159,6 +159,13 @@ public sealed class WorkflowDefinition : Entity, IOrganizationOwned, IAuditable
 
         _transitions.RemoveAll(transition => transition.FromStateId == state.Id || transition.ToStateId == state.Id);
         _states.Remove(state);
+
+        // Posições contínuas a partir de 1.
+        var ordered = States;
+        for (var index = 0; index < ordered.Count; index++)
+        {
+            ordered[index].MoveTo(index + 1);
+        }
     }
 
     public WorkflowTransition AddTransition(WorkflowState from, WorkflowState to, bool requiresApproval)

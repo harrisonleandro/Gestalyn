@@ -154,13 +154,6 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                 columns: new[] { "task_id", "changed_at" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_workflow_states_initial",
-                table: "workflow_states",
-                column: "project_id",
-                unique: true,
-                filter: "is_initial");
-
-            migrationBuilder.CreateIndex(
                 name: "ix_workflow_states_organization_id_project_id",
                 table: "workflow_states",
                 columns: new[] { "organization_id", "project_id" });

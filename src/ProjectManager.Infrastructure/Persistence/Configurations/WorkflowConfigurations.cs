@@ -61,11 +61,9 @@ internal sealed class WorkflowStateConfiguration : IEntityTypeConfiguration<Work
         builder.HasAlternateKey(state => new { state.ProjectId, state.Id });
         builder.HasIndex(state => new { state.ProjectId, state.Position });
 
-        // No máximo um estado inicial por projeto.
-        builder.HasIndex(state => state.ProjectId)
-            .IsUnique()
-            .HasFilter("is_initial")
-            .HasDatabaseName("ix_workflow_states_initial");
+        // "Um único estado inicial" fica no domínio, não num índice único parcial: trocar o estado inicial
+        // desmarca um e marca outro na mesma gravação, e o índice seria violado no meio dela. As edições do
+        // workflow travam a linha do workflow (xmin), o que serializa alterações simultâneas (ADR-013).
     }
 }
 

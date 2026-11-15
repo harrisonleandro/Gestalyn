@@ -41,4 +41,26 @@ internal sealed class ProjectAccessResolver(ProjectManagerDbContext dbContext) :
 
         return projectId is null ? null : await FindAsync(membership, projectId.Value, cancellationToken);
     }
+
+    public async Task<ProjectAccessGrant?> FindByWorkflowStateAsync(ActiveMembership membership, Guid stateId, CancellationToken cancellationToken)
+    {
+        var projectId = await dbContext.WorkflowStates
+            .AsNoTracking()
+            .Where(state => state.Id == stateId)
+            .Select(state => (Guid?)state.ProjectId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return projectId is null ? null : await FindAsync(membership, projectId.Value, cancellationToken);
+    }
+
+    public async Task<ProjectAccessGrant?> FindByWorkflowTransitionAsync(ActiveMembership membership, Guid transitionId, CancellationToken cancellationToken)
+    {
+        var projectId = await dbContext.WorkflowTransitions
+            .AsNoTracking()
+            .Where(transition => transition.Id == transitionId)
+            .Select(transition => (Guid?)transition.ProjectId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return projectId is null ? null : await FindAsync(membership, projectId.Value, cancellationToken);
+    }
 }

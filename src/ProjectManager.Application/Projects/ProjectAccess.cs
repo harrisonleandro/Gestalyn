@@ -49,4 +49,10 @@ public interface IProjectAccess
 
     /// <summary>Acesso ao projeto da tarefa, ou <c>null</c> se a tarefa não existe ou o projeto é invisível.</summary>
     Task<ProjectAccessGrant?> FindByTaskAsync(ActiveMembership membership, Guid taskId, CancellationToken cancellationToken);
+
+    /// <summary>Acesso ao projeto do estado de workflow (ADR-013).</summary>
+    Task<ProjectAccessGrant?> FindByWorkflowStateAsync(ActiveMembership membership, Guid stateId, CancellationToken cancellationToken);
+
+    /// <summary>Acesso ao projeto da transição de workflow (ADR-013).</summary>
+    Task<ProjectAccessGrant?> FindByWorkflowTransitionAsync(ActiveMembership membership, Guid transitionId, CancellationToken cancellationToken);
 }
