@@ -14,7 +14,9 @@
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
-**Fase 08, Auditoria, documentação e dashboards: Completed.** Validada localmente (328/328 testes, quatro mutações detectadas, migrations aplicadas no banco de desenvolvimento e execução real da API com atividades, documentos, decisões e dashboards) e no CI ([run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): 0 avisos, 178/178 e 150/150), e integrada em `develop` pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) (merge `0e9dbdd`). A próxima é a Fase 09, que depende de autorização.
+**Fase 09, Interface web completa: Planned.** A [especificação](specifications/FASE-09-WEB.md) aguarda a aprovação das decisões D1 a D8; nada foi implementado. Ela propõe transferir a interface de agentes (F09-018) para a Fase 10, porque a API de agentes ainda não existe.
+
+**Fase 08, Auditoria, documentação e dashboards: Completed.** Validada localmente (328/328 testes, quatro mutações detectadas, migrations aplicadas no banco de desenvolvimento e execução real da API com atividades, documentos, decisões e dashboards) e no CI ([run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): 0 avisos, 178/178 e 150/150), e integrada em `develop` pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) (merge `0e9dbdd`).
 
 **Fase 07, Workflow configurável e histórico: Completed.** Validada localmente (280/280 testes, quatro mutações detectadas, migração de dados aplicada no banco de desenvolvimento e execução real da API com aprovação e dependências) e no CI ([run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): 0 avisos, 148/148 e 132/132), e integrada em `develop` pelo [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) (merge `a6f87f9`).
 
@@ -55,7 +57,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 06 | Fases, marcos e tarefas | Completed | [FASE-06-TAREFAS.md](specifications/FASE-06-TAREFAS.md) | [FASE-06-RELATORIO.md](reports/FASE-06-RELATORIO.md) |
 | 07 | Workflow configurável e histórico | Completed | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
 | 08 | Auditoria, documentação e dashboards | Completed | [FASE-08-AUDITORIA.md](specifications/FASE-08-AUDITORIA.md) | [FASE-08-RELATORIO.md](reports/FASE-08-RELATORIO.md) |
-| 09 | Interface web completa | Not Started | — | — |
+| 09 | Interface web completa | Planned | [FASE-09-WEB.md](specifications/FASE-09-WEB.md) | — |
 | 10 | API e autenticação de agentes | Not Started | — | — |
 | 11 | CLI gestalyn | Not Started | — | — |
 | 12 | MCP e integrações com agentes | Not Started | — | — |
@@ -310,4 +312,4 @@ Incidentes já resolvidos, mantidos como referência:
 
 ## Próxima atividade
 
-1. Fase 09 (interface web completa): especificação para aprovação, depois de autorizada pelo responsável.
+1. Fase 09: aprovação das decisões D1 a D8 da [especificação](specifications/FASE-09-WEB.md) e, em seguida, implementação em `feature/fase-09-web`.
