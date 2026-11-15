@@ -58,4 +58,10 @@ public interface IProjectAccess
 
     /// <summary>Acesso ao projeto da transição de workflow (ADR-013).</summary>
     Task<ProjectAccessGrant?> FindByWorkflowTransitionAsync(ActiveMembership membership, Guid transitionId, CancellationToken cancellationToken);
+
+    /// <summary>Acesso ao projeto do documento (ADR-014).</summary>
+    Task<ProjectAccessGrant?> FindByDocumentAsync(ActiveMembership membership, Guid documentId, CancellationToken cancellationToken);
+
+    /// <summary>Acesso ao projeto da decisão (ADR-014).</summary>
+    Task<ProjectAccessGrant?> FindByDecisionAsync(ActiveMembership membership, Guid decisionId, CancellationToken cancellationToken);
 }

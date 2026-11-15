@@ -10,12 +10,14 @@ using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Abstractions.Storage;
 using ProjectManager.Application.Activity;
+using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
 using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
 using ProjectManager.Application.Workflows;
 using ProjectManager.Infrastructure.Activity;
+using ProjectManager.Infrastructure.Documents;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
@@ -68,6 +70,8 @@ public static class DependencyInjection
         services.TryAddScoped<IActivityContext, SystemActivityContext>();
         services.AddScoped<ActivityRecorder>();
         services.AddScoped<IActivityService, ActivityService>();
+        services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<IDecisionService, DecisionService>();
 
         services.AddOptions<StorageOptions>()
             .BindConfiguration(StorageOptions.SectionName)

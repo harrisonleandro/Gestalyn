@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
 using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
@@ -158,6 +159,25 @@ public sealed class ActivityCoverageTests : IDisposable
         await ExpectAsync("DELETE /api/v1/tasks/{taskId:guid}/attachments/{attachmentId:guid}", "task.attachment_deleted",
             HttpMethod.Delete, $"{t}/attachments/{attachment.Id}");
         await ExpectAsync("DELETE /api/v1/tasks/{taskId:guid}", "task.archived", HttpMethod.Delete, $"/api/v1/tasks/{blocker.Id}");
+
+        // Documentos e decisões.
+        var document = await ReadAfterExpectAsync<DocumentDetails>("POST /api/v1/projects/{projectId:guid}/documents", "document.created",
+            HttpMethod.Post, $"{p}/documents", new { title = "Visão do produto", body = "# Visão" });
+        var d = $"/api/v1/documents/{document.Id}";
+        await ExpectAsync("PUT /api/v1/documents/{documentId:guid}", "document.updated", HttpMethod.Put, d, new { title = "Visão", body = "# Visão 2", expectedVersion = 1 });
+        await ExpectAsync("POST /api/v1/documents/{documentId:guid}/archive", "document.archived", HttpMethod.Post, $"{d}/archive");
+        await ExpectAsync("POST /api/v1/documents/{documentId:guid}/restore", "document.restored", HttpMethod.Post, $"{d}/restore");
+        var decision = await ReadAfterExpectAsync<DecisionDetails>("POST /api/v1/projects/{projectId:guid}/decisions", "decision.proposed",
+            HttpMethod.Post, $"{p}/decisions", new { title = "Banco de dados", context = "Precisamos persistir", outcome = "PostgreSQL" });
+        var c = $"/api/v1/decisions/{decision.Id}";
+        await ExpectAsync("PATCH /api/v1/decisions/{decisionId:guid}", "decision.updated", HttpMethod.Patch, c, new { consequences = "Operar o PostgreSQL" });
+        await ExpectAsync("POST /api/v1/decisions/{decisionId:guid}/accept", "decision.accepted", HttpMethod.Post, $"{c}/accept");
+        var rejected = await ReadAsync<DecisionDetails>(HttpMethod.Post, $"{p}/decisions", new { title = "Planilha", context = "Alternativa", outcome = "Não" });
+        await ExpectAsync("POST /api/v1/decisions/{decisionId:guid}/reject", "decision.rejected", HttpMethod.Post, $"/api/v1/decisions/{rejected.Id}/reject");
+        var replacement = await ReadAsync<DecisionDetails>(HttpMethod.Post, $"{p}/decisions", new { title = "Banco gerenciado", context = "Escala", outcome = "PostgreSQL gerenciado" });
+        await ReadAsync<DecisionDetails>(HttpMethod.Post, $"/api/v1/decisions/{replacement.Id}/accept");
+        await ExpectAsync("POST /api/v1/decisions/{decisionId:guid}/supersede", "decision.superseded",
+            HttpMethod.Post, $"{c}/supersede", new { supersededById = replacement.Id });
 
         // Saídas: da equipe, do projeto (arquivamento) e da organização.
         await ExpectAsync("DELETE /api/v1/projects/{projectId:guid}/members/{userId:guid}", "project.member_removed", HttpMethod.Delete, $"{p}/members/{member.Id}");
