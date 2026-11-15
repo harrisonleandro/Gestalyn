@@ -14,6 +14,8 @@
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
+**Fase 07, Workflow configurável e histórico: Planned.** A [especificação](specifications/FASE-07-WORKFLOW.md) aguarda a aprovação das decisões D1 a D7; nada foi implementado.
+
 **Correções da auditoria técnica de 2026-11-12: Completed.** A auditoria do `develop` (`7a5c170`) confirmou cinco problemas, todos corrigidos e integrados com o CI aprovado:
 
 | Achado | Correção | Estado |
@@ -49,7 +51,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 04 | Organizações e permissões | Completed | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
 | 05 | Projetos e equipes | Completed | [FASE-05-PROJETOS.md](specifications/FASE-05-PROJETOS.md) | [FASE-05-RELATORIO.md](reports/FASE-05-RELATORIO.md) |
 | 06 | Fases, marcos e tarefas | Completed | [FASE-06-TAREFAS.md](specifications/FASE-06-TAREFAS.md) | [FASE-06-RELATORIO.md](reports/FASE-06-RELATORIO.md) |
-| 07 | Workflow configurável e histórico | Not Started | — | — |
+| 07 | Workflow configurável e histórico | Planned | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | — |
 | 08 | Auditoria, documentação e dashboards | Not Started | — | — |
 | 09 | Interface web completa | Not Started | — | — |
 | 10 | API e autenticação de agentes | Not Started | — | — |
@@ -256,4 +258,4 @@ Incidentes já resolvidos, mantidos como referência:
 
 ## Próxima atividade
 
-1. Fase 07 (workflow configurável e histórico), somente após autorização.
+1. Fase 07: aprovação das decisões D1 a D7 da [especificação](specifications/FASE-07-WORKFLOW.md) e, em seguida, implementação em `feature/fase-07-workflow`.
