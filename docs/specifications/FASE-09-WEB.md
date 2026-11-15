@@ -1,6 +1,6 @@
 # Fase 09: Interface web completa
 
-- **Estado:** In Review. Implementada e validada localmente (testes de componentes, mutação e execução real no navegador com três papéis); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D8 aprovadas pelo responsável em 2026-11-15.
+- **Estado:** Completed. Validada localmente (testes de componentes, mutação e execução real no navegador com três papéis) e no CI ([run 43716683611](https://github.com/harrisonleandro/Gestalyn/actions/runs/43716683611)), e integrada em `develop` pelo [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) (merge `5960bde`). Decisões D1 a D8 aprovadas pelo responsável em 2026-11-15.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 09) e seção 8 (experiência de usuário e interface)
 - **Branch:** `feature/fase-09-web` (a partir de `develop` `67144d1`, com as Fases 01 a 08 integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -211,7 +211,7 @@ docs/web/TELAS.md                               Mapa das telas, rotas e permiss�
 | F09-019 | Completed | `States`, `EmptyState`, streaming rendering, mensagens da API em 400, 401, 403, 404 e 409 |
 | F09-020 | Completed | Nenhuma rolagem horizontal em 375 px nas 11 telas principais; tabelas em cartões; teclado e foco visível |
 | F09-021 | **Não implementada** | Sem necessidade comprovada de tempo real (D2); reavaliar na Fase 10 |
-| CI | **In Review** | Depende do push de `feature/fase-09-web`, autorizado pelo responsável |
+| CI | Completed | [run 43716683611](https://github.com/harrisonleandro/Gestalyn/actions/runs/43716683611): 0 avisos, 178/178, 43/43 e 151/151; [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17), merge `5960bde` |
 
 Ajustes feitos durante a implementação, dentro das decisões aprovadas:
 

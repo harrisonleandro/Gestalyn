@@ -3,7 +3,7 @@
 - **Data:** 2026-11-15
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29 · navegador do Claude Desktop
 - **Branch:** `feature/fase-09-web` (a partir de `develop` `67144d1`, com as Fases 01 a 08 integradas)
-- **Estado:** **In Review.** Critérios verificados localmente; faltam o push, o CI no GitHub e a integração em `develop` por PR, que dependem de autorização do responsável.
+- **Estado:** **Completed.** Critérios verificados localmente e no CI; integrada em `develop` pelo [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) (merge `5960bde`).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -160,7 +160,6 @@ Construir a experiência completa de uso na Web, conectada à API das Fases 03 a
 
 ## 14. Pendências
 
-- Push de `feature/fase-09-web`, CI no GitHub e PR para `develop` (dependem de autorização).
 - **Fase 10:**
   - interface de agentes, credenciais e relatórios de trabalho (F09-018 transferida);
   - reavaliar o tempo real (F09-021).
@@ -192,7 +191,7 @@ Duas tarefas da lista da fase ficaram de fora, com a aprovação de D2 e D7 e o 
 - **F09-018 (interface de agentes):** transferida para a Fase 10, porque a API de agentes não existe;
 - **F09-021 (tempo real):** não implementada, por falta de necessidade comprovada.
 
-A definição de conclusão ainda não foi cumprida: faltam o CI no GitHub e a integração em `develop` por PR. Por isso, a fase fica **In Review**.
+A definição de conclusão também foi cumprida: CI aprovado ([run 43716683611](https://github.com/harrisonleandro/Gestalyn/actions/runs/43716683611): 0 avisos, 178/178, 43/43 e 151/151) e integração por PR ([PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17), merge `5960bde`).
 
 ## 17. Riscos identificados
 
@@ -207,19 +206,19 @@ A definição de conclusão ainda não foi cumprida: faltam o CI no GitHub e a i
 
 ## 18. Estado do Git
 
-- **Branch:** `feature/fase-09-web`, a partir de `develop` `67144d1`, ainda não enviada.
+- **Branch:** `feature/fase-09-web`, a partir de `develop` `67144d1`, enviada e incorporada pelo [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17).
 - **Commits:**
   - `a6c5c07` (especificação);
   - `25d3a27` (interface web e rota `/me`);
   - `a7955b0` (testes de componentes);
   - `409d642` (aviso só na leitura e cookie apagado ao sair);
-  - commit de documentação de encerramento.
-- **`develop`:** `67144d1`.
+  - `4407ff4` (documentação de encerramento).
+- **PR #17 (Fase 09):** CI aprovado sobre `4407ff4`; merge `5960bde`.
+- **`develop`:** `5960bde`.
 
 ## 19. Próxima fase recomendada
 
-1. **Antes:** push, CI e PR da Fase 09 para `develop`, com autorização do responsável.
-2. **Fase 10, API e autenticação de agentes:**
+1. **Fase 10, API e autenticação de agentes:**
    - credenciais de agente com permissões limitadas e revogação;
    - autor `ActorKind.Agent` nos eventos e no histórico;
    - relatórios de trabalho (seção 6.4);
