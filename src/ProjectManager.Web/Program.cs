@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using ProjectManager.Web;
 using ProjectManager.Web.Api;
 using ProjectManager.Web.Authentication;
 using ProjectManager.Web.Components;
+using ProjectManager.Web.Markdown;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +20,24 @@ builder.Services.AddOptions<ApiOptions>()
 builder.Services.AddHttpClient<ApiHealthClient>(ConfigureApiClient);
 builder.Services.AddHttpClient<ApiAccountClient>(ConfigureApiClient);
 builder.Services.AddHttpClient<ApiInvitationClient>(ConfigureApiClient);
+
+// Telas da Fase 09 (ADR-015): clientes por área sobre o GestalynApi, que leva o token do cookie da requisição.
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IApiRequestContext, HttpApiRequestContext>();
+builder.Services.AddHttpClient<GestalynApi>(ConfigureApiClient);
+builder.Services.AddScoped<OrganizationsApi>();
+builder.Services.AddScoped<MembershipCache>();
+builder.Services.AddScoped<ProjectsApi>();
+builder.Services.AddScoped<PlanningApi>();
+builder.Services.AddScoped<TasksApi>();
+builder.Services.AddScoped<WorkflowApi>();
+builder.Services.AddScoped<DocumentsApi>();
+builder.Services.AddSingleton<MarkdownRenderer>();
+builder.Services.AddOptions<DisplayOptions>()
+    .Bind(builder.Configuration.GetSection(DisplayOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<Display>();
 
 // Sessão da Web (BFF): cookie HttpOnly com os tokens da API, renovados no servidor.
 builder.Services.TryAddSingleton(TimeProvider.System);
@@ -50,12 +70,15 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseWebSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseLastOrganizationCookie();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapAccountEndpoints();
+app.MapWebEndpoints();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

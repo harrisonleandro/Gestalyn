@@ -1,0 +1,86 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/decisoes"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject DocumentsApi Documents
+
+<PageTitle>Decisões · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Decisões" Trail="@([("Decisões", (string?)null)])">
+    <ApiErrors Result="ActionResult" />
+    @if (Project!.ArchivedAt is null && Can(Permissions.DocumentsWrite))
+    {
+        <details class="pm-card pm-disclosure">
+            <summary>Propor decisão</summary>
+            <EditForm Model="Proposal" FormName="propose" OnValidSubmit="ProposeAsync" Enhance>
+                <DataAnnotationsValidator />
+                <DecisionFields Model="Proposal" Prefix="Proposal" />
+                <button type="submit" class="btn btn-primary mt-3">Propor</button>
+            </EditForm>
+        </details>
+    }
+
+    <form method="get" class="d-flex gap-2 align-items-end mb-3" role="search" aria-label="Filtrar decisões">
+        <div>
+            <label for="d-status" class="form-label">Situação</label>
+            <select id="d-status" name="situacao" class="form-select">
+                <option value="">Todas</option>
+                @foreach (var status in Enum.GetValues<DecisionStatus>())
+                {
+                    <option value="@status" selected="@(StatusText == status.ToString())">@Display.Name(status)</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-outline-secondary">Filtrar</button>
+    </form>
+
+    @if (_decisions is { Count: 0 })
+    {
+        <EmptyState Title="Nenhuma decisão registrada." Message="Decisões técnicas do projeto, no estilo de ADR, ficam aqui." />
+    }
+    else if (_decisions is not null)
+    {
+        <div class="pm-card">
+            <table class="table pm-table align-middle">
+                <thead><tr><th scope="col">Decisão</th><th scope="col">Situação</th><th scope="col">Decidida em</th></tr></thead>
+                <tbody>
+                    @foreach (var decision in _decisions)
+                    {
+                        <tr>
+                            <td data-label="Decisão"><a href="@($"{OrgPath}/decisoes/{decision.Id}")">@decision.Title</a></td>
+                            <td data-label="Situação"><span class="pm-label">@Display.Name(decision.Status)</span></td>
+                            <td data-label="Decidida em">@(decision.DecidedAt is { } at ? Display.DateTime(at) : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromQuery(Name = "situacao")]
+    private string? StatusText { get; set; }
+
+    [SupplyParameterFromForm(FormName = "propose")]
+    private DecisionForm Proposal { get; set; } = default!;
+
+    private List<DecisionSummary>? _decisions;
+
+    protected override void OnInitialized() => Proposal ??= new DecisionForm();
+
+    protected override async Task LoadProjectAsync() =>
+        _decisions = Take(await Documents.ListDecisionsAsync(OrganizationId, ProjectId, Enum.TryParse<DecisionStatus>(StatusText, out var status) ? status : null));
+
+    private async Task ProposeAsync()
+    {
+        var response = await Documents.ProposeAsync(OrganizationId, ProjectId, new
+        {
+            title = Proposal.Title,
+            context = Proposal.Context,
+            outcome = Proposal.Outcome,
+            alternatives = Proposal.Alternatives,
+            consequences = Proposal.Consequences,
+        });
+        Complete(response, "criado", response.Value is { } decision ? $"{OrgPath}/decisoes/{decision.Id}" : null);
+    }
+}

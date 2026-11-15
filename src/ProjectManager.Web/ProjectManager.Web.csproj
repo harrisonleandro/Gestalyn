@@ -7,4 +7,12 @@
 
   <!-- A Web acessa a API exclusivamente por HTTP: não há referências a outros projetos da solução. -->
 
+  <ItemGroup>
+    <PackageReference Include="Markdig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ProjectManager.WebTests" />
+  </ItemGroup>
+
 </Project>

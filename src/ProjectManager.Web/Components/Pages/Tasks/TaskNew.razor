@@ -1,0 +1,81 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/tarefas/nova"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject TasksApi Tasks
+@inject PlanningApi Planning
+
+<PageTitle>Nova tarefa · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Nova tarefa" Trail="@([("Tarefas", $"{ProjectPath}/tarefas"), ("Nova", (string?)null)])">
+    @if (Project!.ArchivedAt is not null || !Can(Permissions.TasksWrite))
+    {
+        <div class="alert alert-warning" role="status">Você não pode criar tarefas neste projeto.</div>
+    }
+    else
+    {
+        <div class="pm-card" style="max-width: 52rem">
+            <ApiErrors Result="ActionResult" />
+            <EditForm Model="Input" FormName="create-task" OnValidSubmit="CreateAsync" Enhance>
+                <DataAnnotationsValidator />
+                <TaskFields Model="Input" Prefix="Input" Phases="_phases" Milestones="_milestones" />
+
+                @if (_members is { Count: > 0 })
+                {
+                    <fieldset class="mt-3">
+                        <legend class="form-label fs-6">Responsáveis</legend>
+                        <div class="pm-actions">
+                            @foreach (var member in _members)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="@($"assignee-{member.UserId}")" name="Assignees" value="@member.UserId" />
+                                    <label class="form-check-label" for="@($"assignee-{member.UserId}")">@member.DisplayName</label>
+                                </div>
+                            }
+                        </div>
+                    </fieldset>
+                }
+
+                <p class="pm-muted small mt-3 mb-0">A tarefa entra no estado inicial do workflow do projeto.</p>
+                <button type="submit" class="btn btn-primary mt-3"><Icon Name="plus" /> Criar tarefa</button>
+            </EditForm>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromForm(FormName = "create-task")]
+    private TaskForm Input { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "create-task", Name = "Assignees")]
+    private Guid[]? Assignees { get; set; }
+
+    private List<PhaseDetails>? _phases;
+    private List<MilestoneDetails>? _milestones;
+    private List<ProjectMemberDetails>? _members;
+
+    protected override void OnInitialized() => Input ??= new TaskForm();
+
+    protected override async Task LoadProjectAsync()
+    {
+        _phases = (await Planning.ListPhasesAsync(OrganizationId, ProjectId)).Value;
+        _milestones = (await Planning.ListMilestonesAsync(OrganizationId, ProjectId)).Value;
+        _members = (await Projects.ListMembersAsync(OrganizationId, ProjectId)).Value;
+    }
+
+    private async Task CreateAsync()
+    {
+        var response = await Tasks.CreateAsync(OrganizationId, ProjectId, new
+        {
+            title = Input.Title,
+            description = Input.Description,
+            priority = Input.Priority,
+            dueDate = Input.DueDate,
+            phaseId = Input.PhaseId,
+            milestoneId = Input.MilestoneId,
+            labels = Input.LabelList,
+            assigneeIds = Assignees ?? [],
+        });
+
+        Complete(response, "criado", response.Value is { } task ? $"{OrgPath}/tarefas/{task.Id}" : null);
+    }
+}

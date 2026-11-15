@@ -1,0 +1,48 @@
+@page "/o/{OrganizationId:guid}/atividades"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits OrganizationPage
+
+<PageTitle>Atividades da organização · Gestalyn</PageTitle>
+
+<OrgFrame Membership="Membership" Error="LoadError" Ready="Membership is not null">
+    <PageHeader Title="Atividades da organização" Subtitle="Membros, convites e dados da organização, e a atividade de todos os projetos." />
+    @if (!Membership!.Can(Permissions.ActivityReadAll))
+    {
+        <div class="alert alert-warning" role="status">Seu papel não permite consultar as atividades de toda a organização. Veja as de cada projeto na aba Atividades.</div>
+    }
+    else
+    {
+        <ActivityFiltersForm Source="@SourceText" Origin="@OriginText" Action="@ActionText" From="From" To="To" />
+        <States Error="_error" Ready="_items is not null">
+            <div class="pm-card">
+                <ActivityList Items="_items!.Items" OrganizationId="OrganizationId" />
+                <Pager Page="_items.Page" PageCount="_items.PageCount" TotalCount="_items.TotalCount" />
+            </div>
+        </States>
+    }
+</OrgFrame>
+
+@code {
+    [SupplyParameterFromQuery(Name = "tipo")] private string? SourceText { get; set; }
+    [SupplyParameterFromQuery(Name = "origem")] private string? OriginText { get; set; }
+    [SupplyParameterFromQuery(Name = "acao")] private string? ActionText { get; set; }
+    [SupplyParameterFromQuery(Name = "de")] private DateOnly? From { get; set; }
+    [SupplyParameterFromQuery(Name = "ate")] private DateOnly? To { get; set; }
+    [SupplyParameterFromQuery(Name = "pagina")] private int? Page { get; set; }
+
+    private Paged<ActivityItem>? _items;
+    private ApiResult? _error;
+
+    protected override async Task LoadAsync()
+    {
+        if (!Membership!.Can(Permissions.ActivityReadAll))
+        {
+            return;
+        }
+
+        var response = await Organizations.ActivitiesAsync(OrganizationId, ActivityFiltersForm.ToFilter(SourceText, OriginText, ActionText, From, To, Page));
+        _items = response.Value;
+        _error = response.Result.Succeeded ? null : response.Result;
+    }
+}

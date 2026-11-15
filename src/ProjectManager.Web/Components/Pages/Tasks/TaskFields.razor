@@ -1,0 +1,66 @@
+@* Campos da tarefa, usados na criação e na edição. *@
+<div class="mb-3">
+    <label for="task-title" class="form-label">Título</label>
+    <InputText id="task-title" class="form-control" @bind-Value="Model.Title" name="@(Prefix + ".Title")" />
+    <ValidationMessage For="() => Model.Title" />
+</div>
+<div class="pm-form-grid">
+    <div>
+        <label for="task-priority" class="form-label">Prioridade</label>
+        <InputSelect id="task-priority" class="form-select" @bind-Value="Model.Priority" name="@(Prefix + ".Priority")">
+            @foreach (var priority in Enum.GetValues<Priority>())
+            {
+                <option value="@priority">@Display.Name(priority)</option>
+            }
+        </InputSelect>
+    </div>
+    <div>
+        <label for="task-due" class="form-label">Prazo</label>
+        <InputDate id="task-due" class="form-control" @bind-Value="Model.DueDate" name="@(Prefix + ".DueDate")" />
+    </div>
+    <div>
+        <label for="task-phase" class="form-label">Fase</label>
+        <InputSelect id="task-phase" class="form-select" @bind-Value="Model.PhaseId" name="@(Prefix + ".PhaseId")">
+            <option value="">Sem fase</option>
+            @foreach (var phase in Phases ?? [])
+            {
+                <option value="@phase.Id">@phase.Name</option>
+            }
+        </InputSelect>
+    </div>
+    <div>
+        <label for="task-milestone" class="form-label">Marco</label>
+        <InputSelect id="task-milestone" class="form-select" @bind-Value="Model.MilestoneId" name="@(Prefix + ".MilestoneId")">
+            <option value="">Sem marco</option>
+            @foreach (var milestone in Milestones ?? [])
+            {
+                <option value="@milestone.Id">@milestone.Name</option>
+            }
+        </InputSelect>
+    </div>
+</div>
+<div class="mt-3">
+    <label for="task-labels" class="form-label">Etiquetas</label>
+    <InputText id="task-labels" class="form-control" @bind-Value="Model.Labels" name="@(Prefix + ".Labels")" aria-describedby="task-labels-help" />
+    <div id="task-labels-help" class="form-text">Separe com vírgulas.</div>
+</div>
+<div class="mt-3">
+    <label for="task-description" class="form-label">Descrição (Markdown)</label>
+    <InputTextArea id="task-description" class="form-control" rows="6" @bind-Value="Model.Description" name="@(Prefix + ".Description")" />
+    <ValidationMessage For="() => Model.Description" />
+</div>
+
+@code {
+    /// <summary>Nome da propriedade do formulário na página (ex.: Input): os campos postam como Prefixo.Campo.</summary>
+    [Parameter, EditorRequired]
+    public string Prefix { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public TaskForm Model { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<PhaseDetails>? Phases { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<MilestoneDetails>? Milestones { get; set; }
+}

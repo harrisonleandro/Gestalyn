@@ -1,0 +1,137 @@
+@page "/o/{OrganizationId:guid}/documentos/{DocumentId:guid}"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits ProjectPage
+@inject DocumentsApi Documents
+
+<PageTitle>@(_document?.Title ?? "Documento") · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="@(_document?.Title ?? "Documento")"
+              Subtitle="@(_document is null ? null : $"Versão {_document.CurrentVersion} · atualizado em {Display.DateTime(_document.UpdatedAt)}")"
+              Trail="@([("Documentos", $"{ProjectPath}/documentos"), (_document?.Title ?? string.Empty, (string?)null)])">
+    @if (_document is not null)
+    {
+        <ApiErrors Result="ActionResult" />
+        @if (_document.ArchivedAt is not null)
+        {
+            <div class="alert alert-warning" role="status">Documento arquivado: somente leitura até ser restaurado.</div>
+        }
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                @if (_version is not null)
+                {
+                    <div class="alert alert-info" role="status">
+                        Você está vendo a versão @_version.Number, de @Display.DateTime(_version.CreatedAt) por @(_version.AuthorName ?? "usuário removido").
+                        <a href="@($"{OrgPath}/documentos/{DocumentId}")">Voltar para a versão atual</a>
+                    </div>
+                    <article class="pm-card"><h2>@_version.Title</h2><MarkdownView Source="@_version.Body" /></article>
+                }
+                else
+                {
+                    <article class="pm-card"><MarkdownView Source="@_document.Body" EmptyText="Documento vazio." /></article>
+
+                    @if (Writable && Can(Permissions.DocumentsWrite))
+                    {
+                        <details class="pm-card pm-disclosure" open="@(ActionResult is not null)">
+                            <summary>Editar</summary>
+                            <EditForm Model="Edit" FormName="edit-document" OnValidSubmit="SaveAsync" Enhance>
+                                <DataAnnotationsValidator />
+                                <input type="hidden" name="Edit.ExpectedVersion" value="@Edit.ExpectedVersion" />
+                                <label for="edit-title" class="form-label">Título</label>
+                                <InputText id="edit-title" class="form-control" @bind-Value="Edit.Title" />
+                                <ValidationMessage For="() => Edit.Title" />
+                                <label for="edit-body" class="form-label mt-3">Conteúdo (Markdown)</label>
+                                <InputTextArea id="edit-body" class="form-control font-monospace" rows="16" @bind-Value="Edit.Body" />
+                                <p class="pm-muted small mt-2 mb-0">
+                                    Editando a partir da versão @Edit.ExpectedVersion. Se outra pessoa salvar antes, sua edição é recusada e nada é sobrescrito.
+                                </p>
+                                <button type="submit" class="btn btn-primary mt-2">Salvar nova versão</button>
+                            </EditForm>
+                        </details>
+                    }
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <section class="pm-card" aria-labelledby="versoes">
+                    <h2 id="versoes">Versões</h2>
+                    <ol class="pm-timeline" reversed>
+                        @foreach (var version in _versions ?? [])
+                        {
+                            <li>
+                                <a href="@($"{OrgPath}/documentos/{DocumentId}?versao={version.Number}")">Versão @version.Number</a>
+                                <span class="pm-muted small d-block">@(version.AuthorName ?? "usuário removido") · @Display.DateTime(version.CreatedAt)</span>
+                            </li>
+                        }
+                    </ol>
+                </section>
+
+                @if (Project!.ArchivedAt is null && Can(Permissions.DocumentsManage))
+                {
+                    <section class="pm-card">
+                        @if (_document.ArchivedAt is null)
+                        {
+                            <ActionForm Name="archive-document" Label="Arquivar documento" ButtonClass="btn btn-outline-danger btn-sm"
+                                        Confirm="Arquivar este documento? Ele sai da lista e fica somente leitura até ser restaurado." ConfirmLabel="Arquivar"
+                                        OnSubmit="ArchiveAsync" />
+                        }
+                        else
+                        {
+                            <ActionForm Name="restore-document" Label="Restaurar documento" OnSubmit="RestoreAsync" />
+                        }
+                    </section>
+                }
+            </div>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [Parameter]
+    public Guid DocumentId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "versao")]
+    private int? VersionNumber { get; set; }
+
+    [SupplyParameterFromForm(FormName = "edit-document")]
+    private MarkdownForm Edit { get; set; } = default!;
+
+    private DocumentDetails? _document;
+    private List<DocumentVersionSummary>? _versions;
+    private DocumentVersionDetails? _version;
+
+    private bool Writable => _document?.ArchivedAt is null && Project?.ArchivedAt is null;
+
+    protected override void OnInitialized() => Edit ??= new MarkdownForm();
+
+    protected override async Task<Guid?> ResolveProjectIdAsync()
+    {
+        _document = Take(await Documents.GetAsync(OrganizationId, DocumentId));
+        return _document?.ProjectId;
+    }
+
+    protected override async Task LoadProjectAsync()
+    {
+        _versions = (await Documents.VersionsAsync(OrganizationId, DocumentId)).Value;
+        if (VersionNumber is { } number)
+        {
+            _version = Take(await Documents.VersionAsync(OrganizationId, DocumentId, number));
+        }
+
+        // Num POST, o formulário traz a versão de que a edição partiu; senão, a edição começa da versão atual.
+        if (Edit.ExpectedVersion == 0)
+        {
+            Edit.Title = _document!.Title;
+            Edit.Body = _document.Body;
+            Edit.ExpectedVersion = _document.CurrentVersion;
+        }
+    }
+
+    private async Task SaveAsync() =>
+        Complete(await Documents.UpdateAsync(OrganizationId, DocumentId, Edit.Title, Edit.Body ?? string.Empty, Edit.ExpectedVersion), "salvo");
+
+    private async Task ArchiveAsync() => Complete(await Documents.ArchiveAsync(OrganizationId, DocumentId), "arquivado");
+
+    private async Task RestoreAsync() => Complete(await Documents.RestoreAsync(OrganizationId, DocumentId), "restaurado");
+}

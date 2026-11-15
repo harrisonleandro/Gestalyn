@@ -1,0 +1,27 @@
+@* Campos de uma decisão (texto em Markdown). *@
+<label for="decision-title" class="form-label">Título</label>
+<InputText id="decision-title" class="form-control" @bind-Value="Model.Title" name="@(Prefix + ".Title")" />
+<ValidationMessage For="() => Model.Title" />
+
+<label for="decision-context" class="form-label mt-3">Contexto</label>
+<InputTextArea id="decision-context" class="form-control" rows="4" @bind-Value="Model.Context" name="@(Prefix + ".Context")" />
+<ValidationMessage For="() => Model.Context" />
+
+<label for="decision-outcome" class="form-label mt-3">Decisão</label>
+<InputTextArea id="decision-outcome" class="form-control" rows="4" @bind-Value="Model.Outcome" name="@(Prefix + ".Outcome")" />
+<ValidationMessage For="() => Model.Outcome" />
+
+<label for="decision-alternatives" class="form-label mt-3">Alternativas consideradas (opcional)</label>
+<InputTextArea id="decision-alternatives" class="form-control" rows="3" @bind-Value="Model.Alternatives" name="@(Prefix + ".Alternatives")" />
+
+<label for="decision-consequences" class="form-label mt-3">Consequências (opcional)</label>
+<InputTextArea id="decision-consequences" class="form-control" rows="3" @bind-Value="Model.Consequences" name="@(Prefix + ".Consequences")" />
+
+@code {
+    /// <summary>Nome da propriedade do formulário na página (ex.: Input): os campos postam como Prefixo.Campo.</summary>
+    [Parameter, EditorRequired]
+    public string Prefix { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public DecisionForm Model { get; set; } = default!;
+}

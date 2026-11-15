@@ -1,0 +1,96 @@
+@page "/o/{OrganizationId:guid}/projetos"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits OrganizationPage
+@inject ProjectsApi Projects
+
+<PageTitle>Projetos · Gestalyn</PageTitle>
+
+<OrgFrame Membership="Membership" Error="LoadError" Ready="_projects is not null">
+    <PageHeader Title="Projetos" Breadcrumbs="@([(Membership!.Name, OrgPath), ("Projetos", (string?)null)])">
+        <Actions>
+            @if (Membership.Can(Permissions.ProjectsCreate))
+            {
+                <a class="btn btn-primary" href="@($"{OrgPath}/projetos/novo")"><Icon Name="plus" /> Novo projeto</a>
+            }
+        </Actions>
+    </PageHeader>
+
+    <form method="get" class="pm-card pm-form-grid mb-3" role="search" aria-label="Filtrar projetos">
+        <div>
+            <label for="tag" class="form-label">Etiqueta</label>
+            <input id="tag" name="etiqueta" class="form-control" value="@Tag" />
+        </div>
+        <div>
+            <label for="priority" class="form-label">Prioridade</label>
+            <select id="priority" name="prioridade" class="form-select">
+                <option value="">Todas</option>
+                @foreach (var priority in Enum.GetValues<Priority>())
+                {
+                    <option value="@priority" selected="@(PriorityFilter == priority)">@Display.Name(priority)</option>
+                }
+            </select>
+        </div>
+        <div class="d-flex align-items-end gap-3">
+            <div class="form-check">
+                <input id="archived" class="form-check-input" type="checkbox" name="arquivados" value="true" checked="@IncludeArchived" />
+                <label for="archived" class="form-check-label">Incluir arquivados</label>
+            </div>
+            <button type="submit" class="btn btn-outline-secondary">Filtrar</button>
+        </div>
+    </form>
+
+    @if (_projects!.Items.Count == 0)
+    {
+        <EmptyState Title="Nenhum projeto encontrado."
+                    Message="@(Membership.Can(Permissions.ProjectsCreate) ? "Crie o primeiro projeto ou ajuste os filtros." : "Você vê os projetos de cuja equipe faz parte.")" />
+    }
+    else
+    {
+        <div class="pm-card">
+            <table class="table pm-table align-middle">
+                <thead><tr><th scope="col">Projeto</th><th scope="col">Prioridade</th><th scope="col">Prazo</th><th scope="col">Etiquetas</th><th scope="col">Seu papel</th></tr></thead>
+                <tbody>
+                    @foreach (var project in _projects.Items)
+                    {
+                        <tr>
+                            <td data-label="Projeto">
+                                <a href="@($"{OrgPath}/projetos/{project.Id}")">@project.Name</a>
+                                @if (project.ArchivedAt is not null)
+                                {
+                                    <span class="pm-label ms-1">Arquivado</span>
+                                }
+                            </td>
+                            <td data-label="Prioridade">@Display.Name(project.Priority)</td>
+                            <td data-label="Prazo">@Display.Date(project.DueDate)</td>
+                            <td data-label="Etiquetas">@foreach (var tag in project.Tags) { <span class="pm-label me-1">@tag</span> }</td>
+                            <td data-label="Seu papel">@(project.MyRole is { } role ? Display.Name(role) : "Fora da equipe")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <Pager Page="_projects.Page" PageCount="_projects.PageCount" TotalCount="_projects.TotalCount" />
+        </div>
+    }
+</OrgFrame>
+
+@code {
+    [SupplyParameterFromQuery(Name = "etiqueta")]
+    private string? Tag { get; set; }
+
+    [SupplyParameterFromQuery(Name = "prioridade")]
+    private string? PriorityText { get; set; }
+
+    [SupplyParameterFromQuery(Name = "arquivados")]
+    private bool IncludeArchived { get; set; }
+
+    [SupplyParameterFromQuery(Name = "pagina")]
+    private int? Page { get; set; }
+
+    private Paged<ProjectSummary>? _projects;
+
+    private Priority? PriorityFilter => Enum.TryParse<Priority>(PriorityText, out var priority) ? priority : null;
+
+    protected override async Task LoadAsync() =>
+        _projects = Take(await Projects.ListAsync(OrganizationId, IncludeArchived, Tag, PriorityFilter, Math.Max(Page ?? 1, 1)));
+}

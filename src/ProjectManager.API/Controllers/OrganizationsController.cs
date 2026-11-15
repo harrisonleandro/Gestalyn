@@ -64,6 +64,21 @@ public sealed class OrganizationsController(
         return result.Succeeded ? Ok(result.Value) : this.ToProblem(result.Error!);
     }
 
+    /// <summary>
+    /// Papel e permissões do usuário autenticado nesta organização, para a interface decidir o que mostrar. Basta ser
+    /// membro: não muda nenhuma regra, e cada ação continua validada no backend (ADR-015).
+    /// </summary>
+    [HttpGet("{organizationId:guid}/me")]
+    [OrganizationPermission]
+    [ProducesResponseType<MyMembership>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyMembershipAsync(CancellationToken cancellationToken)
+    {
+        var result = await organizations.GetMyMembershipAsync(Actor, cancellationToken);
+
+        return result.Succeeded ? Ok(result.Value) : this.ToProblem(result.Error!);
+    }
+
     [HttpPatch("{organizationId:guid}")]
     [OrganizationPermission(OrganizationPermissions.OrganizationUpdate)]
     [ProducesResponseType<OrganizationDetails>(StatusCodes.Status200OK)]

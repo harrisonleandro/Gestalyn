@@ -1,0 +1,24 @@
+@* Menu da organização ativa. As entradas seguem as permissões que a API devolve; a API valida cada ação. *@
+<div class="pm-nav-section">
+    <a class="pm-org-switch" href="organizacoes" title="Trocar de organização">
+        <Icon Name="org" />
+        <span class="pm-org-name">@Membership.Name</span>
+        <span class="pm-muted small">@Membership.RoleName</span>
+    </a>
+    <nav class="nav flex-column" aria-label="Organização">
+        <NavLink class="nav-link" href="@Base" Match="NavLinkMatch.All"><Icon Name="home" /> Visão geral</NavLink>
+        <NavLink class="nav-link" href="@($"{Base}/projetos")"><Icon Name="projects" /> Projetos</NavLink>
+        @if (Membership.Can(Permissions.ActivityReadAll))
+        {
+            <NavLink class="nav-link" href="@($"{Base}/atividades")"><Icon Name="activity" /> Atividades</NavLink>
+        }
+        <NavLink class="nav-link" href="@($"{Base}/configuracoes")"><Icon Name="settings" /> Organização</NavLink>
+    </nav>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public MyMembership Membership { get; set; } = default!;
+
+    private string Base => $"o/{Membership.OrganizationId}";
+}

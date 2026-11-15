@@ -1,29 +1,73 @@
 @inherits LayoutComponentBase
 @inject IHostEnvironment HostEnvironment
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<a class="pm-skip-link" href="#conteudo">Pular para o conteúdo</a>
 
-    <main>
-        <div class="top-row px-4">
+<div class="pm-app">
+    <input type="checkbox" id="pm-menu-toggle" class="pm-menu-toggle" aria-label="Mostrar ou esconder o menu" />
+    <aside class="pm-sidebar" aria-label="Menu principal">
+        <div class="pm-brand">
+            <a href="">Gestalyn</a>
+            <label for="pm-menu-toggle" class="pm-menu-button" title="Menu"><Icon Name="menu" /><span class="visually-hidden">Menu</span></label>
+        </div>
+        <div class="pm-sidebar-body">
+            <OrgNavHost />
             <AuthorizeView>
                 <Authorized>
-                    <span class="pm-muted me-3">@context.User.Identity?.Name</span>
+                    <div class="pm-nav-section">
+                        <span class="pm-nav-heading">Conta</span>
+                        <nav class="nav flex-column" aria-label="Conta">
+                            <NavLink class="nav-link" href="organizacoes"><Icon Name="org" /> Organizações</NavLink>
+                            <NavLink class="nav-link" href="conta/perfil"><Icon Name="user" /> Perfil</NavLink>
+                            <form action="@AccountEndpoints.LogoutPath" method="post" data-confirm="Sair da sua conta neste navegador?" data-confirm-action="Sair">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="returnUrl" value="/" />
+                                <button type="submit" class="nav-link"><Icon Name="logout" /> Sair</button>
+                            </form>
+                        </nav>
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <nav class="nav flex-column pm-nav-section" aria-label="Conta">
+                        <NavLink class="nav-link" href="conta/entrar"><Icon Name="user" /> Entrar</NavLink>
+                        <NavLink class="nav-link" href="conta/cadastro"><Icon Name="plus" /> Criar conta</NavLink>
+                    </nav>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+        <footer class="pm-sidebar-footer">
+            <a href="status">Status do sistema</a>
+            <EnvironmentBadge EnvironmentName="@HostEnvironment.EnvironmentName" />
+        </footer>
+    </aside>
+
+    <div class="pm-main">
+        <header class="pm-topbar">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="pm-muted">@context.User.Identity?.Name</span>
                 </Authorized>
             </AuthorizeView>
-            <EnvironmentBadge EnvironmentName="@HostEnvironment.EnvironmentName" />
-        </div>
-
-        <article class="content px-4">
+        </header>
+        <main id="conteudo" class="pm-content" tabindex="-1">
             @Body
-        </article>
-    </main>
+        </main>
+    </div>
 </div>
+
+<dialog id="pm-confirm" class="pm-dialog" aria-labelledby="pm-confirm-title">
+    <form method="dialog">
+        <h2 id="pm-confirm-title" class="h5">Confirmar ação</h2>
+        <p id="pm-confirm-message"></p>
+        <div class="d-flex gap-2 justify-content-end">
+            <button value="cancel" class="btn btn-outline-secondary">Cancelar</button>
+            <button value="confirm" id="pm-confirm-ok" class="btn btn-danger">Confirmar</button>
+        </div>
+    </form>
+</dialog>
 
 <div id="blazor-error-ui" data-nosnippet>
     Ocorreu um erro inesperado.
     <a href="." class="reload">Recarregar</a>
-    <span class="dismiss">🗙</span>
+    <span class="dismiss" role="button" aria-label="Fechar">🗙</span>
 </div>

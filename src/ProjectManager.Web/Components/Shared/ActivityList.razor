@@ -1,0 +1,57 @@
+@* Atividades (eventos e registros manuais) com autor, origem e data. *@
+@inject Display Display
+
+@if (Items.Count == 0)
+{
+    <p class="pm-muted mb-0">Nenhuma atividade registrada.</p>
+}
+else
+{
+    <ul class="pm-timeline">
+        @foreach (var item in Items)
+        {
+            <li>
+                <div class="d-flex justify-content-between gap-2 flex-wrap">
+                    <span>
+                        @if (item.Source == ActivitySource.Log)
+                        {
+                            <span class="pm-label me-1">@Display.Name(item.Kind ?? ActivityLogKind.Other)</span>
+                        }
+                        @item.Summary
+                    </span>
+                    <time class="pm-muted small" datetime="@item.OccurredAt.ToString("O")">@Display.DateTime(item.OccurredAt)</time>
+                </div>
+                <div class="pm-muted small">
+                    @(item.ActorName ?? (item.ActorId is null ? "Sistema" : "Usuário removido"))
+                    @if (!Compact)
+                    {
+                        <span> · via @ProjectManager.Web.Display.Name(item.Origin)</span>
+                        @if (item.Action is not null)
+                        {
+                            <span> · <code>@item.Action</code></span>
+                        }
+                        @if (item.TaskId is { } taskId)
+                        {
+                            <span> · <a href="@($"o/{OrganizationId}/tarefas/{taskId}")">abrir tarefa</a></span>
+                        }
+                    }
+                </div>
+                @if (!Compact && item.Details is not null)
+                {
+                    <MarkdownView Source="@item.Details" />
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<ActivityItem> Items { get; set; } = [];
+
+    [Parameter]
+    public Guid OrganizationId { get; set; }
+
+    [Parameter]
+    public bool Compact { get; set; }
+}

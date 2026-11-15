@@ -1,0 +1,65 @@
+@*
+    Moldura das páginas de um projeto: trilha, título, abas do projeto e estado de carregamento. As abas de
+    configuração só aparecem com as permissões correspondentes.
+*@
+<OrgFrame Membership="Membership" Error="Error" Ready="Project is not null">
+    <PageHeader Title="@Title" Subtitle="@Subtitle" Breadcrumbs="Crumbs" Actions="Actions" />
+
+    @if (Project!.ArchivedAt is not null)
+    {
+        <div class="alert alert-warning" role="status">Projeto arquivado: somente leitura.</div>
+    }
+
+    <nav class="pm-tabs" aria-label="Seções do projeto">
+        <NavLink class="pm-tab" href="@Base" Match="NavLinkMatch.All">Visão geral</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/quadro")">Quadro</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/tarefas")">Tarefas</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/planejamento")">Fases e marcos</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/atividades")">Atividades</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/documentos")">Documentos</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/decisoes")">Decisões</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/workflow")">Workflow</NavLink>
+        <NavLink class="pm-tab" href="@($"{Base}/configuracoes")">Configurações</NavLink>
+    </nav>
+
+    @ChildContent
+</OrgFrame>
+
+@code {
+    [Parameter]
+    public MyMembership? Membership { get; set; }
+
+    [Parameter]
+    public ProjectDetails? Project { get; set; }
+
+    [Parameter]
+    public ApiResult? Error { get; set; }
+
+    /// <summary>Título da página; sem ele, o nome do projeto.</summary>
+    [Parameter]
+    public string? PageTitle { get; set; }
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>Itens da trilha depois do projeto.</summary>
+    [Parameter]
+    public IReadOnlyList<(string Label, string? Href)>? Trail { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string Base => $"o/{Membership?.OrganizationId}/projetos/{Project?.Id}";
+
+    private string Title => PageTitle ?? Project?.Name ?? string.Empty;
+
+    private IReadOnlyList<(string Label, string? Href)> Crumbs =>
+    [
+        ("Projetos", $"o/{Membership?.OrganizationId}/projetos"),
+        (Project?.Name ?? string.Empty, Trail is { Count: > 0 } || PageTitle is not null ? Base : null),
+        .. Trail ?? [],
+    ];
+}

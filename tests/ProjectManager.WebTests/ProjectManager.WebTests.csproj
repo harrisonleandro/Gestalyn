@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ProjectManager.WebTests</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Testes de componentes da Web (ADR-015, D8): referenciam só a Web, como ela só conhece a API por HTTP. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ProjectManager.Web\ProjectManager.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="bunit" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Bunit" />
+  </ItemGroup>
+
+</Project>

@@ -1,20 +1,37 @@
 @page "/"
-@inject IHostEnvironment HostEnvironment
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Gestalyn</PageTitle>
 
-<h1 class="mb-2">Gestalyn</h1>
-<p class="lead pm-muted mb-4">
-    Plataforma de gerenciamento de projetos, equipes, tarefas, permissões, documentação e atividades,
-    com participação de pessoas e agentes de inteligência artificial.
-</p>
+<AuthorizeView>
+    <NotAuthorized>
+        <div class="pm-card account-card text-center">
+            <h1 class="mb-2">Gestalyn</h1>
+            <p class="pm-muted">
+                Projetos, equipes, tarefas, documentação e atividades, com pessoas e agentes de IA trabalhando juntos.
+            </p>
+            <div class="d-flex gap-2 justify-content-center mt-3">
+                <a href="conta/entrar" class="btn btn-primary">Entrar</a>
+                <a href="conta/cadastro" class="btn btn-outline-secondary">Criar conta</a>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
-@if (!HostEnvironment.IsProduction())
-{
-    <div class="alert alert-warning" role="status">
-        Ambiente de <strong>@HostEnvironment.EnvironmentName</strong>. As funcionalidades de negócio
-        ainda não foram implementadas; esta interface contém apenas a fundação técnica.
-    </div>
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is null || (await AuthenticationState).User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        // Volta para a última organização aberta (D3); a página da organização confirma a associação na API.
+        var last = HttpContextAccessor.HttpContext?.Request.Cookies[WebEndpoints.LastOrganizationCookie];
+        Navigation.NavigateTo(Guid.TryParse(last, out var organizationId) ? $"/o/{organizationId}" : "/organizacoes");
+    }
 }
-
-<a href="status" class="btn btn-primary">Ver status do sistema</a>

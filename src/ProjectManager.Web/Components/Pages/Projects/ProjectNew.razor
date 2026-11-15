@@ -1,0 +1,49 @@
+@page "/o/{OrganizationId:guid}/projetos/novo"
+@attribute [Authorize]
+@inherits OrganizationPage
+@inject ProjectsApi Projects
+
+<PageTitle>Novo projeto · Gestalyn</PageTitle>
+
+<OrgFrame Membership="Membership" Error="LoadError" Ready="Membership is not null">
+    <PageHeader Title="Novo projeto" Breadcrumbs="@([("Projetos", $"{OrgPath}/projetos"), ("Novo projeto", (string?)null)])" />
+
+    @if (!Membership!.Can(Permissions.ProjectsCreate))
+    {
+        <div class="alert alert-warning" role="status">Seu papel nesta organização não permite criar projetos.</div>
+    }
+    else
+    {
+        <div class="pm-card" style="max-width: 48rem">
+            <ApiErrors Result="ActionResult" />
+            <EditForm Model="Input" FormName="create-project" OnValidSubmit="CreateAsync" Enhance>
+                <DataAnnotationsValidator />
+                <ProjectFields Model="Input" Prefix="Input" />
+                <p class="pm-muted small mt-3 mb-0">Você entra na equipe como Gerente. O workflow padrão é criado junto.</p>
+                <button type="submit" class="btn btn-primary mt-3"><Icon Name="plus" /> Criar projeto</button>
+            </EditForm>
+        </div>
+    }
+</OrgFrame>
+
+@code {
+    [SupplyParameterFromForm(FormName = "create-project")]
+    private ProjectForm Input { get; set; } = default!;
+
+    protected override void OnInitialized() => Input ??= new ProjectForm();
+
+    private async Task CreateAsync()
+    {
+        var response = await Projects.CreateAsync(OrganizationId, new
+        {
+            name = Input.Name,
+            description = Input.Description,
+            priority = Input.Priority,
+            startDate = Input.StartDate,
+            dueDate = Input.DueDate,
+            tags = Input.TagList,
+        });
+
+        Complete(response, "criado", response.Value is { } project ? $"{OrgPath}/projetos/{project.Id}" : null);
+    }
+}

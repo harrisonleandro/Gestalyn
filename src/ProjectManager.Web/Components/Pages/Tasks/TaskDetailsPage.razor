@@ -1,0 +1,424 @@
+@page "/o/{OrganizationId:guid}/tarefas/{TaskId:guid}"
+@attribute [Authorize]
+@attribute [StreamRendering]
+@inherits ProjectPage
+@inject TasksApi Tasks
+@inject PlanningApi Planning
+@using System.Security.Claims
+
+<PageTitle>@(_task is null ? "Tarefa" : $"#{_task.Number} {_task.Title}") · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError"
+              PageTitle="@(_task is null ? "Tarefa" : $"#{_task.Number} {_task.Title}")"
+              Trail="@([("Tarefas", $"{ProjectPath}/tarefas"), ($"#{_task?.Number}", (string?)null)])">
+    @if (_task is not null)
+    {
+        <ApiErrors Result="ActionResult" />
+        @if (_task.ArchivedAt is not null)
+        {
+            <div class="alert alert-warning" role="status">Tarefa arquivada em @Display.DateTime(_task.ArchivedAt.Value): somente leitura.</div>
+        }
+        else if (_task.State.IsFinal)
+        {
+            <div class="alert alert-info" role="status">A tarefa está num estado final e é somente leitura. Comentários e as transições configuradas continuam disponíveis.</div>
+        }
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <section class="pm-card" aria-labelledby="estado">
+                    <h2 id="estado">Estado</h2>
+                    <p><StateBadge Name="@_task.State.Name" Category="_task.State.Category" /></p>
+                    @if (_task.AvailableTransitions.Count > 0)
+                    {
+                        <form method="post" @formname="transition" @onsubmit="TransitionAsync" data-enhance class="pm-form-grid">
+                            <AntiforgeryToken />
+                            <div>
+                                <label for="transition-target" class="form-label">Mover para</label>
+                                <select id="transition-target" name="F.Value" class="form-select">
+                                    @foreach (var transition in _task.AvailableTransitions)
+                                    {
+                                        <option value="@transition.ToStateId">@transition.ToStateName@(transition.RequiresApproval ? " (aprovação)" : null)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div>
+                                <label for="transition-comment" class="form-label">Comentário (opcional)</label>
+                                <input id="transition-comment" name="F.Text" class="form-control" maxlength="1000" />
+                            </div>
+                            <div class="d-flex align-items-end"><button type="submit" class="btn btn-primary">Mover</button></div>
+                        </form>
+                        <p class="pm-muted small mt-2 mb-0">Só aparecem as transições que você pode executar agora. Concluir exige as dependências resolvidas.</p>
+                    }
+                    else if (_task.ArchivedAt is null)
+                    {
+                        <p class="pm-muted small mb-0">Nenhuma transição disponível para você neste estado.</p>
+                    }
+                </section>
+
+                <section class="pm-card" aria-labelledby="descricao">
+                    <h2 id="descricao">Descrição</h2>
+                    <MarkdownView Source="@_task.Description" EmptyText="Sem descrição." />
+                    @if (CanEdit)
+                    {
+                        <details class="pm-disclosure mt-3">
+                            <summary>Editar tarefa</summary>
+                            <EditForm Model="Edit" FormName="edit-task" OnValidSubmit="SaveAsync" Enhance>
+                                <DataAnnotationsValidator />
+                                <TaskFields Model="Edit" Prefix="Edit" Phases="_phases" Milestones="_milestones" />
+                                <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+                            </EditForm>
+                        </details>
+                    }
+                </section>
+
+                <section class="pm-card" aria-labelledby="comentarios">
+                    <h2 id="comentarios">Comentários (@(_comments?.Count ?? 0))</h2>
+                    @if (_comments is { Count: > 0 })
+                    {
+                        <ul class="pm-timeline mb-3">
+                            @foreach (var comment in _comments)
+                            {
+                                var own = comment.AuthorUserId == _userId;
+                                <li>
+                                    <div class="d-flex justify-content-between gap-2 flex-wrap">
+                                        <strong>@comment.AuthorDisplayName</strong>
+                                        <span class="pm-muted small">@Display.DateTime(comment.CreatedAt)@(comment.EditedAt is not null ? " (editado)" : null)</span>
+                                    </div>
+                                    <MarkdownView Source="@comment.Body" />
+                                    @if (Writable && own)
+                                    {
+                                        <details class="pm-disclosure">
+                                            <summary class="small">Editar</summary>
+                                            <form method="post" @formname="@($"edit-comment-{comment.Id}")" @onsubmit="() => EditCommentAsync(comment)" data-enhance>
+                                                <AntiforgeryToken />
+                                                <label class="visually-hidden" for="@($"comment-{comment.Id}")">Comentário</label>
+                                                <textarea id="@($"comment-{comment.Id}")" name="F.Text" class="form-control" rows="3" maxlength="10000">@comment.Body</textarea>
+                                                <button type="submit" class="btn btn-outline-secondary btn-sm mt-2">Salvar comentário</button>
+                                            </form>
+                                        </details>
+                                    }
+                                    @if (Writable && (own || Can(Permissions.TasksArchive)))
+                                    {
+                                        <ActionForm Name="@($"delete-comment-{comment.Id}")" Label="Excluir" ButtonClass="btn btn-link btn-sm text-danger p-0"
+                                                    Confirm="Excluir este comentário? Não é possível desfazer." ConfirmLabel="Excluir"
+                                                    OnSubmit="() => DeleteCommentAsync(comment)" />
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (Writable && Can(Permissions.TasksComment))
+                    {
+                        <form method="post" @formname="add-comment" @onsubmit="AddCommentAsync" data-enhance>
+                            <AntiforgeryToken />
+                            <label for="new-comment" class="form-label">Novo comentário (Markdown)</label>
+                            <textarea id="new-comment" name="F.Text" class="form-control" rows="3" maxlength="10000" required></textarea>
+                            <button type="submit" class="btn btn-primary btn-sm mt-2">Comentar</button>
+                        </form>
+                    }
+                </section>
+
+                <section class="pm-card" aria-labelledby="historico">
+                    <h2 id="historico">Histórico de estados</h2>
+                    @if (_history is { Count: > 0 })
+                    {
+                        <ol class="pm-timeline">
+                            @foreach (var entry in _history)
+                            {
+                                <li>
+                                    <span>@(entry.FromStateName is null ? $"Criada em {entry.ToStateName}" : $"{entry.FromStateName} → {entry.ToStateName}")</span>
+                                    <span class="pm-muted small d-block">
+                                        @(entry.ChangedByName ?? (entry.ActorKind == ActorKind.Agent ? "Agente" : "Usuário removido")) · @Display.DateTime(entry.ChangedAt)
+                                        @if (entry.Comment is not null) { <span> · “@entry.Comment”</span> }
+                                    </span>
+                                </li>
+                            }
+                        </ol>
+                    }
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="pm-card" aria-labelledby="detalhes">
+                    <h2 id="detalhes">Detalhes</h2>
+                    <dl class="row small mb-0">
+                        <dt class="col-5 pm-muted fw-normal">Prioridade</dt><dd class="col-7">@Display.Name(_task.Priority)</dd>
+                        <dt class="col-5 pm-muted fw-normal">Prazo</dt><dd class="col-7 @(Overdue ? "pm-overdue" : null)">@Display.Date(_task.DueDate)@(Overdue ? " (atrasada)" : null)</dd>
+                        <dt class="col-5 pm-muted fw-normal">Fase</dt><dd class="col-7">@(_phases?.FirstOrDefault(p => p.Id == _task.PhaseId)?.Name ?? "—")</dd>
+                        <dt class="col-5 pm-muted fw-normal">Marco</dt><dd class="col-7">@(_milestones?.FirstOrDefault(m => m.Id == _task.MilestoneId)?.Name ?? "—")</dd>
+                        <dt class="col-5 pm-muted fw-normal">Etiquetas</dt><dd class="col-7">@foreach (var label in _task.Labels) { <span class="pm-label me-1">@label</span> }</dd>
+                        <dt class="col-5 pm-muted fw-normal">Criada em</dt><dd class="col-7">@Display.DateTime(_task.CreatedAt)</dd>
+                    </dl>
+                </section>
+
+                <section class="pm-card" aria-labelledby="responsaveis">
+                    <h2 id="responsaveis">Responsáveis</h2>
+                    @if (_task.Assignees.Count == 0)
+                    {
+                        <p class="pm-muted small">Ninguém ainda.</p>
+                    }
+                    <ul class="list-unstyled mb-2">
+                        @foreach (var assignee in _task.Assignees)
+                        {
+                            <li class="d-flex justify-content-between align-items-center mb-1">
+                                <span>@assignee.DisplayName</span>
+                                @if (CanEdit)
+                                {
+                                    <ActionForm Name="@($"unassign-{assignee.UserId}")" Label="Remover" ButtonClass="btn btn-link btn-sm text-danger p-0"
+                                                AriaLabel="@($"Remover {assignee.DisplayName} dos responsáveis")" OnSubmit="() => UnassignAsync(assignee.UserId)" />
+                                }
+                            </li>
+                        }
+                    </ul>
+                    @if (CanEdit && Candidates.Count > 0)
+                    {
+                        <form method="post" @formname="assign" @onsubmit="AssignAsync" data-enhance class="d-flex gap-2">
+                            <AntiforgeryToken />
+                            <label class="visually-hidden" for="assign-user">Pessoa da equipe</label>
+                            <select id="assign-user" name="F.Value" class="form-select form-select-sm">
+                                @foreach (var member in Candidates)
+                                {
+                                    <option value="@member.UserId">@member.DisplayName</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Adicionar</button>
+                        </form>
+                    }
+                </section>
+
+                <section class="pm-card" aria-labelledby="dependencias">
+                    <h2 id="dependencias">Dependências</h2>
+                    <h3 class="h6">Depende de</h3>
+                    @if (_task.DependsOn.Count == 0)
+                    {
+                        <p class="pm-muted small">Nenhuma.</p>
+                    }
+                    <ul class="list-unstyled">
+                        @foreach (var dependency in _task.DependsOn)
+                        {
+                            <li class="d-flex justify-content-between align-items-center mb-1">
+                                <a href="@($"{OrgPath}/tarefas/{dependency.Id}")">#@dependency.Number @dependency.Title</a>
+                                @if (CanEdit)
+                                {
+                                    <ActionForm Name="@($"undepend-{dependency.Id}")" Label="Remover" ButtonClass="btn btn-link btn-sm text-danger p-0"
+                                                AriaLabel="@($"Remover a dependência da tarefa {dependency.Number}")" OnSubmit="() => RemoveDependencyAsync(dependency.Id)" />
+                                }
+                            </li>
+                        }
+                    </ul>
+                    @if (CanEdit && DependencyCandidates.Count > 0)
+                    {
+                        <form method="post" @formname="depend" @onsubmit="AddDependencyAsync" data-enhance class="d-flex gap-2 mb-3">
+                            <AntiforgeryToken />
+                            <label class="visually-hidden" for="depend-on">Tarefa da qual esta depende</label>
+                            <select id="depend-on" name="F.Value" class="form-select form-select-sm">
+                                @foreach (var candidate in DependencyCandidates)
+                                {
+                                    <option value="@candidate.Id">#@candidate.Number @candidate.Title</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Adicionar</button>
+                        </form>
+                    }
+                    <h3 class="h6">Bloqueia</h3>
+                    @if (_task.Blocks.Count == 0)
+                    {
+                        <p class="pm-muted small mb-0">Nenhuma.</p>
+                    }
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var blocked in _task.Blocks)
+                        {
+                            <li><a href="@($"{OrgPath}/tarefas/{blocked.Id}")">#@blocked.Number @blocked.Title</a></li>
+                        }
+                    </ul>
+                </section>
+
+                <section class="pm-card" aria-labelledby="anexos">
+                    <h2 id="anexos">Anexos</h2>
+                    @if (_attachments is { Count: > 0 })
+                    {
+                        <ul class="list-unstyled">
+                            @foreach (var attachment in _attachments)
+                            {
+                                <li class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                                    <a href="@($"{OrgPath}/tarefas/{_task.Id}/anexos/{attachment.Id}")" download data-enhance-nav="false">@attachment.FileName</a>
+                                    <span class="pm-muted small">@Display.Size(attachment.SizeBytes)</span>
+                                    @if (CanEdit)
+                                    {
+                                        <ActionForm Name="@($"delete-attachment-{attachment.Id}")" Label="Excluir" ButtonClass="btn btn-link btn-sm text-danger p-0"
+                                                    Confirm="@($"Excluir o anexo {attachment.FileName}? O arquivo é apagado e não pode ser recuperado.")" ConfirmLabel="Excluir"
+                                                    OnSubmit="() => DeleteAttachmentAsync(attachment)" />
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="pm-muted small">Nenhum anexo.</p>
+                    }
+                    @if (CanEdit)
+                    {
+                        <form method="post" enctype="multipart/form-data" @formname="upload" @onsubmit="UploadAsync" data-enhance>
+                            <AntiforgeryToken />
+                            <label for="attachment-file" class="form-label small">Enviar arquivo (até 10 MB; imagens, PDF, texto e documentos)</label>
+                            <input id="attachment-file" type="file" name="Arquivo" class="form-control form-control-sm" required />
+                            <button type="submit" class="btn btn-outline-secondary btn-sm mt-2">Enviar</button>
+                        </form>
+                    }
+                </section>
+
+                @if (Writable && Can(Permissions.TasksArchive))
+                {
+                    <section class="pm-card">
+                        <ActionForm Name="archive-task" Label="Arquivar tarefa" ButtonClass="btn btn-outline-danger btn-sm"
+                                    Confirm="@($"Arquivar a tarefa #{_task.Number}? Ela sai das listas e fica somente leitura; não há como desfazer pela interface.")" ConfirmLabel="Arquivar"
+                                    OnSubmit="ArchiveAsync" />
+                    </section>
+                }
+            </div>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [Parameter]
+    public Guid TaskId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    [SupplyParameterFromForm(FormName = "edit-task")]
+    private TaskForm Edit { get; set; } = default!;
+
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "upload", Name = "Arquivo")]
+    private IFormFile? Arquivo { get; set; }
+
+    private TaskDetails? _task;
+    private List<CommentDetails>? _comments;
+    private List<AttachmentDetails>? _attachments;
+    private List<TaskHistoryEntry>? _history;
+    private List<PhaseDetails>? _phases;
+    private List<MilestoneDetails>? _milestones;
+    private List<ProjectMemberDetails>? _members;
+    private List<TaskSummary>? _otherTasks;
+    private Guid _userId;
+
+    private bool Writable => _task?.ArchivedAt is null && Project?.ArchivedAt is null;
+
+    private bool CanEdit => Writable && _task?.State.IsFinal == false && _task.Can(Permissions.TasksWrite);
+
+    private bool Overdue => _task?.DueDate < DateOnly.FromDateTime(DateTime.UtcNow) && _task?.State.IsFinal == false;
+
+    private List<ProjectMemberDetails> Candidates =>
+        (_members ?? []).Where(m => _task!.Assignees.All(a => a.UserId != m.UserId)).ToList();
+
+    private List<TaskSummary> DependencyCandidates =>
+        (_otherTasks ?? []).Where(t => t.Id != _task!.Id && _task.DependsOn.All(d => d.Id != t.Id)).ToList();
+
+    protected override void OnInitialized()
+    {
+        Edit ??= new TaskForm();
+        Row ??= new RowForm();
+    }
+
+    protected override async Task<Guid?> ResolveProjectIdAsync()
+    {
+        _task = Take(await Tasks.GetAsync(OrganizationId, TaskId));
+        return _task?.ProjectId;
+    }
+
+    protected override async Task LoadProjectAsync()
+    {
+        var user = AuthenticationState is null ? null : (await AuthenticationState).User;
+        _userId = Guid.TryParse(user?.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : Guid.Empty;
+
+        _comments = (await Tasks.ListCommentsAsync(OrganizationId, TaskId)).Value;
+        _attachments = (await Tasks.ListAttachmentsAsync(OrganizationId, TaskId)).Value;
+        _history = (await Tasks.HistoryAsync(OrganizationId, TaskId)).Value;
+        _phases = (await Planning.ListPhasesAsync(OrganizationId, _task!.ProjectId)).Value;
+        _milestones = (await Planning.ListMilestonesAsync(OrganizationId, _task.ProjectId)).Value;
+        if (CanEdit)
+        {
+            _members = (await Projects.ListMembersAsync(OrganizationId, _task.ProjectId)).Value;
+            _otherTasks = (await Tasks.ListAsync(OrganizationId, _task.ProjectId, new TaskFilter(PageSize: 100))).Value?.Items.ToList();
+        }
+
+        if (string.IsNullOrEmpty(Edit.Title))
+        {
+            Edit.Title = _task.Title;
+            Edit.Description = _task.Description;
+            Edit.Priority = _task.Priority;
+            Edit.DueDate = _task.DueDate;
+            Edit.PhaseId = _task.PhaseId;
+            Edit.MilestoneId = _task.MilestoneId;
+            Edit.Labels = string.Join(", ", _task.Labels);
+        }
+    }
+
+    private async Task TransitionAsync()
+    {
+        if (Guid.TryParse(Row.Value, out var target))
+        {
+            Complete(await Tasks.TransitionAsync(OrganizationId, TaskId, target, _task!.State.Id, string.IsNullOrWhiteSpace(Row.Text) ? null : Row.Text), "movida");
+        }
+    }
+
+    private async Task SaveAsync() => Complete(await Tasks.UpdateAsync(OrganizationId, TaskId, new
+    {
+        title = Edit.Title,
+        description = Edit.Description,
+        priority = Edit.Priority,
+        dueDate = Edit.DueDate,
+        phaseId = Edit.PhaseId,
+        milestoneId = Edit.MilestoneId,
+        labels = Edit.LabelList,
+    }), "salvo");
+
+    private async Task AssignAsync()
+    {
+        if (Guid.TryParse(Row.Value, out var userId))
+        {
+            Complete(await Tasks.AssignAsync(OrganizationId, TaskId, userId), "salvo");
+        }
+    }
+
+    private async Task UnassignAsync(Guid userId) => Complete(await Tasks.UnassignAsync(OrganizationId, TaskId, userId), "removido");
+
+    private async Task AddDependencyAsync()
+    {
+        if (Guid.TryParse(Row.Value, out var dependsOn))
+        {
+            Complete(await Tasks.AddDependencyAsync(OrganizationId, TaskId, dependsOn), "salvo");
+        }
+    }
+
+    private async Task RemoveDependencyAsync(Guid dependsOn) => Complete(await Tasks.RemoveDependencyAsync(OrganizationId, TaskId, dependsOn), "removido");
+
+    private async Task AddCommentAsync() => Complete(await Tasks.AddCommentAsync(OrganizationId, TaskId, Row.Text ?? string.Empty), "comentado");
+
+    private async Task EditCommentAsync(CommentDetails comment) =>
+        Complete(await Tasks.EditCommentAsync(OrganizationId, TaskId, comment.Id, Row.Text ?? string.Empty), "salvo");
+
+    private async Task DeleteCommentAsync(CommentDetails comment) => Complete(await Tasks.DeleteCommentAsync(OrganizationId, TaskId, comment.Id), "excluido");
+
+    private async Task UploadAsync()
+    {
+        if (Arquivo is null || Arquivo.Length == 0)
+        {
+            ActionResult = ApiResult.Failure(System.Net.HttpStatusCode.BadRequest, "Escolha um arquivo.");
+            return;
+        }
+
+        await using var stream = Arquivo.OpenReadStream();
+        Complete(await Tasks.UploadAsync(OrganizationId, TaskId, stream, Arquivo.FileName), "enviado");
+    }
+
+    private async Task DeleteAttachmentAsync(AttachmentDetails attachment) =>
+        Complete(await Tasks.DeleteAttachmentAsync(OrganizationId, TaskId, attachment.Id), "excluido");
+
+    private async Task ArchiveAsync() => Complete(await Tasks.ArchiveAsync(OrganizationId, TaskId), "arquivado", $"{ProjectPath}/tarefas");
+}

@@ -22,8 +22,9 @@ internal sealed partial class TokenRefreshCookieEvents(
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Arquivos estáticos e o hub do Blazor não precisam de token: renova só em páginas.
-        if (context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<ComponentTypeMetadata>() is null)
+        // Arquivos estáticos e o hub do Blazor não precisam de token: renova só em páginas e nos endpoints que chamam a API.
+        var metadata = context.HttpContext.GetEndpoint()?.Metadata;
+        if (metadata?.GetMetadata<ComponentTypeMetadata>() is null && metadata?.GetMetadata<ApiTokenEndpointMetadata>() is null)
         {
             return;
         }

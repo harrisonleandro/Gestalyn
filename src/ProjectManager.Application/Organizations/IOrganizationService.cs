@@ -14,6 +14,9 @@ public interface IOrganizationService
 
     Task<Result<OrganizationDetails>> GetActiveAsync(CancellationToken cancellationToken);
 
+    /// <summary>Papel e permissões do usuário na organização ativa. Só leitura: a autorização continua no backend.</summary>
+    Task<Result<MyMembership>> GetMyMembershipAsync(ActiveMembership actor, CancellationToken cancellationToken);
+
     Task<Result<OrganizationDetails>> RenameActiveAsync(OrganizationNameRequest request, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<MemberDetails>> ListMembersAsync(CancellationToken cancellationToken);
