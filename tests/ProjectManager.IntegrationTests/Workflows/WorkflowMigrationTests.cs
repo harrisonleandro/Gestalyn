@@ -90,6 +90,9 @@ public sealed class WorkflowMigrationTests(PostgresDatabaseFixture database)
         {
             Assert.Null(entry.FromStateId);
             Assert.Equal(("Backlog", userId, ActorKind.User), (entry.ToStateName, entry.ChangedById, entry.ActorKind));
+
+            // Fase 08 (ADR-014): o histórico migrado recebe a categoria do estado de destino.
+            Assert.Equal(StateCategory.Todo, entry.ToCategory);
         });
 
         await context.Database.EnsureDeletedAsync(CancellationToken);

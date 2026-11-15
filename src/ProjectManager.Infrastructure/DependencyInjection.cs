@@ -10,6 +10,7 @@ using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Abstractions.Storage;
 using ProjectManager.Application.Activity;
+using ProjectManager.Application.Dashboards;
 using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
 using ProjectManager.Application.Planning;
@@ -17,6 +18,7 @@ using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
 using ProjectManager.Application.Workflows;
 using ProjectManager.Infrastructure.Activity;
+using ProjectManager.Infrastructure.Dashboards;
 using ProjectManager.Infrastructure.Documents;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
@@ -72,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IActivityService, ActivityService>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IDecisionService, DecisionService>();
+        services.AddScoped<IDashboardService, DashboardService>();
 
         services.AddOptions<StorageOptions>()
             .BindConfiguration(StorageOptions.SectionName)

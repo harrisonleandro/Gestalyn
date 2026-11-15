@@ -1560,6 +1560,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("task_id");
 
+                    b.Property<string>("ToCategory")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("to_category");
+
                     b.Property<Guid>("ToStateId")
                         .HasColumnType("uuid")
                         .HasColumnName("to_state_id");
