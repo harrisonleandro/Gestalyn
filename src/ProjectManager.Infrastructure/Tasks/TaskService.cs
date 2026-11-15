@@ -10,6 +10,7 @@ using ProjectManager.Application.Tasks;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Tasks;
+using ProjectManager.Domain.Workflows;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Tasks;
@@ -74,8 +75,13 @@ internal sealed partial class TaskService(
                 return Result.Failure<TaskDetails>(ErrorKind.NotFound, NotOnTeamMessage);
             }
 
+            // A tarefa nova entra no estado inicial do workflow do projeto, com registro no histórico (ADR-013).
+            var initialState = await dbContext.WorkflowStates.SingleAsync(state => state.ProjectId == projectId && state.IsInitial, cancellationToken);
+
             var now = timeProvider.GetUtcNow();
             var task = new ProjectTask(project, project.AllocateTaskNumber(), request.Title, actor.UserId);
+            task.EnterState(initialState);
+            dbContext.TaskStatusHistory.Add(new TaskStatusHistory(task, from: null, initialState, actor.UserId, ActorKind.User, comment: null, now));
             task.ChangeDescription(request.Description);
             task.ChangePriority(request.Priority ?? Priority.Medium);
             task.ChangeDueDate(request.DueDate);

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Tasks;
+using ProjectManager.Domain.Workflows;
 using ProjectManager.Infrastructure.Identity;
 
 namespace ProjectManager.Infrastructure.Persistence.Configurations;
@@ -33,6 +34,13 @@ internal sealed class ProjectTaskConfiguration : IEntityTypeConfiguration<Projec
             .WithMany()
             .HasForeignKey(task => new { task.ProjectId, task.PhaseId })
             .HasPrincipalKey(phase => new { phase.ProjectId, phase.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Estado do workflow do mesmo projeto (ADR-013).
+        builder.HasOne<WorkflowState>()
+            .WithMany()
+            .HasForeignKey(task => new { task.ProjectId, task.StateId })
+            .HasPrincipalKey(state => new { state.ProjectId, state.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne<Milestone>()

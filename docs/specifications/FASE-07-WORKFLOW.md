@@ -1,6 +1,6 @@
 # Fase 07: Workflow configurável e histórico
 
-- **Estado:** Planned. Aguarda a aprovação das decisões D1 a D7 pelo responsável.
+- **Estado:** In Progress. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-14.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 07), seção 4.5 (fluxos de trabalho configuráveis) e seção 5.5 (contratos)
 - **Branch:** `feature/fase-07-workflow` (a partir de `develop`, com as Fases 01 a 06 e as correções da auditoria integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -35,7 +35,7 @@ Dar estado às tarefas por meio de um workflow configurável por projeto: estado
 - **Quadro de tarefas e tela de configuração do workflow:** Fase 09.
 - **Progresso e dashboards por categoria:** Fase 08.
 
-## Decisões (aguardam aprovação)
+## Decisões (D1 a D7 aprovadas)
 
 | ID | Proposta | Alternativas |
 |---|---|---|

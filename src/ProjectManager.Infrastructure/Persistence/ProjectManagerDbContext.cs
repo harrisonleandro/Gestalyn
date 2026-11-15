@@ -6,6 +6,7 @@ using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Tasks;
+using ProjectManager.Domain.Workflows;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.Organizations;
 using ProjectManager.Infrastructure.Persistence.ChangeTracking;
@@ -44,6 +45,14 @@ public sealed class ProjectManagerDbContext(
     public DbSet<TaskDependency> TaskDependencies => Set<TaskDependency>();
 
     public DbSet<TaskAttachment> TaskAttachments => Set<TaskAttachment>();
+
+    public DbSet<WorkflowDefinition> Workflows => Set<WorkflowDefinition>();
+
+    public DbSet<WorkflowState> WorkflowStates => Set<WorkflowState>();
+
+    public DbSet<WorkflowTransition> WorkflowTransitions => Set<WorkflowTransition>();
+
+    public DbSet<TaskStatusHistory> TaskStatusHistory => Set<TaskStatusHistory>();
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
