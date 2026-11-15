@@ -1,11 +1,13 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using ProjectManager.API.Activity;
 using ProjectManager.API.Authentication;
 using ProjectManager.API.ErrorHandling;
 using ProjectManager.API.Health;
 using ProjectManager.API.Organizations;
 using ProjectManager.Application;
+using ProjectManager.Application.Abstractions.Activity;
 using ProjectManager.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +15,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddApplication()
     .AddInfrastructure();
+
+// Autor e origem das atividades a partir da requisição (ADR-014).
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IActivityContext, HttpActivityContext>();
 
 // Seguro por padrão: todo controller exige autenticação, salvo [AllowAnonymous] explícito.
 builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))

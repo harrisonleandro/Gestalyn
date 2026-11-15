@@ -24,16 +24,19 @@ public static class ProjectPermissions
     public const string TasksArchive = "tasks.archive";
     public const string TasksApprove = "tasks.approve";
     public const string WorkflowManage = "workflow.manage";
+    public const string DocumentsWrite = "documents.write";
+    public const string DocumentsManage = "documents.manage";
 
-    public static IReadOnlyList<string> All { get; } = [Read, Update, Archive, MembersManage, Plan, TasksWrite, TasksComment, TasksArchive, TasksApprove, WorkflowManage];
+    public static IReadOnlyList<string> All { get; } = [Read, Update, Archive, MembersManage, Plan, TasksWrite, TasksComment, TasksArchive, TasksApprove, WorkflowManage, DocumentsWrite, DocumentsManage];
 
-    private static readonly IReadOnlyList<string> ContributorPermissions = [Read, Update, TasksWrite, TasksComment];
+    private static readonly IReadOnlyList<string> ContributorPermissions = [Read, Update, TasksWrite, TasksComment, DocumentsWrite];
     private static readonly IReadOnlyList<string> ViewerPermissions = [Read];
 
     /// <summary>
-    /// Gerente: tudo no projeto, inclusive fases, marcos, arquivamento de tarefas, aprovação e workflow. Colaborador: ler e
-    /// editar dados, etiquetas e repositórios, criar e editar tarefas e comentar. Observador: somente
-    /// leitura (ADR-010, ADR-011 e ADR-013).
+    /// Gerente: tudo no projeto, inclusive fases, marcos, arquivamento de tarefas, aprovação, workflow, arquivamento de
+    /// documentos e decisões finais. Colaborador: ler e editar dados, etiquetas e repositórios, criar e editar tarefas,
+    /// comentar, escrever documentos, propor decisões e registrar atividades. Observador: somente leitura (ADR-010,
+    /// ADR-011, ADR-013 e ADR-014).
     /// </summary>
     public static IReadOnlyList<string> For(ProjectRole role) => role switch
     {

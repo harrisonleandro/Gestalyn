@@ -156,3 +156,33 @@ public sealed class WorkflowTransitionPermissionAttribute(string permission)
         CancellationToken cancellationToken) =>
         projectAccess.FindByWorkflowTransitionAsync(membership, resourceId, cancellationToken);
 }
+
+/// <summary>Permissão de projeto na rota <c>{documentId}</c>: o acesso é o do projeto do documento (ADR-014).</summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class DocumentPermissionAttribute(string permission)
+    : ProjectResourcePermissionAttribute(permission, RouteValueName, "Documento não encontrado.")
+{
+    public const string RouteValueName = "documentId";
+
+    protected override Task<ProjectAccessGrant?> FindAccessAsync(
+        IProjectAccess projectAccess,
+        ActiveMembership membership,
+        Guid resourceId,
+        CancellationToken cancellationToken) =>
+        projectAccess.FindByDocumentAsync(membership, resourceId, cancellationToken);
+}
+
+/// <summary>Permissão de projeto na rota <c>{decisionId}</c>: o acesso é o do projeto da decisão (ADR-014).</summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class DecisionPermissionAttribute(string permission)
+    : ProjectResourcePermissionAttribute(permission, RouteValueName, "Decisão não encontrada.")
+{
+    public const string RouteValueName = "decisionId";
+
+    protected override Task<ProjectAccessGrant?> FindAccessAsync(
+        IProjectAccess projectAccess,
+        ActiveMembership membership,
+        Guid resourceId,
+        CancellationToken cancellationToken) =>
+        projectAccess.FindByDecisionAsync(membership, resourceId, cancellationToken);
+}

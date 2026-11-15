@@ -101,6 +101,7 @@ internal sealed class TaskStatusHistoryConfiguration : IEntityTypeConfiguration<
         builder.Property(entry => entry.FromStateName).HasMaxLength(WorkflowState.NameMaxLength);
         builder.Property(entry => entry.ToStateName).HasMaxLength(WorkflowState.NameMaxLength).IsRequired();
         builder.Property(entry => entry.ActorKind).HasConversion<string>().HasMaxLength(16);
+        builder.Property(entry => entry.ToCategory).HasConversion<string>().HasMaxLength(16);
         builder.Property(entry => entry.Comment).HasMaxLength(TaskStatusHistory.CommentMaxLength);
 
         builder.HasIndex(entry => new { entry.TaskId, entry.ChangedAt });

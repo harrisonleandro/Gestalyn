@@ -4,15 +4,22 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using ProjectManager.Application.Abstractions.Activity;
 using ProjectManager.Application.Abstractions.Authentication;
 using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Abstractions.Storage;
+using ProjectManager.Application.Activity;
+using ProjectManager.Application.Dashboards;
+using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
 using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
 using ProjectManager.Application.Workflows;
+using ProjectManager.Infrastructure.Activity;
+using ProjectManager.Infrastructure.Dashboards;
+using ProjectManager.Infrastructure.Documents;
 using ProjectManager.Infrastructure.Email;
 using ProjectManager.Infrastructure.Identity;
 using ProjectManager.Infrastructure.MultiTenancy;
@@ -62,6 +69,12 @@ public static class DependencyInjection
         services.AddScoped<ITaskService, TaskService>();
         services.AddScoped<IAttachmentService, AttachmentService>();
         services.AddScoped<IWorkflowService, WorkflowService>();
+        services.TryAddScoped<IActivityContext, SystemActivityContext>();
+        services.AddScoped<ActivityRecorder>();
+        services.AddScoped<IActivityService, ActivityService>();
+        services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<IDecisionService, DecisionService>();
+        services.AddScoped<IDashboardService, DashboardService>();
 
         services.AddOptions<StorageOptions>()
             .BindConfiguration(StorageOptions.SectionName)

@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Workflows;
+using ProjectManager.Domain.Activity;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Workflows;
+using ProjectManager.Infrastructure.Activity;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Workflows;
@@ -12,7 +14,7 @@ namespace ProjectManager.Infrastructure.Workflows;
 /// serializa edições simultâneas e protege as invariantes que ficam no domínio (estado inicial único, nomes
 /// únicos). Violações de regra respondem 409.
 /// </summary>
-internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWorkflowService
+internal sealed class WorkflowService(ProjectManagerDbContext dbContext, ActivityRecorder activity) : IWorkflowService
 {
     private const string WorkflowNotFoundMessage = "Workflow não encontrado.";
     private const string StateNotFoundMessage = "Estado não encontrado.";
@@ -38,6 +40,7 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
         }
 
         var workflow = found.Value!;
+        var initialBefore = workflow.States.Single(s => s.IsInitial);
         if (request.InitialStateId is { } initialStateId)
         {
             var state = workflow.States.FirstOrDefault(s => s.Id == initialStateId);
@@ -55,6 +58,12 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
         if (request.RequireIndependentApproval is { } required)
         {
             workflow.ChangeRequireIndependentApproval(required);
+        }
+
+        var settingsChanges = activity.ChangesOf(workflow).Set("initialState", initialBefore.Name, workflow.States.Single(s => s.IsInitial).Name);
+        if (!settingsChanges.IsEmpty)
+        {
+            activity.Record(ActivityActions.WorkflowUpdated, ActivityEntityTypes.Workflow, workflow.Id, "Configurações do workflow alteradas", projectId, changes: settingsChanges);
         }
 
         return await SaveAsync(workflow, cancellationToken)
@@ -78,6 +87,12 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
             return Result.Failure<WorkflowStateDetails>(ErrorKind.Conflict, ruleError);
         }
 
+        activity.Record(
+            ActivityActions.WorkflowStateAdded,
+            ActivityEntityTypes.WorkflowState,
+            state!.Id,
+            $"Estado '{state.Name}' ({state.Category}) criado",
+            projectId);
         return await SaveAsync(found.Value!, cancellationToken)
             ? Result.Success(ToDetails(state!, taskCount: 0))
             : Result.Failure<WorkflowStateDetails>(ErrorKind.Conflict, ConflictMessage);
@@ -94,6 +109,7 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
         }
 
         var (workflow, state) = found.Value;
+        var (nameBefore, categoryBefore) = (state.Name, state.Category);
         var ruleError = Apply(() =>
         {
             if (request.Name is not null)
@@ -109,6 +125,12 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
         if (ruleError is not null)
         {
             return Result.Failure<WorkflowStateDetails>(ErrorKind.Conflict, ruleError);
+        }
+
+        var stateChanges = new ActivityChanges().Set("name", nameBefore, state.Name).Set("category", categoryBefore, state.Category);
+        if (!stateChanges.IsEmpty)
+        {
+            activity.Record(ActivityActions.WorkflowStateUpdated, ActivityEntityTypes.WorkflowState, state.Id, $"Estado '{state.Name}' alterado", workflow.ProjectId, changes: stateChanges);
         }
 
         return await SaveAsync(workflow, cancellationToken)
@@ -127,7 +149,15 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
         }
 
         var (workflow, state) = found.Value;
+        var positionBefore = state.Position;
         workflow.MoveState(state, request.Position);
+        activity.Record(
+            ActivityActions.WorkflowStateMoved,
+            ActivityEntityTypes.WorkflowState,
+            state.Id,
+            $"Estado '{state.Name}' movido para a posição {state.Position}",
+            workflow.ProjectId,
+            changes: new ActivityChanges().Set("position", positionBefore, state.Position));
 
         return await SaveAsync(workflow, cancellationToken)
             ? Result.Success(await ToDetailsAsync(workflow, cancellationToken))
@@ -157,6 +187,7 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
         // Exclusões explícitas: sair da coleção do workflow, sozinho, deixaria órfãos numa relação obrigatória.
         dbContext.WorkflowTransitions.RemoveRange(linked);
         dbContext.WorkflowStates.Remove(state);
+        activity.Record(ActivityActions.WorkflowStateDeleted, ActivityEntityTypes.WorkflowState, state.Id, $"Estado '{state.Name}' excluído", workflow.ProjectId);
 
         return await SaveAsync(workflow, cancellationToken)
             ? Result.Success()
@@ -186,6 +217,12 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
             return Result.Failure<WorkflowTransitionDetails>(ErrorKind.Conflict, ruleError);
         }
 
+        activity.Record(
+            ActivityActions.WorkflowTransitionAdded,
+            ActivityEntityTypes.WorkflowTransition,
+            transition!.Id,
+            $"Transição '{from.Name}' → '{to.Name}' criada" + (transition.RequiresApproval ? " (exige aprovação)" : string.Empty),
+            workflow.ProjectId);
         return await SaveAsync(workflow, cancellationToken)
             ? Result.Success(ToDetails(transition!))
             : Result.Failure<WorkflowTransitionDetails>(ErrorKind.Conflict, ConflictMessage);
@@ -211,6 +248,13 @@ internal sealed class WorkflowService(ProjectManagerDbContext dbContext) : IWork
         var transition = found.Value!.Transitions.Single(t => t.Id == transitionId);
         found.Value.RemoveTransition(transitionId);
         dbContext.WorkflowTransitions.Remove(transition);
+        var names = found.Value.States.ToDictionary(s => s.Id, s => s.Name);
+        activity.Record(
+            ActivityActions.WorkflowTransitionRemoved,
+            ActivityEntityTypes.WorkflowTransition,
+            transition.Id,
+            $"Transição '{names[transition.FromStateId]}' → '{names[transition.ToStateId]}' removida",
+            projectId.Value);
 
         return await SaveAsync(found.Value, cancellationToken)
             ? Result.Success()

@@ -7,10 +7,12 @@ using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
+using ProjectManager.Domain.Activity;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Tasks;
 using ProjectManager.Domain.Workflows;
+using ProjectManager.Infrastructure.Activity;
 using ProjectManager.Infrastructure.Persistence;
 
 namespace ProjectManager.Infrastructure.Tasks;
@@ -22,6 +24,7 @@ namespace ProjectManager.Infrastructure.Tasks;
 internal sealed partial class TaskService(
     ProjectManagerDbContext dbContext,
     TimeProvider timeProvider,
+    ActivityRecorder activity,
     ILogger<TaskService> logger) : ITaskService
 {
     private const int NumberAllocationAttempts = 3;
@@ -91,6 +94,9 @@ internal sealed partial class TaskService(
             task.SetLabels(request.Labels ?? []);
             assigneeIds.ForEach(userId => task.Assign(userId, now));
             dbContext.Tasks.Add(task);
+
+            // Numa nova tentativa, o rastreador é limpo e o evento é registrado de novo com a tarefa nova.
+            activity.Record(ActivityActions.TaskCreated, ActivityEntityTypes.Task, task.Id, $"Tarefa #{task.Number} '{task.Title}' criada", projectId, task.Id);
 
             try
             {
@@ -316,6 +322,7 @@ internal sealed partial class TaskService(
             return Result.Failure<TaskDetails>(links.Error.Kind, links.Error.Message);
         }
 
+        var labelsBefore = task.Labels.Select(label => label.Name).ToList();
         if (request.Title is not null)
         {
             task.Rename(request.Title);
@@ -353,7 +360,12 @@ internal sealed partial class TaskService(
 
         // Mudanças só nas etiquetas não alteram a linha da tarefa; marcá-la faz o xmin detectar edições
         // simultâneas.
+        var changes = activity.ChangesOf(task).List("labels", labelsBefore, task.Labels.Select(label => label.Name));
         dbContext.Entry(task).State = EntityState.Modified;
+        if (!changes.IsEmpty)
+        {
+            activity.Record(ActivityActions.TaskUpdated, ActivityEntityTypes.Task, task.Id, $"Tarefa #{task.Number} alterada", task.ProjectId, task.Id, changes);
+        }
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? await GetAsync(access, taskId, cancellationToken)
@@ -381,6 +393,7 @@ internal sealed partial class TaskService(
         }
 
         task.Archive(actor.UserId, timeProvider.GetUtcNow());
+        activity.Record(ActivityActions.TaskArchived, ActivityEntityTypes.Task, task.Id, $"Tarefa #{task.Number} arquivada", task.ProjectId, task.Id);
         if (!await dbContext.TrySaveChangesAsync(cancellationToken))
         {
             return Result.Failure(ErrorKind.Conflict, ConflictMessage);
@@ -422,6 +435,14 @@ internal sealed partial class TaskService(
         }
 
         task.Assign(request.UserId, timeProvider.GetUtcNow());
+        activity.Record(
+            ActivityActions.TaskAssigneeAdded,
+            ActivityEntityTypes.Task,
+            task.Id,
+            $"Responsável adicionado à tarefa #{task.Number}",
+            task.ProjectId,
+            task.Id,
+            new ActivityChanges().Set("assigneeId", null, request.UserId));
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? await GetAsync(access, taskId, cancellationToken)
@@ -436,10 +457,20 @@ internal sealed partial class TaskService(
             return Result.Failure(found.Error.Kind, found.Error.Message);
         }
 
-        if (!found.Value!.Unassign(userId))
+        var task = found.Value!;
+        if (!task.Unassign(userId))
         {
             return Result.Failure(ErrorKind.NotFound, "A pessoa não é responsável pela tarefa.");
         }
+
+        activity.Record(
+            ActivityActions.TaskAssigneeRemoved,
+            ActivityEntityTypes.Task,
+            task.Id,
+            $"Responsável removido da tarefa #{task.Number}",
+            task.ProjectId,
+            task.Id,
+            new ActivityChanges().Set("assigneeId", userId, null));
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success()
@@ -460,8 +491,10 @@ internal sealed partial class TaskService(
             return Result.Failure<CommentDetails>(found.Error.Kind, found.Error.Message);
         }
 
-        var comment = new TaskComment(found.Value!, actor.UserId, request.Body);
+        var commented = found.Value!;
+        var comment = new TaskComment(commented, actor.UserId, request.Body);
         dbContext.TaskComments.Add(comment);
+        activity.Record(ActivityActions.TaskCommentAdded, ActivityEntityTypes.Comment, comment.Id, $"Comentário na tarefa #{commented.Number}", commented.ProjectId, commented.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success(await QueryComments(taskId, comment.Id).SingleAsync(cancellationToken));
@@ -495,6 +528,14 @@ internal sealed partial class TaskService(
         }
 
         comment.Edit(request.Body, timeProvider.GetUtcNow());
+        activity.Record(
+            ActivityActions.TaskCommentEdited,
+            ActivityEntityTypes.Comment,
+            comment.Id,
+            $"Comentário editado na tarefa #{found.Value!.Number}",
+            comment.ProjectId,
+            taskId,
+            new ActivityChanges().ContentChanged("body"));
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success(await QueryComments(taskId, commentId).SingleAsync(cancellationToken))
@@ -529,6 +570,7 @@ internal sealed partial class TaskService(
         }
 
         dbContext.TaskComments.Remove(comment);
+        activity.Record(ActivityActions.TaskCommentDeleted, ActivityEntityTypes.Comment, comment.Id, $"Comentário excluído da tarefa #{found.Value!.Number}", comment.ProjectId, taskId);
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success()
@@ -601,6 +643,14 @@ internal sealed partial class TaskService(
         }
 
         dbContext.TaskDependencies.Add(new TaskDependency(task, dependsOn, actor.UserId, timeProvider.GetUtcNow()));
+        activity.Record(
+            ActivityActions.TaskDependencyAdded,
+            ActivityEntityTypes.Task,
+            task.Id,
+            $"Tarefa #{task.Number} passou a depender da #{dependsOn.Number}",
+            task.ProjectId,
+            task.Id,
+            new ActivityChanges().Set("dependsOnTaskId", null, dependsOn.Id));
 
         try
         {
@@ -635,6 +685,15 @@ internal sealed partial class TaskService(
         }
 
         dbContext.TaskDependencies.Remove(dependency);
+        var dependent = found.Value!;
+        activity.Record(
+            ActivityActions.TaskDependencyRemoved,
+            ActivityEntityTypes.Task,
+            dependent.Id,
+            $"Dependência removida da tarefa #{dependent.Number}",
+            dependent.ProjectId,
+            dependent.Id,
+            new ActivityChanges().Set("dependsOnTaskId", dependsOnTaskId, null));
 
         return await dbContext.TrySaveChangesAsync(cancellationToken)
             ? Result.Success()
@@ -706,6 +765,14 @@ internal sealed partial class TaskService(
         }
 
         task.EnterState(target);
+        activity.Record(
+            ActivityActions.TaskTransitioned,
+            ActivityEntityTypes.Task,
+            task.Id,
+            $"Tarefa #{task.Number} movida de '{current.Name}' para '{target.Name}'",
+            task.ProjectId,
+            task.Id,
+            new ActivityChanges().Set("state", current.Name, target.Name));
         dbContext.TaskStatusHistory.Add(new TaskStatusHistory(task, current, target, actor.UserId, ActorKind.User, request.Comment, timeProvider.GetUtcNow()));
 
         // A trava otimista da tarefa impede que duas transições simultâneas partam do mesmo estado.

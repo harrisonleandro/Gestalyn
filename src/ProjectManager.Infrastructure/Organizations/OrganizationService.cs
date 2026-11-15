@@ -4,7 +4,9 @@ using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Common;
 using ProjectManager.Application.Organizations;
+using ProjectManager.Domain.Activity;
 using ProjectManager.Domain.Organizations;
+using ProjectManager.Infrastructure.Activity;
 using ProjectManager.Infrastructure.Common;
 using ProjectManager.Infrastructure.MultiTenancy;
 using ProjectManager.Infrastructure.Persistence;
@@ -21,6 +23,7 @@ internal sealed partial class OrganizationService(
     MembershipDirectory membershipDirectory,
     IEmailSender emailSender,
     OrganizationEmails organizationEmails,
+    ActivityRecorder activity,
     TimeProvider timeProvider,
     ILogger<OrganizationService> logger) : IOrganizationService
 {
@@ -41,6 +44,7 @@ internal sealed partial class OrganizationService(
         dbContext.Organizations.Add(organization);
         dbContext.Roles.AddRange(roles);
         dbContext.OrganizationMembers.Add(new OrganizationMember(organization.Id, userId, ownerRole));
+        activity.Record(ActivityActions.OrganizationCreated, ActivityEntityTypes.Organization, organization.Id, $"Organização '{organization.Name}' criada");
         await dbContext.SaveChangesAsync(cancellationToken);
 
         LogOrganizationCreated(logger, organization.Id, userId);
@@ -67,6 +71,12 @@ internal sealed partial class OrganizationService(
         }
 
         organization.Rename(request.Name);
+        activity.Record(
+            ActivityActions.OrganizationUpdated,
+            ActivityEntityTypes.Organization,
+            organization.Id,
+            $"Organização renomeada para '{organization.Name}'",
+            changes: activity.ChangesOf(organization));
 
         return await TrySaveAsync(cancellationToken)
             ? Result.Success(ToDetails(organization))
@@ -124,6 +134,12 @@ internal sealed partial class OrganizationService(
         }
 
         member.ChangeRole(newRole);
+        activity.Record(
+            ActivityActions.MemberRoleChanged,
+            ActivityEntityTypes.Member,
+            userId,
+            $"Papel de membro alterado de '{currentRole.Name}' para '{newRole.Name}'",
+            changes: new ActivityChanges().Set("role", currentRole.Name, newRole.Name));
 
         if (!await TrySaveAsync(cancellationToken))
         {
@@ -166,6 +182,11 @@ internal sealed partial class OrganizationService(
         }
 
         dbContext.OrganizationMembers.Remove(member);
+        activity.Record(
+            ActivityActions.MemberRemoved,
+            ActivityEntityTypes.Member,
+            userId,
+            isSelf ? $"Membro com o papel '{role.Name}' saiu da organização" : $"Membro com o papel '{role.Name}' removido da organização");
 
         return await TrySaveAsync(cancellationToken)
             ? Result.Success()
@@ -218,6 +239,9 @@ internal sealed partial class OrganizationService(
         var token = OpaqueTokens.Generate();
         var invitation = new Invitation(actor.OrganizationId, email, role, actor.UserId, OpaqueTokens.Hash(token), now);
         dbContext.Invitations.Add(invitation);
+
+        // O e-mail convidado não vai para a auditoria: o convite aparece pelo ID e pelo papel.
+        activity.Record(ActivityActions.MemberInvited, ActivityEntityTypes.Invitation, invitation.Id, $"Convite criado com o papel '{role.Name}'");
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var organization = await dbContext.Organizations.AsNoTracking().SingleAsync(cancellationToken);
@@ -254,6 +278,7 @@ internal sealed partial class OrganizationService(
         }
 
         invitation.Revoke(timeProvider.GetUtcNow());
+        activity.Record(ActivityActions.InvitationRevoked, ActivityEntityTypes.Invitation, invitation.Id, "Convite revogado");
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
@@ -292,6 +317,7 @@ internal sealed partial class OrganizationService(
 
         invitation.Accept(userId, now);
         dbContext.OrganizationMembers.Add(new OrganizationMember(invitation.OrganizationId, userId, role));
+        activity.Record(ActivityActions.InvitationAccepted, ActivityEntityTypes.Invitation, invitation.Id, $"Convite aceito; novo membro com o papel '{role.Name}'");
         await dbContext.SaveChangesAsync(cancellationToken);
 
         LogInvitationAccepted(logger, invitation.Id, invitation.OrganizationId, userId);

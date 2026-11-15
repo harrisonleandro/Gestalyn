@@ -31,6 +31,7 @@ public sealed class TaskStatusHistory : Entity, IOrganizationOwned
         FromStateName = from?.Name;
         ToStateId = to.Id;
         ToStateName = to.Name;
+        ToCategory = to.Category;
         ChangedById = Guard.RequiredId(changedById, nameof(changedById));
         ActorKind = actorKind;
         Comment = Guard.OptionalText(comment, CommentMaxLength, nameof(comment));
@@ -54,6 +55,13 @@ public sealed class TaskStatusHistory : Entity, IOrganizationOwned
     public Guid ToStateId { get; private set; }
 
     public string ToStateName { get; private set; }
+
+    /// <summary>
+    /// Categoria do estado de destino na data (ADR-014): base das estatísticas de conclusão, que não podem depender da
+    /// categoria atual de um estado que mudou ou foi excluído. <c>null</c> só em registros antigos cujo estado já não
+    /// existia quando a coluna foi criada.
+    /// </summary>
+    public StateCategory? ToCategory { get; private set; }
 
     /// <summary>Pessoa ou agente que fez a mudança (o tipo está em <see cref="ActorKind"/>).</summary>
     public Guid ChangedById { get; private set; }

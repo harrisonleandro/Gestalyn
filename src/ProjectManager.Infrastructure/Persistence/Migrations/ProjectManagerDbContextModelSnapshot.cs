@@ -103,6 +103,431 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("action");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("actor_kind");
+
+                    b.Property<string>("Changes")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("changes");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("origin");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_activity_events");
+
+                    b.HasIndex("OrganizationId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_events_organization_id_occurred_at");
+
+                    b.HasIndex("ProjectId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_events_project_id_occurred_at");
+
+                    b.HasIndex("TaskId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_events_task_id_occurred_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_activity_events_organization_id_project_id_task_id");
+
+                    b.ToTable("activity_events", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("actor_kind");
+
+                    b.Property<Guid?>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
+                        .HasColumnName("details");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("origin");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_activity_logs");
+
+                    b.HasIndex("ProjectId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_logs_project_id_occurred_at");
+
+                    b.HasIndex("TaskId", "OccurredAt")
+                        .HasDatabaseName("ix_activity_logs_task_id_occurred_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_activity_logs_organization_id_project_id_task_id");
+
+                    b.ToTable("activity_logs", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Alternatives")
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("alternatives");
+
+                    b.Property<string>("Consequences")
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("consequences");
+
+                    b.Property<string>("Context")
+                        .IsRequired()
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("context");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<Guid>("ProposedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proposed_by_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("SupersededById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("superseded_by_id");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_decisions");
+
+                    b.HasAlternateKey("OrganizationId", "ProjectId", "Id")
+                        .HasName("ak_decisions_organization_id_project_id_id");
+
+                    b.HasIndex("ProposedById")
+                        .HasDatabaseName("ix_decisions_proposed_by_id");
+
+                    b.HasIndex("ProjectId", "Status")
+                        .HasDatabaseName("ix_decisions_project_id_status");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "SupersededById")
+                        .HasDatabaseName("ix_decisions_organization_id_project_id_superseded_by_id");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_decisions_organization_id_project_id_task_id");
+
+                    b.ToTable("decisions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_decisions_not_self_superseded", "superseded_by_id IS NULL OR superseded_by_id <> id");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Documents.ProjectDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archived_at");
+
+                    b.Property<Guid?>("ArchivedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("archived_by_user_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(200000)
+                        .HasColumnType("character varying(200000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<int>("CurrentVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_version");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_documents");
+
+                    b.HasAlternateKey("OrganizationId", "ProjectId", "Id")
+                        .HasName("ak_project_documents_organization_id_project_id_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_project_documents_created_by_user_id");
+
+                    b.HasIndex("ProjectId", "Title")
+                        .HasDatabaseName("ix_project_documents_project_id_title");
+
+                    b.ToTable("project_documents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_project_documents_version_positive", "current_version > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Documents.ProjectDocumentVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(200000)
+                        .HasColumnType("character varying(200000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("document_id");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_document_versions");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_project_document_versions_author_id");
+
+                    b.HasIndex("DocumentId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_project_document_versions_document_id_number");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "DocumentId")
+                        .HasDatabaseName("ix_project_document_versions_organization_id_project_id_docume");
+
+                    b.ToTable("project_document_versions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_project_document_versions_number_positive", "number > 0");
+                        });
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Organizations.Invitation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1135,6 +1560,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("task_id");
 
+                    b.Property<string>("ToCategory")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("to_category");
+
                     b.Property<Guid>("ToStateId")
                         .HasColumnType("uuid")
                         .HasColumnName("to_state_id");
@@ -1602,6 +2032,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         {
                             Code = "projects.manage_all",
                             Description = "Administrar todos os projetos da organização"
+                        },
+                        new
+                        {
+                            Code = "activity.read_all",
+                            Description = "Consultar as atividades de toda a organização"
                         });
                 });
 
@@ -1633,6 +2068,116 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityEvent", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_activity_events_organizations_organization_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_activity_events_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_activity_events_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Activity.ActivityLog", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_activity_logs_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_activity_logs_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ProposedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_decisions_users_proposed_by_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_decisions_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Documents.Decision", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "SupersededById")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_decisions_decisions_organization_id_project_id_superseded_b");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_decisions_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Documents.ProjectDocument", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_documents_users_created_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_documents_projects_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Documents.ProjectDocumentVersion", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_document_versions_users_author_id");
+
+                    b.HasOne("ProjectManager.Domain.Documents.ProjectDocument", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "DocumentId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_document_versions_project_documents_organization_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Organizations.Invitation", b =>
