@@ -14,7 +14,9 @@
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
-**Fase 07, Workflow configurável e histórico: Completed.** Validada localmente (280/280 testes, quatro mutações detectadas, migração de dados aplicada no banco de desenvolvimento e execução real da API com aprovação e dependências) e no CI ([run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): 0 avisos, 148/148 e 132/132), e integrada em `develop` pelo [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) (merge `a6f87f9`). A próxima é a Fase 08, que depende de autorização.
+**Fase 08, Auditoria, documentação e dashboards: Planned.** A [especificação](specifications/FASE-08-AUDITORIA.md) aguarda a aprovação das decisões D1 a D8; nada foi implementado.
+
+**Fase 07, Workflow configurável e histórico: Completed.** Validada localmente (280/280 testes, quatro mutações detectadas, migração de dados aplicada no banco de desenvolvimento e execução real da API com aprovação e dependências) e no CI ([run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): 0 avisos, 148/148 e 132/132), e integrada em `develop` pelo [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) (merge `a6f87f9`).
 
 **Correções da auditoria técnica de 2026-11-12: Completed.** A auditoria do `develop` (`7a5c170`) confirmou cinco problemas, todos corrigidos e integrados com o CI aprovado:
 
@@ -52,7 +54,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 05 | Projetos e equipes | Completed | [FASE-05-PROJETOS.md](specifications/FASE-05-PROJETOS.md) | [FASE-05-RELATORIO.md](reports/FASE-05-RELATORIO.md) |
 | 06 | Fases, marcos e tarefas | Completed | [FASE-06-TAREFAS.md](specifications/FASE-06-TAREFAS.md) | [FASE-06-RELATORIO.md](reports/FASE-06-RELATORIO.md) |
 | 07 | Workflow configurável e histórico | Completed | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
-| 08 | Auditoria, documentação e dashboards | Not Started | — | — |
+| 08 | Auditoria, documentação e dashboards | Planned | [FASE-08-AUDITORIA.md](specifications/FASE-08-AUDITORIA.md) | — |
 | 09 | Interface web completa | Not Started | — | — |
 | 10 | API e autenticação de agentes | Not Started | — | — |
 | 11 | CLI gestalyn | Not Started | — | — |
@@ -283,4 +285,4 @@ Incidentes já resolvidos, mantidos como referência:
 
 ## Próxima atividade
 
-1. Fase 08 (auditoria, documentação e dashboards): especificação para aprovação, depois de autorizada pelo responsável.
+1. Fase 08: aprovação das decisões D1 a D8 da [especificação](specifications/FASE-08-AUDITORIA.md) e, em seguida, implementação em `feature/fase-08-auditoria`.
