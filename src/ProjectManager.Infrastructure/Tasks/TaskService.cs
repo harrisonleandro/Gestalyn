@@ -30,6 +30,7 @@ internal sealed partial class TaskService(
     private const string ProjectNotFoundMessage = "Projeto não encontrado.";
     private const string NotOnTeamMessage = "A pessoa não está na equipe do projeto.";
     private const string ConflictMessage = "A tarefa foi alterada por outra pessoa. Recarregue e tente novamente.";
+    private const string FinalStateMessage = "A tarefa está num estado final e é somente leitura. Para alterá-la, reabra-a pela transição configurada.";
 
     public async Task<Result<TaskDetails>> CreateAsync(
         ActiveMembership actor,
@@ -169,7 +170,24 @@ internal sealed partial class TaskService(
         if (query.Overdue)
         {
             var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
-            tasks = tasks.Where(task => task.DueDate < today);
+            tasks = tasks.Where(task => task.DueDate < today
+                && dbContext.WorkflowStates.Any(state => state.Id == task.StateId && state.Category != StateCategory.Done && state.Category != StateCategory.Canceled));
+        }
+
+        if (query.StateId is { } stateId)
+        {
+            tasks = tasks.Where(task => task.StateId == stateId);
+        }
+
+        if (query.Category is { } category)
+        {
+            tasks = tasks.Where(task => dbContext.WorkflowStates.Any(state => state.Id == task.StateId && state.Category == category));
+        }
+
+        if (query.Open)
+        {
+            tasks = tasks.Where(task => dbContext.WorkflowStates.Any(state =>
+                state.Id == task.StateId && state.Category != StateCategory.Done && state.Category != StateCategory.Canceled));
         }
 
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -179,7 +197,7 @@ internal sealed partial class TaskService(
         }
 
         var totalCount = await tasks.CountAsync(cancellationToken);
-        var rows = await Sort(tasks, query.SortBy, query.SortDirection)
+        var rows = await Sort(tasks, dbContext.WorkflowStates, query.SortBy, query.SortDirection)
             .Skip(query.CalculateOffset())
             .Take(query.PageSize)
             .Select(task => new
@@ -187,6 +205,9 @@ internal sealed partial class TaskService(
                 task.Id,
                 task.Number,
                 task.Title,
+                task.StateId,
+                StateName = dbContext.WorkflowStates.Where(state => state.Id == task.StateId).Select(state => state.Name).FirstOrDefault(),
+                StateCategory = dbContext.WorkflowStates.Where(state => state.Id == task.StateId).Select(state => state.Category).FirstOrDefault(),
                 task.Priority,
                 task.DueDate,
                 task.PhaseId,
@@ -200,7 +221,7 @@ internal sealed partial class TaskService(
 
         var items = rows
             .Select(row => new TaskSummary(
-                row.Id, row.Number, row.Title, row.Priority, row.DueDate, row.PhaseId, row.MilestoneId,
+                row.Id, row.Number, row.Title, new TaskState(row.StateId, row.StateName!, row.StateCategory, row.StateCategory.IsFinal()), row.Priority, row.DueDate, row.PhaseId, row.MilestoneId,
                 row.Labels, row.AssigneeIds, row.ArchivedAt, row.UpdatedAt))
             .ToList();
 
@@ -241,6 +262,9 @@ internal sealed partial class TaskService(
             orderby other.Number
             select new TaskReference(other.Id, other.Number, other.Title, other.ArchivedAt)).ToListAsync(cancellationToken);
 
+        var state = await dbContext.WorkflowStates.AsNoTracking().SingleAsync(s => s.Id == task.StateId, cancellationToken);
+        var available = await AvailableTransitionsAsync(access, task, assignees, cancellationToken);
+
         return Result.Success(new TaskDetails(
             task.Id,
             task.ProjectId,
@@ -255,6 +279,8 @@ internal sealed partial class TaskService(
             assignees,
             dependsOn,
             blocks,
+            new TaskState(state.Id, state.Name, state.Category, state.IsFinal),
+            available,
             task.CreatedByUserId,
             task.ArchivedAt,
             task.ArchivedByUserId,
@@ -428,7 +454,7 @@ internal sealed partial class TaskService(
         ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(request);
 
-        var found = await FindWritableTaskAsync(taskId, cancellationToken);
+        var found = await FindWritableTaskAsync(taskId, cancellationToken, allowInFinalState: true);
         if (found.Error is not null)
         {
             return Result.Failure<CommentDetails>(found.Error.Kind, found.Error.Message);
@@ -451,7 +477,7 @@ internal sealed partial class TaskService(
         ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(request);
 
-        var found = await FindWritableTaskAsync(taskId, cancellationToken);
+        var found = await FindWritableTaskAsync(taskId, cancellationToken, allowInFinalState: true);
         if (found.Error is not null)
         {
             return Result.Failure<CommentDetails>(found.Error.Kind, found.Error.Message);
@@ -485,7 +511,7 @@ internal sealed partial class TaskService(
         ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(access);
 
-        var found = await FindWritableTaskAsync(taskId, cancellationToken);
+        var found = await FindWritableTaskAsync(taskId, cancellationToken, allowInFinalState: true);
         if (found.Error is not null)
         {
             return Result.Failure(found.Error.Kind, found.Error.Message);
@@ -615,12 +641,156 @@ internal sealed partial class TaskService(
             : Result.Failure(ErrorKind.Conflict, ConflictMessage);
     }
 
+    /// <summary>
+    /// Muda o estado da tarefa (ADR-013). Ordem das verificações: tarefa e projeto não arquivados, estado
+    /// esperado, estado de destino no mesmo projeto, regra de transição (existência, aprovação, próprio
+    /// trabalho, dependências) e, ao gravar, a trava otimista da tarefa.
+    /// </summary>
+    public async Task<Result<TaskDetails>> TransitionAsync(
+        ActiveMembership actor,
+        ProjectAccessGrant access,
+        Guid taskId,
+        TransitionTaskRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+        ArgumentNullException.ThrowIfNull(access);
+        ArgumentNullException.ThrowIfNull(request);
+
+        var found = await FindWritableTaskAsync(taskId, cancellationToken, includeAssignments: true, allowInFinalState: true);
+        if (found.Error is not null)
+        {
+            return Result.Failure<TaskDetails>(found.Error.Kind, found.Error.Message);
+        }
+
+        var task = found.Value!;
+        if (request.ExpectedStateId is { } expected && expected != task.StateId)
+        {
+            return Result.Failure<TaskDetails>(ErrorKind.Conflict, "A tarefa mudou de estado desde que você a abriu. Recarregue e tente novamente.");
+        }
+
+        var target = await dbContext.WorkflowStates.SingleOrDefaultAsync(s => s.ProjectId == task.ProjectId && s.Id == request.ToStateId, cancellationToken);
+        if (target is null)
+        {
+            return Result.Failure<TaskDetails>(ErrorKind.NotFound, "Estado de destino não encontrado neste projeto.");
+        }
+
+        var current = await dbContext.WorkflowStates.SingleAsync(s => s.Id == task.StateId, cancellationToken);
+        var transition = await dbContext.WorkflowTransitions
+            .SingleOrDefaultAsync(t => t.ProjectId == task.ProjectId && t.FromStateId == current.Id && t.ToStateId == target.Id, cancellationToken);
+        var requireIndependentApproval = await dbContext.Workflows
+            .Where(w => w.ProjectId == task.ProjectId)
+            .Select(w => w.RequireIndependentApproval)
+            .SingleAsync(cancellationToken);
+        var openDependencies = await CountOpenDependenciesAsync(task.Id, cancellationToken);
+
+        var transitionActor = new TransitionActor(
+            ActorKind.User,
+            CanApprove: access.HasPermission(ProjectPermissions.TasksApprove),
+            IsAssignee: task.Assignments.Any(assignment => assignment.UserId == actor.UserId));
+
+        var verdict = TransitionRules.Evaluate(transition, target, transitionActor, requireIndependentApproval, openDependencies);
+        if (verdict != TransitionVerdict.Allowed)
+        {
+            return verdict switch
+            {
+                TransitionVerdict.NoSuchTransition => Result.Failure<TaskDetails>(
+                    ErrorKind.Conflict, $"Não há transição de '{current.Name}' para '{target.Name}' no workflow deste projeto."),
+                TransitionVerdict.ApprovalPermissionRequired => Result.Failure<TaskDetails>(
+                    ErrorKind.Forbidden, "Esta transição exige aprovação, e seu acesso não concede a permissão 'tasks.approve'."),
+                TransitionVerdict.CannotApproveOwnWork => Result.Failure<TaskDetails>(
+                    ErrorKind.Forbidden, "Quem é responsável pela tarefa não pode aprovar o próprio trabalho neste projeto."),
+                _ => Result.Failure<TaskDetails>(
+                    ErrorKind.Conflict, $"A tarefa depende de {openDependencies} tarefa(s) ainda não concluída(s)."),
+            };
+        }
+
+        task.EnterState(target);
+        dbContext.TaskStatusHistory.Add(new TaskStatusHistory(task, current, target, actor.UserId, ActorKind.User, request.Comment, timeProvider.GetUtcNow()));
+
+        // A trava otimista da tarefa impede que duas transições simultâneas partam do mesmo estado.
+        if (!await dbContext.TrySaveChangesAsync(cancellationToken))
+        {
+            return Result.Failure<TaskDetails>(ErrorKind.Conflict, ConflictMessage);
+        }
+
+        LogTaskTransitioned(logger, task.Id, current.Id, target.Id, actor.UserId);
+        return await GetAsync(access, taskId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<TaskHistoryEntry>> ListHistoryAsync(Guid taskId, CancellationToken cancellationToken) =>
+        await (
+            from entry in dbContext.TaskStatusHistory.AsNoTracking()
+            join user in dbContext.Users on entry.ChangedById equals user.Id into users
+            from user in users.DefaultIfEmpty()
+            where entry.TaskId == taskId
+            orderby entry.ChangedAt, entry.Id
+            select new TaskHistoryEntry(
+                entry.Id,
+                entry.FromStateId,
+                entry.FromStateName,
+                entry.ToStateId,
+                entry.ToStateName,
+                entry.ChangedById,
+                user == null ? null : user.DisplayName,
+                entry.ActorKind,
+                entry.Comment,
+                entry.ChangedAt)).ToListAsync(cancellationToken);
+
+    /// <summary>
+    /// Transições que o usuário pode executar agora: as que saem do estado atual, filtradas pela permissão de
+    /// edição, pela de aprovação e pela regra do próprio trabalho. As dependências são verificadas na
+    /// execução, porque mudam com o andamento das outras tarefas.
+    /// </summary>
+    private async Task<IReadOnlyList<AvailableTransition>> AvailableTransitionsAsync(
+        ProjectAccessGrant access,
+        ProjectTask task,
+        IReadOnlyList<TaskAssignee> assignees,
+        CancellationToken cancellationToken)
+    {
+        if (task.IsArchived || !access.HasPermission(ProjectPermissions.TasksWrite) || await IsProjectArchivedAsync(task.ProjectId, cancellationToken))
+        {
+            return [];
+        }
+
+        var requireIndependentApproval = await dbContext.Workflows
+            .Where(w => w.ProjectId == task.ProjectId)
+            .Select(w => w.RequireIndependentApproval)
+            .SingleAsync(cancellationToken);
+        var canApprove = access.HasPermission(ProjectPermissions.TasksApprove);
+        var isAssignee = assignees.Any(assignee => assignee.UserId == access.UserId);
+
+        var options = await (
+            from transition in dbContext.WorkflowTransitions.AsNoTracking()
+            join target in dbContext.WorkflowStates on transition.ToStateId equals target.Id
+            where transition.ProjectId == task.ProjectId && transition.FromStateId == task.StateId
+            orderby target.Position
+            select new { transition.Id, transition.RequiresApproval, TargetId = target.Id, target.Name, target.Category }).ToListAsync(cancellationToken);
+
+        return options
+            .Where(option => !option.RequiresApproval || (canApprove && !(isAssignee && requireIndependentApproval)))
+            .Select(option => new AvailableTransition(option.Id, option.TargetId, option.Name, option.Category, option.RequiresApproval))
+            .ToList();
+    }
+
+    /// <summary>Dependências não resolvidas: tarefas das quais esta depende, fora de estado final e não arquivadas.</summary>
+    private Task<int> CountOpenDependenciesAsync(Guid taskId, CancellationToken cancellationToken) =>
+        (from dependency in dbContext.TaskDependencies
+         join blocker in dbContext.Tasks on dependency.DependsOnTaskId equals blocker.Id
+         join state in dbContext.WorkflowStates on blocker.StateId equals state.Id
+         where dependency.TaskId == taskId
+            && blocker.ArchivedAt == null
+            && state.Category != StateCategory.Done
+            && state.Category != StateCategory.Canceled
+         select dependency.DependsOnTaskId).CountAsync(cancellationToken);
+
     /// <summary>Tarefa rastreada para alteração; tarefa ou projeto arquivado respondem conflito.</summary>
     private async Task<Result<ProjectTask>> FindWritableTaskAsync(
         Guid taskId,
         CancellationToken cancellationToken,
         bool includeLabels = false,
-        bool includeAssignments = false)
+        bool includeAssignments = false,
+        bool allowInFinalState = false)
     {
         var query = dbContext.Tasks.AsQueryable();
         if (includeLabels)
@@ -644,8 +814,13 @@ internal sealed partial class TaskService(
             return Result.Failure<ProjectTask>(ErrorKind.Conflict, ProjectTask.ArchivedMessage);
         }
 
-        return await IsProjectArchivedAsync(task.ProjectId, cancellationToken)
-            ? Result.Failure<ProjectTask>(ErrorKind.Conflict, Project.ArchivedMessage)
+        if (await IsProjectArchivedAsync(task.ProjectId, cancellationToken))
+        {
+            return Result.Failure<ProjectTask>(ErrorKind.Conflict, Project.ArchivedMessage);
+        }
+
+        return !allowInFinalState && await TaskStates.IsFinalAsync(dbContext, task.StateId, cancellationToken)
+            ? Result.Failure<ProjectTask>(ErrorKind.Conflict, FinalStateMessage)
             : Result.Success(task);
     }
 
@@ -693,12 +868,21 @@ internal sealed partial class TaskService(
         orderby comment.CreatedAt
         select new CommentDetails(comment.Id, comment.AuthorUserId, user.DisplayName, comment.Body, comment.CreatedAt, comment.EditedAt);
 
-    private static IQueryable<ProjectTask> Sort(IQueryable<ProjectTask> tasks, TaskSortField sortBy, SortDirection direction)
+    private static IQueryable<ProjectTask> Sort(
+        IQueryable<ProjectTask> tasks,
+        IQueryable<WorkflowState> states,
+        TaskSortField sortBy,
+        SortDirection direction)
     {
         var descending = direction == SortDirection.Desc;
 
         return sortBy switch
         {
+            TaskSortField.State => (descending
+                    ? tasks.OrderByDescending(task => states.Where(state => state.Id == task.StateId).Select(state => state.Position).FirstOrDefault())
+                    : tasks.OrderBy(task => states.Where(state => state.Id == task.StateId).Select(state => state.Position).FirstOrDefault()))
+                .ThenBy(task => task.Number),
+
             // Sem prazo fica sempre por último.
             TaskSortField.DueDate => (descending
                     ? tasks.OrderBy(task => task.DueDate == null).ThenByDescending(task => task.DueDate)
@@ -731,6 +915,9 @@ internal sealed partial class TaskService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tarefa {TaskId} (número {TaskNumber}) criada no projeto {ProjectId} pelo usuário {UserId}.")]
     private static partial void LogTaskCreated(ILogger logger, Guid taskId, int taskNumber, Guid projectId, Guid userId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Tarefa {TaskId} passou do estado {FromStateId} para {ToStateId} pelo usuário {UserId}.")]
+    private static partial void LogTaskTransitioned(ILogger logger, Guid taskId, Guid fromStateId, Guid toStateId, Guid userId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Tarefa {TaskId} do projeto {ProjectId} arquivada pelo usuário {UserId}.")]
     private static partial void LogTaskArchived(ILogger logger, Guid taskId, Guid projectId, Guid userId);

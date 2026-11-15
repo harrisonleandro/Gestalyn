@@ -7,6 +7,9 @@ namespace ProjectManager.Application.Projects;
 /// <summary>Acesso efetivo do usuário a um projeto da organização ativa.</summary>
 public sealed record ProjectAccessGrant(Guid ProjectId, ProjectRole? Role, IReadOnlySet<string> Permissions)
 {
+    /// <summary>Usuário a quem o acesso foi concedido (o do token).</summary>
+    public Guid UserId { get; init; }
+
     public bool HasPermission(string permission) => Permissions.Contains(permission);
 
     /// <summary>
@@ -34,7 +37,7 @@ public sealed record ProjectAccessGrant(Guid ProjectId, ProjectRole? Role, IRead
             permissions.UnionWith(ProjectPermissions.For(role.Value));
         }
 
-        return permissions.Count == 0 ? null : new ProjectAccessGrant(projectId, role, permissions);
+        return permissions.Count == 0 ? null : new ProjectAccessGrant(projectId, role, permissions) { UserId = membership.UserId };
     }
 }
 
