@@ -14,7 +14,7 @@
 
 **Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
-**Fase 07, Workflow configurável e histórico: In Review.** Decisões D1 a D7 aprovadas em 2026-11-14 e implementadas em `feature/fase-07-workflow`. Validada localmente (280/280 testes, quatro mutações detectadas, migração de dados aplicada no banco de desenvolvimento e execução real da API com aprovação e dependências). Faltam o push, o CI no GitHub e o PR para `develop`, que dependem de autorização.
+**Fase 07, Workflow configurável e histórico: Completed.** Validada localmente (280/280 testes, quatro mutações detectadas, migração de dados aplicada no banco de desenvolvimento e execução real da API com aprovação e dependências) e no CI ([run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): 0 avisos, 148/148 e 132/132), e integrada em `develop` pelo [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) (merge `a6f87f9`). A próxima é a Fase 08, que depende de autorização.
 
 **Correções da auditoria técnica de 2026-11-12: Completed.** A auditoria do `develop` (`7a5c170`) confirmou cinco problemas, todos corrigidos e integrados com o CI aprovado:
 
@@ -31,7 +31,7 @@
 | Branch | Commit | Conteúdo |
 |---|---|---|
 | `main` | `c6bd32a` | Fase 01. Recebe `develop` só por PR de release, num marco definido pelo responsável. |
-| `develop` | `41cf693` | Fases 01 a 06 e correções da auditoria |
+| `develop` | `a6f87f9` | Fases 01 a 07 e correções da auditoria |
 
 **Proteção** (rulesets ativos desde 2026-11-14, sem exceções de bloqueio), nas duas branches:
 - não podem ser excluídas nem receber force push;
@@ -51,7 +51,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 04 | Organizações e permissões | Completed | [FASE-04-ORGANIZACOES.md](specifications/FASE-04-ORGANIZACOES.md) | [FASE-04-RELATORIO.md](reports/FASE-04-RELATORIO.md) |
 | 05 | Projetos e equipes | Completed | [FASE-05-PROJETOS.md](specifications/FASE-05-PROJETOS.md) | [FASE-05-RELATORIO.md](reports/FASE-05-RELATORIO.md) |
 | 06 | Fases, marcos e tarefas | Completed | [FASE-06-TAREFAS.md](specifications/FASE-06-TAREFAS.md) | [FASE-06-RELATORIO.md](reports/FASE-06-RELATORIO.md) |
-| 07 | Workflow configurável e histórico | In Review | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
+| 07 | Workflow configurável e histórico | Completed | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
 | 08 | Auditoria, documentação e dashboards | Not Started | — | — |
 | 09 | Interface web completa | Not Started | — | — |
 | 10 | API e autenticação de agentes | Not Started | — | — |
@@ -193,11 +193,10 @@ Evidências na [especificação da Fase 06](specifications/FASE-06-TAREFAS.md#ex
 | F07-011 | Tratar estado em uso, invariantes e concorrência | Completed |
 | F07-012 | Criar testes | Completed |
 
-Evidências na [especificação da Fase 07](specifications/FASE-07-WORKFLOW.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-07-RELATORIO.md). A fase fica **In Review** até o CI e o merge em `develop`.
+Evidências na [especificação da Fase 07](specifications/FASE-07-WORKFLOW.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-07-RELATORIO.md).
 
 ## Tarefas pendentes
 
-- Fase 07: push de `feature/fase-07-workflow`, CI no GitHub e PR para `develop` (dependem de autorização).
 - Fase 10: incluir como critério o teste de integração "agentes não aprovam o próprio trabalho" com agentes reais.
 
 - Configurações recomendadas pela auditoria e ainda não aplicadas (dependem de decisão):
@@ -245,6 +244,7 @@ Incidentes já resolvidos, mantidos como referência:
 | GitHub Actions (`ubuntu-latest`), PR #9 | 2026-11-14 | `a83dd0e` | [run 43636088042](https://github.com/harrisonleandro/Gestalyn/actions/runs/43636088042): success, 0 avisos, 114/114 e 101/101 |
 | GitHub Actions (`ubuntu-latest`), PR #10 | 2026-11-14 | `673425a` | [run 43636091061](https://github.com/harrisonleandro/Gestalyn/actions/runs/43636091061): success, 0 avisos, 112/112 e 112/112 |
 | Local, branches da auditoria combinadas | 2026-11-14 | `3f8d20a` (verificação local) | build Release 0 avisos · testes 244/244 (127 unitários, 117 de integração) · 5 mutações detectadas · API executada com o cenário do invasor |
+| GitHub Actions (`ubuntu-latest`), PR #13 | 2026-11-15 | `f3d000a` | [run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): success, 0 avisos, 148/148 e 132/132 (PostgreSQL e Mailpit via Testcontainers) |
 | Local, `feature/fase-07-workflow` | 2026-11-15 | `93e33e1` | restore exit 0 · build Release 0 avisos e 0 erros · testes 280/280 (148 unitários, 132 de integração) · 4 mutações detectadas · migration aplicada no banco local · API executada com aprovação, dependências e histórico |
 | Local, `feature/fase-06-tarefas` | 2026-11-12 01:38 | `b452cdb` | restore exit 0 · build Release 0 avisos e 0 erros · testes 195/195 (99 unitários, 96 de integração) · API executada com upload e download de anexo · migrations aplicadas no banco local |
 | Local, `feature/fase-05-projetos` | 2026-11-11 21:40 | `c30da85` | restore exit 0 · build Release 0 avisos e 0 erros · testes 136/136 (59 unitários, 77 de integração) · API executada com usuários reais · migration aplicada no banco local |
@@ -277,10 +277,10 @@ Incidentes já resolvidos, mantidos como referência:
 | 2026-11-12 | Fase 06 integrada em `develop` (PR #7, merge `8025a23`) | [PR #7](https://github.com/harrisonleandro/Gestalyn/pull/7) |
 | 2026-11-14 | Rotação idempotente de refresh token: repetição só dentro de 10 s e com o sucessor ainda não usado; qualquer outro reuso revoga a sessão (auditoria, P1) | [ADR-012](decisions/ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md), [PR #9](https://github.com/harrisonleandro/Gestalyn/pull/9) |
 | 2026-11-14 | Proteção de `main` e `develop` por rulesets: PR obrigatório, CI "Build e testes" obrigatório, sem force push nem exclusão | Rulesets 27277722 e 27277724 |
+| 2026-11-15 | Fase 07 integrada em `develop` (PR #13, merge `a6f87f9`) | [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) |
 | 2026-11-14 | Fase 07: workflow por projeto, categorias fixas com estados finais, transições explícitas, aprovação com `tasks.approve`, agentes nunca aprovam o próprio trabalho, histórico com os nomes na data e migração de dados (D1 a D7) | [ADR-013](decisions/ADR-013-WORKFLOW-CONFIGURAVEL.md) |
 | 2026-11-12 | Fase 06: tarefas sem estado até o workflow, anexos em `IFileStorage` (disco local, tipos conferidos pelo conteúdo), fases e marcos do mesmo projeto, responsáveis da equipe, dependências sem ciclos, permissões de tarefa e número por projeto (D1 a D7) | [ADR-011](decisions/ADR-011-TAREFAS-E-ANEXOS.md) |
 
 ## Próxima atividade
 
-1. Fase 07: push de `feature/fase-07-workflow`, CI e PR para `develop`, com autorização do responsável; depois do merge, registrar a fase como Completed.
-2. Fase 08 (auditoria, documentação e dashboards): especificação, depois de autorizada.
+1. Fase 08 (auditoria, documentação e dashboards): especificação para aprovação, depois de autorizada pelo responsável.

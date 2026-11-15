@@ -1,6 +1,6 @@
 # Arquitetura do Gestalyn
 
-> Estado: Fases 01 a 06 concluídas (fundação, persistência, identidade, organizações, projetos e tarefas); Fase 07 (workflow) em revisão. Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
+> Estado: Fases 01 a 07 concluídas (fundação, persistência, identidade, organizações, projetos, tarefas e workflow). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
 
 ## 1. Visão geral
 
@@ -257,7 +257,7 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | ~~Papéis, permissões e convites~~ (ADR-009) | 04 (concluída) |
 | ~~Acesso a projetos, papéis de projeto e cabeçalho de organização~~ (ADR-010) | 05 (concluída) |
 | ~~Fases, marcos, tarefas e armazenamento de anexos~~ (ADR-011) | 06 (concluída) |
-| ~~Workflow configurável, aprovação e histórico de estados~~ (ADR-013) | 07 |
+| ~~Workflow configurável, aprovação e histórico de estados~~ (ADR-013) | 07 (concluída) |
 | Armazenamento de anexos em object storage compatível com S3 | 14 |
 | Cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso; papéis de projeto | 05 |
 | Credenciais de agentes, escopos e idempotência | 10 |
