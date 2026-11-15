@@ -1,6 +1,6 @@
 # Arquitetura do Gestalyn
 
-> Estado: Fases 01 a 07 concluídas (fundação, persistência, identidade, organizações, projetos, tarefas e workflow). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
+> Estado: Fases 01 a 07 concluídas (fundação, persistência, identidade, organizações, projetos, tarefas e workflow); Fase 08 (auditoria, documentos e dashboards) em revisão. Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
 
 ## 1. Visão geral
 
@@ -190,6 +190,26 @@ erDiagram
 - **Histórico:** `task_status_history` guarda os nomes dos estados na data e o tipo de autor (pessoa ou agente), sem FK para os estados.
 - **Edições do workflow:** travam a linha do workflow (`xmin`), o que protege as invariantes que ficam no domínio ([ADR-013](../decisions/ADR-013-WORKFLOW-CONFIGURAVEL.md)).
 
+### 3.7 Auditoria, documentos e dashboards (Fase 08)
+
+```mermaid
+erDiagram
+    organizations ||--o{ activity_events : "organization_id"
+    projects ||--o{ activity_events : "(organization_id, project_id)"
+    tasks ||--o{ activity_events : "(organization_id, project_id, task_id)"
+    projects ||--o{ activity_logs : "(organization_id, project_id)"
+    projects ||--o{ project_documents : "(organization_id, project_id)"
+    project_documents ||--o{ project_document_versions : "(organization_id, project_id, document_id)"
+    projects ||--o{ decisions : "(organization_id, project_id)"
+    decisions ||--o| decisions : "superseded_by_id, mesmo projeto"
+```
+
+- **Eventos:** cada serviço registra o evento com `ActivityRecorder` no mesmo `SaveChanges` da alteração, com o autor do token, a origem declarada (`X-Gestalyn-Client`), o ID da requisição e as alterações campo a campo.
+- **Imutabilidade:** gatilhos recusam `UPDATE`, `DELETE` e `TRUNCATE` em `activity_events` e `activity_logs`.
+- **Documentos:** cada edição grava uma versão imutável; a versão esperada e o `xmin` impedem sobrescrever o trabalho de outra pessoa.
+- **Decisões:** proposta, aceita ou rejeitada, e substituída por outra aceita do mesmo projeto.
+- **Dashboards:** consultas agregadas na hora. O progresso segue a regra única `ProgressRule`; as estatísticas usam a categoria registrada no histórico de estados (`task_status_history.to_category`). Detalhes em [ADR-014](../decisions/ADR-014-AUDITORIA-DOCUMENTOS-E-DASHBOARDS.md).
+
 ## 4. Módulos (evolução prevista)
 
 A modularização será **vertical por contexto de negócio** dentro de cada camada (por exemplo `Application/Projects`, `Application/Tasks`, `Infrastructure/Persistence/Projects`). Cada módulo expõe seus casos de uso pela camada `Application` e não acessa diretamente os dados de outro módulo. A comunicação entre módulos ocorre por interfaces de aplicação ou eventos de domínio.
@@ -250,7 +270,7 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | Tema | Fase |
 |---|---|
 | ~~Modelo de domínio inicial, PostgreSQL + EF Core, migrations, auditoria de persistência, health check do banco~~ (ADR-002, 003 e 004) | 02 (concluída) |
-| Autor das alterações (`CreatedBy`/`UpdatedBy`) | 08 |
+| ~~Autor e origem das alterações (auditoria imutável), documentos, decisões e dashboards~~ (ADR-014) | 08 |
 | ~~Resolução da organização ativa pela identidade~~ (ADR-008) | 04 (concluída) |
 | Reavaliação de Row-Level Security | 13 |
 | ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |

@@ -1,6 +1,6 @@
 # Fase 08: Auditoria, documentação e dashboards
 
-- **Estado:** Planned. Aguarda a aprovação das decisões D1 a D8.
+- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D8 aprovadas pelo responsável em 2026-11-15.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 08), seção 4.6 (auditoria e documentação), seções 5.6 e 5.7 (contratos) e seção 6.4 (relatório de trabalho)
 - **Branch:** `feature/fase-08-auditoria` (a partir de `develop` `fe04718`, com as Fases 01 a 07 integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -41,7 +41,7 @@ A especificação mestre proíbe percentuais arbitrários de progresso.
 - **Política de retenção e exportação da auditoria:** Fase 14, com a operação.
 - **Recriar eventos de alterações antigas:** os eventos começam nesta fase (D2). O histórico de estados da Fase 07 continua disponível e alimenta as estatísticas.
 
-## Decisões (D1 a D8, para aprovação)
+## Decisões (D1 a D8 aprovadas)
 
 | ID | Proposta | Alternativas |
 |---|---|---|
@@ -205,3 +205,31 @@ docs/api/ACTIVITY.md, DOCUMENTS.md, DASHBOARDS.md
 - ADR-014 registrado.
 - Documentação atualizada: `docs/api/ACTIVITY.md`, `DOCUMENTS.md`, `DASHBOARDS.md`, README, AGENTS.md, ARCHITECTURE, `PROJECT_STATUS.md` e relatório da Fase 08.
 - Alterações integradas por PR, com o check "Build e testes" aprovado.
+
+## Execução e ajustes em relação ao plano
+
+| ID | Estado | Evidência |
+|---|---|---|
+| F08-001 | Completed | `ActivityLog` e `POST /projects/{id}/activities`; `ManualLogs_AreValidated_AndFollowProjectPermissions` |
+| F08-002 | Completed | `ActivityEvent`, `ActivityRecorder` e `HttpActivityContext`; `Events_IdentifyTheAuthorFromTheToken_TheDeclaredOrigin_AndTheChangedFields`; gatilhos testados em `ActivityRecords_CannotBeChangedOrDeleted_EvenDirectlyInTheDatabase` |
+| F08-003 | Completed | 13 ações de tarefa, conferidas uma a uma em `EveryWriteRoute_RecordsExactlyOneEvent` |
+| F08-004 | Completed | Projeto, equipe, repositórios, planejamento e workflow no mesmo teste de cobertura |
+| F08-005 | Completed | Convites, aceitação, papel e remoção no teste de cobertura; `OrganizationActivities_RequireThePermission_AreIsolated_AndCarryNoEmails` |
+| F08-006 | Completed | `Editing_CreatesVersions_AndAnOutdatedVersionIsAConflict` (inclui duas edições simultâneas), `Documents_FollowProjectPermissions_AndArchivingMakesThemReadOnly` |
+| F08-007 | Completed | `Decisions_MoveFromProposedToDecided_AndAreImmutableAfterwards`; `DocumentRulesTests` |
+| F08-008 | Completed | `OrganizationDashboard_CountsOnlyTheProjectsTheUserSees`; mutação detectada |
+| F08-009 | Completed | `ProjectDashboard_ShowsRealNumbers` |
+| F08-010 | Completed | `ProgressRule`; `ProgressRuleTests` e `Progress_FollowsTheDocumentedRule_ForTheProjectPhasesAndMilestones`; mutação detectada |
+| F08-011 | Completed | `Statistics_CountCreatedAndCompletedTasksPerWeek_AndTheCycleTime` (datas de criação ajustadas para tempos conhecidos) |
+| F08-012 | Completed | `List_CombinesEventsAndManualLogs_WithFiltersAndPagination` |
+| F08-013 | Completed | 30 casos unitários e 18 testes de integração novos; 4 mutações detectadas |
+| CI | **In Review** | Depende do push de `feature/fase-08-auditoria`, autorizado pelo responsável |
+
+Ajustes feitos durante a implementação, dentro das decisões aprovadas:
+
+1. **Categoria no histórico de estados:** as estatísticas precisam saber se uma mudança antiga levou a um estado concluído, e a categoria atual de um estado pode ter mudado, ou o estado pode ter sido excluído. `TaskStatusHistory` ganhou `ToCategory`, gravado a cada transição. A migration `AddStatusHistoryCategory` preenche os registros existentes com a categoria atual do estado, a melhor informação disponível, e o teste de migração da Fase 07 confere o resultado.
+2. **Paginação da lista combinada:** a união é feita só com o ID e a data de cada item (`UNION ALL`), e os detalhes da página são lidos depois, nas duas tabelas. Assim, as colunas que só um dos lados tem (`changes`, `details`) não entram na união.
+3. **Ações do catálogo:** `project.member_updated` cobre a mudança de papel e de responsável na equipe; as etiquetas do projeto entram em `project.updated`; não há `project.restored`, porque a API não tem rota de restauração de projeto.
+4. **Operações sem efeito não geram evento:** arquivar o que já está arquivado e um `PATCH` que não muda nenhum campo respondem com sucesso, sem evento. O teste de cobertura usa sempre operações com efeito.
+5. **Dashboard da organização:** exige `organization.read`, concedida a todos os papéis de sistema.
+6. **Registro manual:** o autor também vem do token e a origem do cabeçalho, como nos eventos.
