@@ -1,6 +1,6 @@
 # Fase 08: Auditoria, documentação e dashboards
 
-- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D8 aprovadas pelo responsável em 2026-11-15.
+- **Estado:** Completed. Validada localmente (testes, mutação e execução real da API) e no CI ([run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965)), e integrada em `develop` pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) (merge `0e9dbdd`). Decisões D1 a D8 aprovadas pelo responsável em 2026-11-15.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 08), seção 4.6 (auditoria e documentação), seções 5.6 e 5.7 (contratos) e seção 6.4 (relatório de trabalho)
 - **Branch:** `feature/fase-08-auditoria` (a partir de `develop` `fe04718`, com as Fases 01 a 07 integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -223,7 +223,7 @@ docs/api/ACTIVITY.md, DOCUMENTS.md, DASHBOARDS.md
 | F08-011 | Completed | `Statistics_CountCreatedAndCompletedTasksPerWeek_AndTheCycleTime` (datas de criação ajustadas para tempos conhecidos) |
 | F08-012 | Completed | `List_CombinesEventsAndManualLogs_WithFiltersAndPagination` |
 | F08-013 | Completed | 30 casos unitários e 18 testes de integração novos; 4 mutações detectadas |
-| CI | **In Review** | Depende do push de `feature/fase-08-auditoria`, autorizado pelo responsável |
+| CI | Completed | [run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): 0 avisos, 178/178 e 150/150; [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15), merge `0e9dbdd` |
 
 Ajustes feitos durante a implementação, dentro das decisões aprovadas:
 

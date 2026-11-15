@@ -3,7 +3,7 @@
 - **Data:** 2026-11-15
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29
 - **Branch:** `feature/fase-08-auditoria` (a partir de `develop` `fe04718`, com as Fases 01 a 07 integradas)
-- **Estado:** **In Review.** Critérios verificados localmente; faltam o push, o CI no GitHub e a integração em `develop` por PR, que dependem de autorização do responsável.
+- **Estado:** **Completed.** Critérios verificados localmente e no CI; integrada em `develop` pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) (merge `0e9dbdd`).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -154,7 +154,6 @@ O teste com duas edições simultâneas de documento passou em 5 execuções seg
 
 ## 14. Pendências
 
-- Push de `feature/fase-08-auditoria`, CI no GitHub e PR para `develop` (dependem de autorização).
 - **Fase 09:** telas de atividades, documentos (com Markdown sanitizado), decisões e dashboards; SignalR só se houver necessidade.
 - **Fase 10:**
   - autores do tipo agente, pela credencial;
@@ -181,7 +180,7 @@ O teste com duas edições simultâneas de documento passou em 5 execuções seg
 
 ## 16. Critérios não atendidos
 
-Nenhum critério de aceitação deixou de ser atendido. A definição de conclusão ainda não foi cumprida: faltam o CI no GitHub e a integração em `develop` por PR. Por isso, a fase fica **In Review**.
+Nenhum. A definição de conclusão também foi cumprida: CI aprovado ([run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): 0 avisos, 178/178 e 150/150) e integração por PR ([PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15), merge `0e9dbdd`).
 
 ## 17. Riscos identificados
 
@@ -197,19 +196,19 @@ Nenhum critério de aceitação deixou de ser atendido. A definição de conclus
 
 ## 18. Estado do Git
 
-- **Branch:** `feature/fase-08-auditoria`, a partir de `develop` `fe04718`, ainda não enviada.
+- **Branch:** `feature/fase-08-auditoria`, a partir de `develop` `fe04718`, enviada e incorporada pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15).
 - **Commits:**
   - `826bdda` (especificação);
   - `3bd3504` (atividades, autor, origem, filtros e cobertura);
   - `8795be0` (documentos e decisões);
   - `2d20219` (progresso, dashboards e estatísticas);
-  - commit de documentação de encerramento.
-- **`develop`:** `fe04718`.
+  - `558c1d8` (documentação de encerramento).
+- **PR #15 (Fase 08):** CI aprovado sobre `558c1d8`; merge `0e9dbdd`.
+- **`develop`:** `0e9dbdd`.
 
 ## 19. Próxima fase recomendada
 
-1. **Antes:** push, CI e PR da Fase 08 para `develop`, com autorização do responsável.
-2. **Fase 09, Interface web completa:**
+1. **Fase 09, Interface web completa:**
    - telas de projetos, tarefas (quadro pelo workflow e pelas transições disponíveis), atividades, documentos, decisões e dashboards;
    - Markdown renderizado com sanitização;
    - validação de alcançabilidade na configuração do workflow;
