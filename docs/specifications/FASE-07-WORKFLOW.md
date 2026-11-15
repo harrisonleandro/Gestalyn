@@ -1,6 +1,6 @@
 # Fase 07: Workflow configurável e histórico
 
-- **Estado:** In Review. Implementada e validada localmente (testes, mutação e execução real da API); faltam o CI no GitHub e a integração em `develop`. Decisões D1 a D7 aprovadas pelo responsável em 2026-11-14.
+- **Estado:** Completed. Validada localmente (testes, mutação e execução real da API) e no CI ([run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156)), e integrada em `develop` pelo [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) (merge `a6f87f9`). Decisões D1 a D7 aprovadas pelo responsável em 2026-11-14.
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md), seção 9 (Fase 07), seção 4.5 (fluxos de trabalho configuráveis) e seção 5.5 (contratos)
 - **Branch:** `feature/fase-07-workflow` (a partir de `develop`, com as Fases 01 a 06 e as correções da auditoria integradas)
 - **Pré-requisito para implementar:** decisões aprovadas
@@ -210,7 +210,7 @@ docs/api/WORKFLOW.md
 | F07-010 | Completed | `TaskStatusHistory` e `GET /tasks/{id}/history`; `History_StaysReadable_AfterStatesAreRenamedOrDeleted` |
 | F07-011 | Completed | Estado em uso, estado inicial, invariantes, concorrência (`SimultaneousTransitions_LetOnlyOneWin`, estável em 5 execuções) e projeto arquivado |
 | F07-012 | Completed | 21 casos unitários novos e 15 testes de integração novos; 4 mutações detectadas |
-| CI | **In Review** | Depende do push de `feature/fase-07-workflow`, autorizado pelo responsável |
+| CI | Completed | [run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): 0 avisos, 148/148 e 132/132; [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13), merge `a6f87f9` |
 
 **Critério "agentes não aprovam o próprio trabalho por padrão":** a regra está implementada (`TransitionRules`) e coberta por teste unitário. O teste de integração com agentes reais depende das credenciais de agente da Fase 10 e deve ser critério dela.
 
