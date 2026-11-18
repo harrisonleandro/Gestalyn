@@ -723,6 +723,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 |---|---|---|
 | 0 | Concluída em 2026-11-18 | Merge do PR #18 (`d6c34fc`), CI de `develop` aprovado (run 44385682944); branch rebaseada antes de qualquer envio |
 | 1 | Concluída em 2026-11-18 | Ver abaixo |
+| 2 | Concluída em 2026-11-18 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -745,3 +746,32 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
   - a entrada anônima responde 200, e com o JWT `/auth/me` e `/organizations` respondem 200;
   - `/health` continua anônimo (200);
   - nenhum erro no log.
+
+### Etapa 2: agentes, credenciais, acesso e `agents.manage`
+
+- **Domínio** (`src/ProjectManager.Domain/Agents`):
+  - `Agent`: nome único na organização sem diferenciar maiúsculas (`normalized_name`), descrição, estado, desativação e reativação;
+  - `AgentCredential`: só o hash e o prefixo, escopos validados e ordenados, validade de 1 a 365 dias, revogação que mantém a primeira data e o primeiro autor, sem criação para agente desativado;
+  - `AgentProjectAccess`: papel Colaborador ou Observador, agente e projeto da mesma organização;
+  - `AgentScopes` e `AgentTokens` (formato `gsk_` + 43 caracteres base64url, prefixo de 8 e hash hexadecimal de 64);
+  - `AgentRuleException` para as regras recusadas.
+- **Permissão:** `agents.manage` no catálogo e nos papéis de sistema Proprietário e Administrador das organizações novas.
+- **Migração `AddAgents`:**
+  - tabelas `agents`, `agent_credentials` (escopos em `text[]`) e `agent_project_access`;
+  - FKs compostas pela organização;
+  - `CHECK` do estado, do papel, dos escopos não vazios e da validade;
+  - índices únicos do hash e do nome;
+  - migração de dados de `agents.manage` para Proprietário e Administrador existentes.
+- **Ajuste:** a coluna `last_used_at` foi criada agora e será gravada na etapa 10, junto com o contador do rate limiting (D2 e D11).
+- **Testes novos:**
+  - 19 unitários (`AgentRulesTests`);
+  - 6 de integração (`AgentPersistenceTests`): migração da permissão (só Proprietário e Administrador, inclusive com papel personalizado), filtro de leitura com outra organização e sem organização, gravação cruzada bloqueada, FKs compostas, restrições do banco e escopos lidos de volta.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet test`: 399/399 (197 unitários, 43 de componentes, 159 de integração).
+- **Mutações detectadas:**
+  - sem a migração de dados, o teste da permissão falha;
+  - com o papel Gerente liberado no domínio, o teste do acesso falha.
+- **Banco de desenvolvimento:** migração aplicada. 20 papéis (os Proprietários e Administradores existentes) receberam `agents.manage`, e nenhum outro.
+- **Execução real:** `GET /organizations/{id}/me` devolve `agents.manage` para o Proprietário e não para o Membro; nenhum erro no log.
+

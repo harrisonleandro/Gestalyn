@@ -18,6 +18,7 @@ public static class OrganizationPermissions
     public const string ProjectsReadAll = "projects.read_all";
     public const string ProjectsManageAll = "projects.manage_all";
     public const string ActivityReadAll = "activity.read_all";
+    public const string AgentsManage = "agents.manage";
 
     public static IReadOnlyDictionary<string, string> Catalog { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -31,5 +32,6 @@ public static class OrganizationPermissions
         [ProjectsReadAll] = "Ver todos os projetos da organização",
         [ProjectsManageAll] = "Administrar todos os projetos da organização",
         [ActivityReadAll] = "Consultar as atividades de toda a organização",
+        [AgentsManage] = "Administrar agentes de IA, credenciais e acessos a projetos",
     };
 }

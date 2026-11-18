@@ -1,5 +1,6 @@
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Projects;
+using ProjectManager.Infrastructure.Identity;
 
 namespace ProjectManager.IntegrationTests.Infrastructure;
 
@@ -17,6 +18,18 @@ internal static class TestData
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         return organization;
+    }
+
+    /// <summary>Usuário mínimo, para autorias com FK para <c>users</c>.</summary>
+    public static async Task<Guid> CreateUserAsync(PostgresDatabaseFixture database)
+    {
+        var user = new ApplicationUser { DisplayName = "Pessoa de teste" };
+
+        await using var context = database.CreateContext(organizationId: null);
+        context.Users.Add(user);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        return user.Id;
     }
 
     public static async Task<Project> CreateProjectAsync(
