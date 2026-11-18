@@ -41,15 +41,30 @@ Worker → Application (abstrações) + Infrastructure (implementações)
 - **Multi-tenancy** ([ADR-003](docs/decisions/ADR-003-ISOLAMENTO-MULTI-TENANT.md)): banco e schema compartilhados, UUID, `OrganizationId` nas entidades da organização, validação de pertencimento e autorização no backend e testes de isolamento. Nunca confie apenas no `OrganizationId` enviado pelo cliente ou pelo agente.
   - Toda entidade pertencente a uma organização implementa `IOrganizationOwned`, o que aplica o filtro de leitura automaticamente. Não filtre por organização manualmente.
   - Entidades filhas referenciam o pai por FK composta `(organization_id, <pai>_id)` → `(organization_id, id)`.
-  - `IgnoreQueryFilters` só é permitido no `MembershipDirectory` ([ADR-008](docs/decisions/ADR-008-ORGANIZACAO-ATIVA.md)), sempre restrito ao usuário do token ou ao hash de um convite. SQL bruto sobre dados de organizações exige justificativa em ADR.
+  - `IgnoreQueryFilters` só é permitido no `MembershipDirectory` ([ADR-008](docs/decisions/ADR-008-ORGANIZACAO-ATIVA.md)), sempre restrito ao usuário do token ou ao hash de um convite. SQL bruto sobre dados de organizações exige justificativa em ADR. As únicas outras exceções são as do [ADR-016](docs/decisions/ADR-016-AGENTES.md):
+    - o `AgentCredentialDirectory`, restrito à busca da credencial pelo hash do token;
+    - o upsert do rate limiting de agentes;
+    - a trava consultiva da idempotência;
+    - a limpeza de retenção do `AgentRetentionService`.
   - Endpoints de organização usam a rota `{organizationId}` (a organização ativa é validada pela associação do usuário) e `[OrganizationPermission("...")]`. A autorização é sempre **por permissão do catálogo, nunca pelo nome do papel** ([ADR-009](docs/decisions/ADR-009-PAPEIS-PERMISSOES-E-CONVITES.md)). Não membro recebe 404; membro sem permissão recebe 403.
   - Rotas por ID de recurso (`/projects/{projectId}`) recebem a organização pelo cabeçalho `X-Gestalyn-Organization`, validado como a rota, e usam `[ProjectPermission("...")]`. O acesso a um projeto é calculado só por `ProjectAccessGrant.Compute` (papel na organização + papel na equipe); não duplique essa regra ([ADR-010](docs/decisions/ADR-010-PROJETOS-E-EQUIPES.md)). Projeto invisível recebe 404.
   - Recursos dentro de um projeto acessados pelo próprio ID (`/tasks/{taskId}`) usam `[TaskPermission("...")]`, que localiza o projeto do recurso e calcula o acesso com `IProjectAccess` ([ADR-011](docs/decisions/ADR-011-TAREFAS-E-ANEXOS.md)). Siga esse modelo para novos recursos.
-  - O estado da tarefa muda só por `POST /tasks/{id}/transitions`, validado por `TransitionRules` ([ADR-013](docs/decisions/ADR-013-WORKFLOW-CONFIGURAVEL.md)). Não altere `state_id` por outro caminho, não use enum rígido para estados e registre toda mudança em `TaskStatusHistory`. Agentes nunca aprovam o próprio trabalho por padrão.
+  - O estado da tarefa muda só por `POST /tasks/{id}/transitions` (pessoas) e `POST /agents/tasks/{id}/transitions` (agentes, [ADR-016](docs/decisions/ADR-016-AGENTES.md)), as duas pelo mesmo serviço e validadas por `TransitionRules` ([ADR-013](docs/decisions/ADR-013-WORKFLOW-CONFIGURAVEL.md)). Não altere `state_id` por outro caminho, não use enum rígido para estados e registre toda mudança em `TaskStatusHistory`.
+  - Agentes nunca executam transições que exigem aprovação e nunca entram em estados da categoria `Done`, inclusive em workflows personalizados. A regra fica em `TransitionRules`, nunca só na rota. As transições disponíveis também são calculadas por `TransitionRules`.
   - **Auditoria** ([ADR-014](docs/decisions/ADR-014-AUDITORIA-DOCUMENTOS-E-DASHBOARDS.md)): toda rota de escrita registra um evento com `ActivityRecorder`, antes do `SaveChanges` da alteração, e entra no cenário de `ActivityCoverageTests` (o teste falha se faltar). Não copie textos longos nem e-mails para os eventos. O autor vem do token e a origem do cabeçalho `X-Gestalyn-Client`, que é só informativa. Eventos e registros manuais são imutáveis, inclusive no banco (gatilhos).
   - O progresso é calculado só por `ProgressRule` (concluídas ÷ (tarefas − canceladas)); não crie percentuais por outro caminho.
   - Arquivos enviados passam por `IFileStorage` com chave gerada pelo sistema; nunca use o nome enviado pelo cliente como caminho, e confira o tipo pelo conteúdo (`AttachmentFiles`).
   - Permissão nova no catálogo da organização exige migração de dados para os papéis de sistema das organizações existentes, com teste (veja `ProjectMigrationTests`).
+  - **Agentes** ([ADR-016](docs/decisions/ADR-016-AGENTES.md)):
+    - o acesso de um agente a um projeto é calculado só por `AgentAccessGrant.Compute` (escopos da credencial, papel em `AgentProjectAccess` e exigência da operação). Não duplique essa regra;
+    - agentes nunca recebem `tasks.approve` nem o papel Gerente;
+    - a organização de um agente vem só da credencial, nunca de cabeçalho ou rota;
+    - a autoria registra o tipo do ator (`ActorKind.Agent`). Uma tarefa tem exatamente um autor, pessoa ou agente, e a autoria nunca muda;
+    - serviços que gravam autoria com FK para `users` recusam um ator agente;
+    - todo `POST` de agente exige `Idempotency-Key`, com reserva, operação e resposta na mesma transação e reautorização antes de devolver uma resposta guardada;
+    - alterações de tarefa por agentes exigem `expectedVersion`;
+    - toda requisição de agente gera uma `AgentOperation`, sem token, cabeçalhos ou corpos;
+    - `WorkReport` e `AgentOperation` são imutáveis no banco. A exclusão de operações só acontece pela limpeza de retenção, depois de 180 dias.
 - **Persistência** ([ADR-002](docs/decisions/ADR-002-PERSISTENCIA-EF-CORE-POSTGRESQL.md)): toda alteração do modelo exige uma migration (`dotnet ef migrations add`, veja o README). Migrations nunca são aplicadas automaticamente pela aplicação. Os arquivos em `Migrations/` são código gerado; não os edite à mão sem necessidade.
 - Não introduza microsserviços, Kubernetes, Redis, mensageria distribuída ou infraestrutura complexa sem aprovação.
 - Mudanças de arquitetura exigem aprovação e um ADR em `docs/decisions/`.
@@ -73,9 +88,15 @@ Worker → Application (abstrações) + Infrastructure (implementações)
 - A autorização é sempre feita no backend. Esconder elementos na interface não é mecanismo de segurança.
 - **Autenticação** ([ADR-006](docs/decisions/ADR-006-AUTENTICACAO-E-SESSAO.md), [docs/security/AUTENTICACAO.md](docs/security/AUTENTICACAO.md)):
   - Todo controller da API exige autenticação por padrão (`AuthorizeFilter` global). Endpoints públicos precisam de `[AllowAnonymous]` explícito e justificado.
+  - A partir da Fase 10 ([ADR-016](docs/decisions/ADR-016-AGENTES.md)), a autenticação passa a ser por política explícita:
+    - `User` (JWT com `sid`) em todas as rotas, exceto `/api/v1/agents/*`;
+    - `Agent` (esquema `AgentToken`) só em `/api/v1/agents/*`.
+
+    Não registre um seletor de esquema como padrão. O teste de políticas exige exatamente uma política, ou `[AllowAnonymous]`, em cada endpoint.
   - A identidade do usuário e da sessão vem das claims `sub`/`sid` do token, nunca do corpo da requisição.
   - Respostas de autenticação não podem revelar se um e-mail está cadastrado.
-  - Tokens nunca vão para o navegador: a Web guarda-os no cookie HttpOnly (BFF).
+  - Tokens nunca vão para o navegador: a Web guarda-os no cookie HttpOnly (BFF). Única exceção ([ADR-016](docs/decisions/ADR-016-AGENTES.md)): o token de uma credencial de agente recém-criada aparece uma vez, na resposta da criação, com `Cache-Control: no-store`, sem ser guardado nem registrado em lugar nenhum.
+  - Credenciais de agentes ficam só como hash SHA-256 e prefixo. Nunca registre o token, o prefixo ou o hash em logs.
 - **Web** ([ADR-015](docs/decisions/ADR-015-INTERFACE-WEB.md)):
   - páginas SSR com formulários e antiforgery; nada de Interactive Server ou WebAssembly chamando a API em nome do usuário;
   - o que aparece na tela depende só das permissões e transições que a API devolve; não recalcule regras de acesso na Web;

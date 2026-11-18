@@ -8,19 +8,19 @@
 
 ## Fase atual
 
-**Fase 10, API e autenticação de agentes: Planned.** A [especificação](specifications/FASE-10-AGENTES.md) aguarda a aprovação das decisões D1 a D10; nada foi implementado. Ela inclui a interface de agentes transferida da Fase 09 (F09-018) e o teste "agentes não aprovam o próprio trabalho" com um agente real, e mantém o tempo real fora, sem necessidade comprovada.
-
-**Fase 05, Projetos e equipes: Completed.** Validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais) e no CI ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): 0 avisos, 59/59 e 77/77), e integrada em `develop` pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) (merge `6a32f58`).
-
-**Fase 06, Fases, marcos e tarefas: Completed.** Validada localmente (195/195 testes, duas mutações detectadas e execução real da API com upload e download de anexo) e no CI ([run 43136119632](https://github.com/harrisonleandro/Gestalyn/actions/runs/43136119632): 0 avisos, 99/99 e 96/96), e integrada em `develop` pelo [PR #7](https://github.com/harrisonleandro/Gestalyn/pull/7) (merge `8025a23`).
-
-**Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
+**Fase 10, API e autenticação de agentes: Planned.** As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15: as 24 da revisão técnica e as 4 complementares (exibição única do token na Web, rate limiting no PostgreSQL, retenção e transição para Cancelada). A [especificação](specifications/FASE-10-AGENTES.md) e o [ADR-016](decisions/ADR-016-AGENTES.md) foram corrigidos depois da revisão técnica e **aprovados pelo responsável em 2026-11-18**. Nada foi implementado. A implementação começa depois do merge do PR #18, que depende de autorização. A interface de agentes transferida da Fase 09 (F09-018) e o teste "agentes não aprovam o próprio trabalho" estão incluídos. O tempo real continua fora, sem necessidade comprovada.
 
 **Fase 09, Interface web completa: Completed.** Validada localmente (372/372 testes, quatro mutações da interface detectadas e execução real no navegador com Gerente, Colaboradora e Observador, em 375 px e 1440 px). A interface de agentes (F09-018) foi transferida para a Fase 10 e o tempo real (F09-021) não foi implementado, por falta de necessidade comprovada (ADR-015). Validada também no CI ([run 43716683611](https://github.com/harrisonleandro/Gestalyn/actions/runs/43716683611): 0 avisos, 178/178, 43/43 e 151/151) e integrada em `develop` pelo [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) (merge `5960bde`). A próxima é a Fase 10, que depende de autorização.
 
 **Fase 08, Auditoria, documentação e dashboards: Completed.** Validada localmente (328/328 testes, quatro mutações detectadas, migrations aplicadas no banco de desenvolvimento e execução real da API com atividades, documentos, decisões e dashboards) e no CI ([run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): 0 avisos, 178/178 e 150/150), e integrada em `develop` pelo [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) (merge `0e9dbdd`).
 
 **Fase 07, Workflow configurável e histórico: Completed.** Validada localmente (280/280 testes, quatro mutações detectadas, migração de dados aplicada no banco de desenvolvimento e execução real da API com aprovação e dependências) e no CI ([run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): 0 avisos, 148/148 e 132/132), e integrada em `develop` pelo [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) (merge `a6f87f9`).
+
+**Fase 06, Fases, marcos e tarefas: Completed.** Validada localmente (195/195 testes, duas mutações detectadas e execução real da API com upload e download de anexo) e no CI ([run 43136119632](https://github.com/harrisonleandro/Gestalyn/actions/runs/43136119632): 0 avisos, 99/99 e 96/96), e integrada em `develop` pelo [PR #7](https://github.com/harrisonleandro/Gestalyn/pull/7) (merge `8025a23`).
+
+**Fase 05, Projetos e equipes: Completed.** Validada localmente (136/136 testes, duas mutações detectadas e execução real da API com usuários reais) e no CI ([run 43107035853](https://github.com/harrisonleandro/Gestalyn/actions/runs/43107035853): 0 avisos, 59/59 e 77/77), e integrada em `develop` pelo [PR #5](https://github.com/harrisonleandro/Gestalyn/pull/5) (merge `6a32f58`).
+
+**Fases 03 e 04: Completed e integradas em `develop`**: [PR #3](https://github.com/harrisonleandro/Gestalyn/pull/3) (merge `647573d`) e [PR #4](https://github.com/harrisonleandro/Gestalyn/pull/4) (merge `55926bc`), ambos com o CI aprovado.
 
 **Correções da auditoria técnica de 2026-11-12: Completed.** A auditoria do `develop` (`7a5c170`) confirmou cinco problemas, todos corrigidos e integrados com o CI aprovado:
 
@@ -251,7 +251,7 @@ Evidências na [especificação da Fase 09](specifications/FASE-09-WEB.md#execu�
 
 ## Tarefas pendentes
 
-- Fase 10: aprovação das decisões D1 a D10 da [especificação](specifications/FASE-10-AGENTES.md). Ela já cobre a interface de agentes (F09-018), o teste "agentes não aprovam o próprio trabalho" e a reavaliação do tempo real.
+- Fase 10: merge do PR #18 (depende de autorização) e rebase de `feature/fase-10-agentes` em `develop`; depois, a implementação nas etapas do plano da [especificação](specifications/FASE-10-AGENTES.md#plano-de-implementação), aprovada em 2026-11-18.
 
 
 - Configurações recomendadas pela auditoria e ainda não aplicadas (dependem de decisão):
@@ -340,6 +340,7 @@ Incidentes já resolvidos, mantidos como referência:
 | 2026-11-15 | Fase 07 integrada em `develop` (PR #13, merge `a6f87f9`) | [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) |
 | 2026-11-15 | Fase 08 integrada em `develop` (PR #15, merge `0e9dbdd`) | [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) |
 | 2026-11-15 | Fase 09 integrada em `develop` (PR #17, merge `5960bde`) | [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) |
+| 2026-11-15 | Fase 10: agentes provisionados com `agents.manage`; credencial `gsk_` com hash; esquema `AgentToken` e políticas explícitas; `AgentAccessGrant`; agentes sem aprovação e sem entrar em Concluída (`TransitionRules`); idempotência transacional; `AgentOperation`; rate limiting no PostgreSQL; retenção; token exibido uma vez na Web (exceção à seção 7) | [ADR-016](decisions/ADR-016-AGENTES.md) |
 | 2026-11-15 | Fase 09: Web SSR (BFF) com design system próprio sobre o Bootstrap, organização na URL, permissões da API refletidas na tela (`GET /organizations/{id}/me`), quadro por estado, Markdown com Markdig e CSP, testes com bUnit; agentes para a Fase 10 e sem tempo real (D1 a D8) | [ADR-015](decisions/ADR-015-INTERFACE-WEB.md) |
 | 2026-11-15 | Fase 08: auditoria imutável com autor do token e origem declarada, eventos na mesma gravação com teste de cobertura por rota, documentos com versões, decisões no estilo de ADR, regra única de progresso e dashboards calculados na hora (D1 a D8) | [ADR-014](decisions/ADR-014-AUDITORIA-DOCUMENTOS-E-DASHBOARDS.md) |
 | 2026-11-14 | Fase 07: workflow por projeto, categorias fixas com estados finais, transições explícitas, aprovação com `tasks.approve`, agentes nunca aprovam o próprio trabalho, histórico com os nomes na data e migração de dados (D1 a D7) | [ADR-013](decisions/ADR-013-WORKFLOW-CONFIGURAVEL.md) |
@@ -347,4 +348,5 @@ Incidentes já resolvidos, mantidos como referência:
 
 ## Próxima atividade
 
-1. Fase 10: aprovação das decisões D1 a D10 da [especificação](specifications/FASE-10-AGENTES.md) e, em seguida, implementação em `feature/fase-10-agentes`.
+1. Merge do PR #18, se autorizado, e rebase de `feature/fase-10-agentes` em `develop`.
+2. Implementação da Fase 10 nas etapas do plano da [especificação](specifications/FASE-10-AGENTES.md#plano-de-implementação) (documentação aprovada em 2026-11-18), começando pela etapa 1: as políticas `User` e `Agent`.

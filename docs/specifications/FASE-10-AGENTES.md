@@ -1,12 +1,21 @@
 # Fase 10: API e autenticação de agentes
 
-- **Estado:** Planned. Aguarda a aprovação das decisões D1 a D10; nada foi implementado.
+- **Estado:** Planned. As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15:
+  - as 24 decisões da revisão;
+  - as 4 decisões complementares (exibição do token, rate limiting, retenção e transição para Cancelada).
+
+  A documentação corrigida depois da revisão técnica (esta especificação e o ADR-016, inclusive as escolhas técnicas que detalham as decisões) foi **aprovada pelo responsável em 2026-11-18**. Nada foi implementado.
+- **ADR:** [ADR-016](../decisions/ADR-016-AGENTES.md)
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md):
   - seção 9 (Fase 10);
-  - seções 4.7 (inteligência artificial), 5.8 (contratos de agentes) e 6.1, 6.4 e 6.5 (REST, relatório de trabalho, idempotência e concorrência);
+  - seções 4.5, 4.6 e 4.7 (workflow, auditoria e inteligência artificial);
+  - seção 5.8 (contratos de agentes);
+  - seções 6.1, 6.4 e 6.5 (REST, relatório de trabalho, idempotência e concorrência);
   - seção 7 (segurança).
-- **Branch:** `feature/fase-10-agentes`, a partir de `docs/fase-09-concluida` (`788a6a2`, com as Fases 01 a 09 integradas). Será rebaseada em `develop` depois do merge do PR #18, sem reescrever nada já enviado.
-- **Pré-requisito para implementar:** decisões aprovadas
+- **Branch:** `feature/fase-10-agentes`, hoje sobre `docs/fase-09-concluida` (`788a6a2`, PR #18 ainda aberto).
+  - Depois do merge do PR #18, a branch será rebaseada em `develop`.
+  - Ela ainda não foi enviada ao remoto, então o rebase não reescreve nada publicado.
+- **Pré-requisito para implementar:** documentação aprovada em 2026-11-18. Falta a etapa 0 do plano: o merge do PR #18, que depende de autorização do responsável, e o rebase da branch em `develop`.
 
 ## Objetivo
 
@@ -15,233 +24,697 @@ Permitir que agentes de IA operem no Gestalyn com segurança:
 - com acesso limitado a projetos e escopos explícitos;
 - com toda operação registrada e protegida contra duplicação.
 
-Os agentes trabalham sobre as mesmas tarefas, atividades e histórico que as pessoas, pelas mesmas regras do backend. Nunca aprovam o próprio trabalho.
+Os agentes trabalham sobre as mesmas tarefas, atividades e histórico que as pessoas, pelas mesmas regras do backend. **Nunca aprovam tarefas** e **nunca entram em estados da categoria Concluída**: a conclusão é sempre de uma pessoa.
 
-## Situação atual
+## Situação atual (verificada no código em 2026-11-15)
 
-- **Autenticação:** só existe a de usuários (ADR-006):
-  - JWT com `sub` e `sid`;
-  - a sessão é conferida a cada requisição em `OnTokenValidated`;
-  - um `AuthorizeFilter` global exige usuário autenticado.
-- **Organização ativa:** `ActiveOrganizationMiddleware` resolve a organização pela rota ou pelo cabeçalho `X-Gestalyn-Organization`, e a associação do **usuário** pelo `MembershipDirectory`.
-- **Acesso a projetos:** `ProjectAccessGrant.Compute` combina o papel na organização e o papel na equipe. Os serviços recebem o `ProjectAccessGrant` e usam `UserId` como autor.
-- **`ActorKind.Agent`** já existe no domínio:
-  - `TransitionRules` recusa a aprovação do próprio trabalho a agentes;
-  - `ActivityEvent`, `ActivityLog` e `TaskStatusHistory` têm a coluna `actor_kind`;
-  - hoje, porém, `HttpActivityContext` e `TaskService` gravam sempre `User`.
-- **Autorias com chave estrangeira para `users`:**
-  - `tasks.created_by_user_id`;
-  - comentários, dependências, anexos, documentos, versões e decisões.
+| Tema | Situação | Onde |
+|---|---|---|
+| Autorização global | `new AuthorizeFilter()` sem política nem esquema: vale o esquema padrão (JWT) | `src/ProjectManager.API/Program.cs:24`, `Authentication/ApiAuthentication.cs:18` |
+| Sessão | O `OnTokenValidated` confere a sessão `sub`/`sid` a cada requisição | `ApiAuthentication.cs` |
+| Organização ativa | Pela rota ou pelo cabeçalho; só para usuário com sessão (`TryGetSession`) e associação (`MembershipDirectory`) | `Organizations/ActiveOrganizationMiddleware.cs` |
+| Filtro de organização | Filtro global por `CurrentOrganizationId`; `TenantIsolationRules.Enforce` na gravação | `Persistence/ProjectManagerDbContext.cs:111-131` |
+| `IgnoreQueryFilters` | Só no `MembershipDirectory`, como o `AGENTS.md` e o ADR-008 exigem | `Organizations/MembershipDirectory.cs` |
+| Acesso a projetos | `ProjectAccessGrant.Compute(ActiveMembership, ...)`, com `UserId`; os atributos exigem associação e cabeçalho | `Application/Projects/ProjectAccess.cs`, `API/Organizations/ProjectPermissionAttribute.cs:52-63` |
+| Transições | `TransitionRules` recusa a aprovação só pela marcação `RequiresApproval` e pela regra do responsável. Um workflow pode ter uma transição direta para Concluída sem aprovação | `Domain/Workflows/TransitionRules.cs:39-50`, `Workflows/WorkflowService.cs:215` |
+| Transições disponíveis | Calculadas com uma cópia da regra, fora de `TransitionRules` | `Tasks/TaskService.cs:838` |
+| Ator nos registros | `ActorKind.User` fixo no histórico; `HttpActivityContext` sempre `User` | `TaskService.cs:88, 747, 776`, `API/Activity/HttpActivityContext.cs:30` |
+| Autoria das tarefas | `created_by_user_id` obrigatório, com FK para `users`; o setter é privado | `Domain/Tasks/ProjectTask.cs:36, 63`, `Configurations/TaskConfigurations.cs:52-55` |
+| Contratos de tarefa | `TaskDetails.CreatedByUserId` obrigatório na API e na Web | `Application/Tasks/TaskContracts.cs:215`, `Web/Api/ApiModels.cs:127` |
+| Nomes dos autores | As atividades resolvem nomes só em `users` | `Infrastructure/Activity/ActivityService.cs:207` |
+| Concorrência das tarefas | Sem token de concorrência. A transição confere `ExpectedStateId` lendo e depois gravando | `TaskService.cs:726` |
+| Registro manual de atividade | Exige `documents.write` | `API/Controllers/ActivityController.cs:29` |
+| Transações nos serviços | `AddDependencyAsync`, `ReorderPhasesAsync` e `SaveMemberAsync` abrem transação própria; criar, editar e mover tarefas não abrem | `TaskService.cs:600`, `PlanningService.cs:142`, `ProjectService.cs:444` |
+| Imutabilidade | Gatilhos recusam `UPDATE`, `DELETE` e `TRUNCATE` nas tabelas de atividade | Migração `20261115023615_AddActivity.cs:133-149` |
+| Cobertura de auditoria | O teste percorre **todas** as rotas de escrita da API | `IntegrationTests/Activity/ActivityCoverageTests.cs:196` |
+| Tokens opacos | 32 bytes de `RandomNumberGenerator` (256 bits), SHA-256 em hexadecimal | `Infrastructure/Common/OpaqueTokens.cs:15-21` |
+| Rate limiting | Só para a autenticação, por IP, em memória | `API/Authentication/AuthRateLimiting.cs` |
+| Papéis personalizados | Modelo existe, sem endpoints | ADR-009, linha 35 |
+| Health checks | Já existem na API | `API/Health/HealthEndpoints.cs` |
 
-  `activity_events`, `activity_logs` e `task_status_history` guardam o autor **sem FK**.
-- **Tarefas não têm controle de concorrência:** o `PATCH /tasks/{id}` sobrescreve. Os documentos já usam `expectedVersion`.
-- **Ferramentas existentes:**
-  - `OpaqueTokens` gera 32 bytes aleatórios em base64url e calcula o SHA-256;
-  - o rate limiting existe só para a autenticação, por IP (`AuthRateLimiting`).
-- **Interface de agentes:** transferida da Fase 09 (F09-018) para esta fase.
+## Decisões aprovadas (2026-11-15)
+
+| Nº | Decisão | Seção |
+|---|---|---|
+| 1 | Agentes pertencem a uma organização, não são membros e não acessam a Web | [D1](#d1-agente-e-provisionamento) |
+| 2 | Só Proprietários e Administradores, com `agents.manage`, criam e administram agentes | [D1](#d1-agente-e-provisionamento) |
+| 3 | Tokens opacos `gsk_`, exibidos uma única vez, guardados só como hash SHA-256 e prefixo | [D2](#d2-credenciais) |
+| 4 | Expiração padrão de 90 dias, máxima de 365; até 3 credenciais ativas por agente | [D2](#d2-credenciais) |
+| 5 | Esquema próprio `AgentToken`, separado da autenticação de usuários | [D3](#d3-autenticação-e-separação-das-políticas) |
+| 6 | Tokens de agentes só em `/api/v1/agents/*`; a organização vem da credencial, nunca do cabeçalho | [D3](#d3-autenticação-e-separação-das-políticas) |
+| 7 | Escopos `context:read`, `tasks:read`, `tasks:write`, `activities:write` e `reports:write` | [D4](#d4-escopos-acesso-a-projetos-e-agentaccessgrant) |
+| 8 | `AgentProjectAccess` com papel Colaborador ou Observador; nunca Gerente | [D4](#d4-escopos-acesso-a-projetos-e-agentaccessgrant) |
+| 9 | `AgentAccessGrant.Compute` centraliza a autorização | [D4](#d4-escopos-acesso-a-projetos-e-agentaccessgrant) |
+| 10 | Agentes nunca aprovam, inclusive em workflows personalizados | [D5](#d5-regras-de-transição-para-agentes) |
+| 11 | `created_by_agent_id`, com exclusividade entre autoria humana e de agente | [D6](#d6-autoria-e-versão-das-tarefas) |
+| 12 | Histórico e eventos com `ActorKind.Agent` | [D6](#d6-autoria-e-versão-das-tarefas) |
+| 13 | Rotas adicionais `GET /agents/tasks/{id}` e `POST /agents/tasks/{id}/transitions` | [D7](#d7-endpoints-de-agentes) |
+| 14 | Transições pelas mesmas regras dos usuários, em `TransitionRules` | [D5](#d5-regras-de-transição-para-agentes) |
+| 15 | `WorkReport` imutável, com os níveis separados | [D8](#d8-relatório-de-trabalho) |
+| 16 | Testes e CI como não verificados nesta fase | [D8](#d8-relatório-de-trabalho) |
+| 17 | `Idempotency-Key` em todos os `POST` de agentes | [D9](#d9-idempotência) |
+| 18 | Mesma chave e mesmo corpo: a resposta original; outro corpo: 422; em processamento: 409 | [D9](#d9-idempotência) |
+| 19 | Alterações de tarefa por agentes exigem `version` | [D6](#d6-autoria-e-versão-das-tarefas) |
+| 20 | `AgentOperation` para cada requisição de agente, inclusive leituras e negadas | [D10](#d10-auditoria-de-operações-agentoperation) |
+| 21 | Limite inicial de 120 requisições por minuto por credencial | [D11](#d11-rate-limiting-no-postgresql) |
+| 22 | Telas Web de agentes, credenciais, acesso a projetos, operações e relatórios | [D13](#d13-interface-web-e-exibição-do-token) |
+| 23 | SignalR fora desta fase | [D14](#d14-tempo-real) |
+| 24 | Agentes não são responsáveis por tarefas nem escrevem comentários ou documentos | [Fora de escopo](#fora-de-escopo) |
+| C4 | O token completo aparece na Web só na criação, uma vez, sob as condições da D13 | [D13](#d13-interface-web-e-exibição-do-token) |
+| A6 | Rate limiting com contadores atômicos no PostgreSQL | [D11](#d11-rate-limiting-no-postgresql) |
+| A6 | Retenção das operações e dos registros de idempotência, com limpeza por serviço em segundo plano na API | [D12](#d12-retenção-e-limpeza) |
+| C2 | Agentes podem pedir a transição para Cancelada (sem aprovação, configurada, com acesso); nunca para Concluída | [D5](#d5-regras-de-transição-para-agentes) |
 
 ## Escopo
 
-1. **Agentes provisionados** por pessoas autorizadas da organização, sem autorregistro (D1).
-2. **Credenciais próprias**:
-   - guardadas só como hash;
-   - com prefixo visível, expiração obrigatória, revogação imediata e mais de uma ativa, para rotação (D2).
-3. **Esquema de autenticação de agentes**, separado do de usuários. Um agente só alcança as rotas `/api/v1/agents/*` (D3).
-4. **Escopos da credencial e acesso por projeto** (`AgentProjectAccess`), combinados numa regra única ao lado de `ProjectAccessGrant` (D4).
-5. **Autoria de agentes** nas tarefas, no histórico, nos eventos e nas atividades, com `ActorKind.Agent` (D5).
-6. **Endpoints de agentes:**
-   - contexto, projetos e tarefas (listar, ler, criar, atualizar, mover);
-   - atividades e relatórios de trabalho;
-   - os contratos da seção 5.8, com os ajustes documentados (D6).
-7. **Relatórios de trabalho** que distinguem o que foi declarado, aceito, testado, confirmado pelo CI e aprovado por uma pessoa (D7).
-8. **Idempotência** por `Idempotency-Key` (`IdempotencyRecord`) e **concorrência** por versão nas tarefas (D8).
-9. **Auditoria de operações** (`AgentOperation`) e **rate limiting** por credencial (D9).
-10. **Interface web de agentes**, transferida da Fase 09 (D10):
-    - agentes, credenciais e acesso a projetos;
-    - operações recentes;
-    - relatórios na tarefa e no projeto.
-11. **Testes de segurança** (D10): revogação, expiração, escopos, projetos não autorizados, cross-tenant, aprovação do próprio trabalho, rotas de usuário e replay de idempotência.
+1. Agentes provisionados por pessoas com `agents.manage`, sem autorregistro (D1).
+2. Credenciais com hash, prefixo, expiração, revogação imediata e rotação (D2).
+3. Esquema `AgentToken` e políticas explícitas por esquema, com teste de todos os endpoints (D3).
+4. Escopos, `AgentProjectAccess` e a regra única `AgentAccessGrant.Compute` (D4).
+5. Regras de transição para agentes em `TransitionRules`, que passa a calcular também as transições disponíveis (D5).
+6. Autoria de agentes, ator nos serviços e controle de versão das tarefas (D6).
+7. Endpoints de agentes (D7) e de gestão por pessoas (ADR-016).
+8. Relatórios de trabalho imutáveis, com os cinco níveis (D8).
+9. Idempotência transacional (D9).
+10. Auditoria de operações (D10).
+11. Rate limiting no PostgreSQL (D11).
+12. Retenção e limpeza controlada (D12).
+13. Interface Web de agentes (D13), transferida da Fase 09 (F09-018).
+14. Testes de segurança, concorrência, migração e ponta a ponta ([estratégia de testes](#estratégia-de-testes)).
 
 ## Fora de escopo
 
 - **CLI** (Fase 11) e **servidor MCP** (Fase 12). Eles usarão estas credenciais e rotas.
-- **Integração com GitHub e CI** (Fase 12). O nível "confirmado pelo CI" do relatório fica registrado como **não verificado** até lá (D7).
-- **Agente como responsável de tarefa** (`task_assignments`), comentários, anexos, documentos e decisões escritos por agentes. São autorias com FK para `users`, sem pedido explícito na seção 4.7. Podem entrar depois, com o mesmo modelo da D5.
-- **Aprovação por agentes**: nenhum escopo concede `tasks.approve` (D4). Uma eventual exceção configurável exige um ADR.
-- **OAuth, client credentials ou tokens assinados para agentes** (D2).
-- **Tempo real (SignalR):** reavaliado na D10, sem necessidade comprovada nesta fase.
-- **Limpeza automática de registros expirados** (idempotência e operações): sem `Worker` nesta fase. A retenção fica para a Fase 14 (D8 e D9).
+- **Integração com GitHub e CI** (Fase 12), inclusive a tabela de verificações dos relatórios (D8). Nesta fase, os níveis "testes" e "CI" são sempre "não verificado".
+- **Agente como responsável de tarefa**, comentários, anexos, dependências, documentos e decisões escritos por agentes (decisão 24). Os serviços dessas operações recusam um ator agente, como defesa em profundidade (D4).
+- **Aprovação por agentes** e **entrada de agentes em estados Concluída** (D5).
+- **OAuth, client credentials ou tokens assinados para agentes** (ADR-016).
+- **Tempo real (SignalR)** (D14).
+- **Projeto `ProjectManager.Worker`:** a limpeza roda num serviço em segundo plano da própria API (D12).
+- **Exclusão de agentes:** agentes são desativados, nunca excluídos, para preservar a autoria.
 
-## Decisões (D1 a D10 para aprovação)
+## Decisões técnicas
 
-| ID | Proposta | Alternativas |
+### D1. Agente e provisionamento
+
+- **`Agent`** (`IOrganizationOwned`, tabela `agents`):
+  - nome único na organização, até 100 caracteres;
+  - descrição, até 500;
+  - estado `Active` ou `Disabled`;
+  - quem criou e quando.
+  - Chave alternativa `(organization_id, id)`, alvo das FKs compostas.
+- **Quem cria e administra:** só pessoas com a permissão nova `agents.manage`:
+  - ela entra em `OrganizationPermissions.All`; `Role.CreateSystemRoles` dá a permissão a Proprietário e Administrador nas organizações novas;
+  - uma migração de dados a concede aos papéis de sistema Proprietário e Administrador das organizações existentes, com teste no modelo de `ProjectMigrationTests`;
+  - a autorização é **pela permissão, nunca pelo nome do papel** (ADR-009). Hoje, só Proprietário e Administrador a têm, porque papéis personalizados não têm endpoints. Se ganharem, poderão receber `agents.manage` explicitamente.
+- **Sem autorregistro:** nenhuma rota anônima cria agente ou credencial.
+- **O agente não é membro da organização:**
+  - não ocupa `organization_members` e não tem papel da organização;
+  - não entra na Web: a política de usuário exige `sid` (D3), que o agente não tem;
+  - só enxerga os projetos concedidos (D4).
+- **Desativar** bloqueia todas as credenciais do agente na requisição seguinte. **Reativar** não ressuscita credenciais revogadas nem expiradas.
+
+### D2. Credenciais
+
+- **Formato:**
+  - `gsk_` seguido de 43 caracteres base64url, que codificam 32 bytes gerados por `RandomNumberGenerator`, o gerador criptográfico do .NET: **256 bits de entropia**;
+  - usa `OpaqueTokens.Generate`.
+- **Armazenamento** (`agent_credentials`):
+  - só o **SHA-256 do token completo** (hexadecimal, índice único) e o **prefixo**: os 8 primeiros caracteres depois de `gsk_`, que identificam a credencial nas listas e não bastam para usá-la;
+  - também o nome (até 100 caracteres), os escopos (pelo menos um), a criação e o autor, a expiração, a revogação e o autor dela, e o último uso.
+  - O token completo **nunca** é gravado.
+- **Hash rápido:** com 256 bits aleatórios, um hash lento (PBKDF2 ou Argon2) só acrescenta custo. É o mesmo critério dos refresh tokens (ADR-006).
+- **Expiração obrigatória:**
+  - padrão de 90 dias, mínimo de 1 e máximo de 365;
+  - em `Agents:Credentials` (`DefaultLifetimeDays`, `MaxLifetimeDays`), validados na inicialização;
+  - a API recusa pedidos acima do máximo (400).
+- **Até 3 credenciais ativas por agente** (não revogadas e não expiradas):
+  - a contagem e a criação rodam numa transação `Serializable`, como em `AddDependencyAsync`;
+  - uma falha de serialização responde 409, para nova tentativa.
+- **Revogação imediata:** grava a data e o autor; a credencial deixa de valer na requisição seguinte, porque toda requisição a confere (D3).
+- **Último uso:** gravado no máximo uma vez por minuto por credencial, aproveitando o contador do rate limiting (D11), sem uma gravação extra por requisição.
+- **Perda do token:** não há recuperação. A pessoa cria uma credencial nova e revoga a antiga.
+
+### D3. Autenticação e separação das políticas
+
+- **Esquemas:**
+  - o JWT **continua sendo o esquema padrão**;
+  - o `AgentToken` é registrado como **esquema adicional**;
+  - **não há seletor de esquema como padrão**. Um token `gsk_` numa rota de usuário falha na validação do JWT (401); um JWT numa rota de agente é ignorado pelo handler de agentes (401).
+- **Políticas explícitas**, no lugar do `new AuthorizeFilter()` sem política:
+
+  | Política | Esquema | Exige |
+  |---|---|---|
+  | `User` | JWT | Usuário autenticado e claim `sid` (sessão conferida pelo `OnTokenValidated`) |
+  | `Agent` | `AgentToken` | Claim `actor_kind=agent` |
+
+  - Uma convenção aplica `Agent` aos controllers de agentes (namespace `ProjectManager.API.Agents`, rotas `/api/v1/agents/*`) e `User` a todos os demais.
+  - `[AllowAnonymous]` continua explícito e justificado.
+  - **Teste de políticas:** percorre o `EndpointDataSource` e exige que todo endpoint `/api/...` tenha exatamente uma das três situações (`User`, `Agent` ou anônimo), e que `Agent` ocorra se e somente se a rota começar com `/api/v1/agents/`.
+- **Handler `AgentToken`, a cada requisição:**
+  1. Lê `Authorization: Bearer gsk_...`. Sem o prefixo, não se manifesta.
+  2. Aplica o limite de falhas por IP (D11), antes de qualquer consulta.
+  3. Calcula o SHA-256 e busca a credencial pelo `AgentCredentialDirectory`. É a segunda exceção autorizada ao uso de `IgnoreQueryFilters` (ADR-016): restrita à igualdade do hash e devolve só a credencial, o agente e a organização.
+  4. **Token inexistente:** 401 genérico. Nada vai para `AgentOperation`, porque não há agente nem organização. Fica um log estruturado sem o token e sem o prefixo, e a falha conta para o limite por IP.
+  5. **Credencial revogada, expirada ou de agente desativado:** o mesmo 401 genérico. A tentativa é registrada em `AgentOperation` na organização da credencial, com o resultado `CredentialRevoked`, `CredentialExpired` ou `AgentDisabled`.
+  6. **Válida:** monta o principal com `sub` (agente), `org`, `cid` (credencial), `actor_kind=agent` e os escopos, e define a organização ativa do agente (`TenantContext.SetActiveAgent`). Toda leitura e gravação seguinte passa pelo filtro de organização.
+- **O 401 é sempre igual:** Problem Details em pt-BR e `WWW-Authenticate: Bearer`, sem distinguir token inexistente, expirado, revogado ou de agente desativado.
+- **Organização vinda só da credencial:**
+  - `X-Gestalyn-Organization` e `{organizationId}` nunca definem a organização de um agente;
+  - se vierem diferentes da organização da credencial, a resposta é 404, com o resultado `OrganizationMismatch` em `AgentOperation`;
+  - o `ActiveOrganizationMiddleware` ganha o caminho do agente, sem `MembershipDirectory`.
+- **Ordem do pipeline:**
+  1. autenticação;
+  2. rate limiting por credencial (D11);
+  3. organização ativa;
+  4. autorização por escopo e projeto (D4);
+  5. idempotência (D9);
+  6. ação.
+
+  O registro em `AgentOperation` envolve tudo a partir da autenticação (D10).
+
+### D4. Escopos, acesso a projetos e AgentAccessGrant
+
+- **`AgentProjectAccess`** (tabela `agent_project_access`): organização, agente, projeto e papel.
+  - O papel é `Contributor` ou `Viewer`; `Manager` é recusado (400).
+  - FKs compostas `(organization_id, agent_id)` → `agents` e `(organization_id, project_id)` → `projects`; índice único `(agent_id, project_id)`.
+  - **Quem concede ou remove:** a pessoa precisa de `agents.manage` na organização **e** de `project.members.manage` naquele projeto, pelo `ProjectAccessGrant` dela. Ninguém concede acesso a um projeto que não gerencia.
+  - O acesso pertence ao agente: continua válido se quem concedeu perder a permissão ou sair da organização.
+- **Escopos e permissões** (tabela única, sem outra fonte):
+
+  | Escopo | Rotas de agente | Permissão de projeto exigida |
+  |---|---|---|
+  | (nenhum) | `GET /agents/me` | — |
+  | `context:read` | `GET /agents/projects`, `GET /agents/projects/{id}/context` | `project.read` |
+  | `tasks:read` | `GET /agents/projects/{id}/tasks`, `GET /agents/tasks/{id}` | `project.read` |
+  | `tasks:write` | `POST /agents/tasks`, `PATCH /agents/tasks/{id}`, `POST /agents/tasks/{id}/transitions` | `tasks.write` |
+  | `activities:write` | `POST /agents/activities` | `documents.write` (a mesma do registro manual por pessoas) |
+  | `reports:write` | `POST /agents/reports` | `tasks.write` (Observador não envia relatórios) |
+
+- **Permissões que um agente pode ter:** só `project.read`, `tasks.write` e `documents.write`, intersectadas com as do papel (`ProjectPermissions.For`). Colaborador recebe as três; Observador, só `project.read`. **`tasks.approve`, `project.update`, `tasks.comment`, `tasks.archive`, `workflow.manage` e `documents.manage` nunca entram.**
+- **`AgentAccessGrant.Compute`** (em `Application/Projects`, ao lado de `ProjectAccessGrant`):
+  - **recebe:**
+    - o ator (agente, com `ActorKind.Agent`) e o estado dele;
+    - os escopos da credencial;
+    - o papel no projeto (ou nenhum);
+    - a exigência da operação: escopo e permissão da tabela acima, e se é leitura ou escrita;
+  - **devolve uma decisão:** `Allowed` com o `ProjectAccessGrant`, ou `ProjectNotVisible` (404), `ScopeMissing` (403) ou `PermissionMissing` (403). O motivo vai para `AgentOperation`.
+  - **É a única regra de acesso de agentes.** O projeto arquivado continua tratado pelos serviços, como para pessoas: leitura permitida e escrita com 409. Não há cópia dessa regra.
+- **`ProjectAccessGrant` passa a carregar o ator** (ID e tipo):
+  - `UserId` continua para pessoas;
+  - os serviços usam o ator como autor;
+  - os serviços que gravam autoria com FK para `users` (comentários, dependências, anexos, documentos, decisões, responsáveis) recusam um ator agente (403), como defesa em profundidade.
+- **Resolução:**
+  - `IAgentProjectAccess` (`FindAsync`, `FindByTaskAsync`) carrega `AgentProjectAccess` e chama `Compute`;
+  - o atributo `[AgentPermission(escopo, permissão)]` cobre as rotas com o recurso na URL;
+  - um método estático equivalente cobre as rotas com o projeto no corpo (`POST /agents/tasks`, `/activities`, `/reports`), no padrão de `ProjectResourcePermissionAttribute.AuthorizeAsync`;
+  - os atributos de pessoas continuam como estão.
+
+### D5. Regras de transição para agentes
+
+A regra fica em `TransitionRules.Evaluate`, a regra única da Fase 07, e não só nas rotas da API. Ordem da avaliação:
+
+1. Transição inexistente no workflow: 409 (como hoje).
+2. **Ator agente** (`actor.Kind == ActorKind.Agent`):
+   - transição com `RequiresApproval`: **`AgentCannotApprove`** (403), qualquer que seja o responsável;
+   - estado de destino da categoria `Done`: **`AgentCannotEnterDone`** (403), mesmo que a transição não exija aprovação, como num workflow personalizado com "Em andamento → Concluída".
+3. Regras de pessoas: `tasks.approve` e o próprio trabalho (`IsAssignee` e `RequireIndependentApproval`), sem mudança.
+4. Dependências abertas ao entrar em `Done`: 409 (como hoje).
+
+Consequências:
+- **Cancelada é permitida a agentes** quando a transição existe no workflow, não exige aprovação e o agente tem `tasks:write` e `tasks.write`. As demais regras de negócio continuam valendo.
+- **Agentes podem levar a tarefa até um estado de revisão.** Uma pessoa faz a aprovação e a conclusão.
+- **As transições disponíveis passam a ser calculadas por `TransitionRules`**, para pessoas e agentes. Isso remove a cópia da regra em `TaskService.cs:838`, com testes que preservam o comportamento das pessoas.
+- **A rota de transição das pessoas** (`POST /tasks/{id}/transitions`) não muda.
+- **Toda recusa a um agente** fica em `AgentOperation`, com o resultado `BusinessRuleDenied` e o código (`agent_cannot_approve`, `agent_cannot_enter_done`). Uma recusa não muda o estado nem grava histórico.
+
+### D6. Autoria e versão das tarefas
+
+- **Ator nos serviços:** os serviços recebem o ator (ID e `ActorKind`) pelo `ProjectAccessGrant` (D4).
+  - `TaskService` deixa de fixar `ActorKind.User` (linhas 88, 747 e 776).
+  - `HttpActivityContext` usa `ActorKind.Agent` quando o principal tem `actor_kind=agent`.
+  - A origem (`X-Gestalyn-Client`) continua só informativa.
+- **Migração de `tasks`, que preserva todas as tarefas existentes:**
+  1. Adiciona `created_by_agent_id uuid NULL`.
+  2. Torna `created_by_user_id` anulável. As linhas existentes continuam com o usuário e a FK para `users`.
+  3. Cria a FK composta `(organization_id, created_by_agent_id)` → `agents (organization_id, id)`, `ON DELETE RESTRICT`.
+  4. Cria `CHECK ck_tasks_single_author (num_nonnulls(created_by_user_id, created_by_agent_id) = 1)`. Todas as linhas existentes já atendem.
+  5. Cria o gatilho `reject_task_author_change`: `BEFORE UPDATE OF created_by_user_id, created_by_agent_id` recusa qualquer mudança da autoria. É SQL escrito à mão na migração, como os gatilhos da Fase 08.
+  6. Adiciona `version integer NOT NULL DEFAULT 1`. As tarefas existentes começam na versão 1.
+- **Domínio:** `ProjectTask` ganha um construtor para cada tipo de autor; os dois campos têm setter privado e nenhum método os altera.
+- **Histórico, eventos e atividades:** `task_status_history`, `activity_events` e `activity_logs` guardam o ID do agente com `actor_kind = 'Agent'`. Essas tabelas já não têm FK de autor (ADR-014).
+- **Leitura:**
+  - as respostas de tarefa, histórico e atividades ganham `createdBy` ou `actor`, com `{ id, kind, name }`; os nomes de agentes vêm de `agents`, da mesma organização;
+  - `TaskDetails.CreatedByUserId` passa a anulável: é mudança de contrato, registrada no ADR-016. O único consumidor atual é a Web, ajustada na mesma etapa.
+- **Versão:**
+  - `version` é o token de concorrência da tarefa: o `UPDATE` inclui `WHERE version = @esperada`;
+  - ela incrementa em toda alteração bem-sucedida da linha da tarefa (edição, inclusive só de etiquetas; transição; arquivamento; restauração), num ponto único do `SaveChanges`;
+  - responsáveis, dependências, comentários e anexos são recursos próprios e não mudam a versão;
+  - a versão divergente responde **409**, sem sobrescrever. O `DbUpdateConcurrencyException` vira 409 com a mensagem para recarregar.
+- **Uso da versão:**
+  - `PATCH /agents/tasks/{id}` e `POST /agents/tasks/{id}/transitions` **exigem** `expectedVersion` (400 sem ele);
+  - `PATCH /tasks/{id}` de pessoas aceita `expectedVersion` opcional, e a Web passa a enviá-lo;
+  - a transição de pessoas mantém `expectedStateId`, e o token de concorrência elimina a corrida entre a leitura e a gravação (`TaskService.cs:726`).
+
+### D7. Endpoints de agentes
+
+Todos ficam sob `/api/v1/agents`, com a política `Agent`. Os oito da seção 5.8 e dois ajustes documentados (decisão 13):
+
+| Rota | Escopo e permissão | Comportamento |
 |---|---|---|
-| **D1** Agente e provisionamento | **`Agent`** é uma entidade da organização (`IOrganizationOwned`), com: <br>- nome (único na organização) e descrição; <br>- estado `Active` ou `Disabled`; <br>- quem criou e quando. <br>Só é criado por **pessoas com a permissão nova `agents.manage`**, migrada para os papéis de sistema Proprietário e Administrador, com teste como em `ProjectMigrationTests`. **Não há autorregistro:** nenhuma rota anônima cria agente ou credencial. <br>O agente **não é membro** da organização: <br>- não ocupa a tabela de membros; <br>- não tem papel da organização; <br>- não entra na Web; <br>- só enxerga os projetos concedidos (D4). <br>Desativar um agente bloqueia todas as credenciais dele na hora; reativar não ressuscita credenciais revogadas. Os agentes não são excluídos, para preservar a autoria. | (a) Agente como linha em `users` (conta técnica): as FKs de autoria funcionariam sem migração, mas mistura duas identidades no Identity e abre o risco de um agente entrar pelo fluxo de senha. (b) Agente como membro da organização com um papel: as permissões da organização (como `projects.read_all`) vazariam para agentes. |
-| **D2** Credenciais | **`AgentCredential`**: <br>- **token opaco** `gsk_` + 32 bytes aleatórios em base64url (`OpaqueTokens.Generate`), **mostrado uma única vez**, na criação; <br>- no banco ficam só o **SHA-256** do token (índice único) e um **prefixo** de identificação (os 8 primeiros caracteres depois de `gsk_`), mostrado nas listas; <br>- **expiração obrigatória**: padrão 90 dias, máximo 365, configurável em `Agents:Credentials`; <br>- **revogação imediata**, com data e autor; <br>- **até 3 credenciais ativas** por agente, para rotação sem parada; <br>- os escopos ficam na credencial (D4); <br>- o último uso é registrado com granularidade de 1 minuto, para não gravar a cada requisição. <br>O SHA-256 basta porque o token tem 256 bits de entropia: um hash lento só protege segredos escolhidos por pessoas. É o mesmo raciocínio dos refresh tokens (ADR-006). | (a) JWT assinado para agentes: a revogação exigiria lista negra ou tempo de vida curto com renovação, o que complica a CLI e o MCP. (b) Client credentials (OAuth): exige um servidor de autorização, fora do escopo do MVP. (c) Hash lento (PBKDF2 ou Argon2): custo por requisição sem ganho para um token aleatório. |
-| **D3** Autenticação | **Esquema próprio `AgentToken`**, com `Authorization: Bearer gsk_...`. <br>- **Roteamento:** um seletor de esquema escolhe pelo prefixo; tokens sem `gsk_` seguem para o JWT. <br>- **A cada requisição, o handler confere:** o hash, a expiração, a revogação e o estado do agente. Uma falha responde 401 genérico, sem dizer o motivo. <br>- **Claims:** `sub` (ID do agente), `org` (organização do agente), `cid` (ID da credencial), `actor_kind=agent` e os escopos. <br>- **Separação total:** <br> - a política global de usuários continua exigindo o esquema JWT; <br> - as rotas `/api/v1/agents/*` exigem o esquema `AgentToken`; <br> - um token de agente numa rota de usuário recebe 401, e um token de usuário numa rota de agente também. <br>- **Organização:** vem **só da credencial**. O cabeçalho `X-Gestalyn-Organization`, se enviado, precisa ser igual; se for diferente, a resposta é 404. O middleware de organização ativa ganha o caminho do agente, sem `MembershipDirectory`. | (a) Cabeçalho próprio (`X-Gestalyn-Agent-Key`): foge do padrão `Bearer` que CLIs e clientes MCP já tratam. (b) Deixar agentes usarem as rotas de usuário: cada rota precisaria saber lidar com agentes, e uma omissão daria a eles poderes de pessoa. |
-| **D4** Escopos e acesso a projetos | **`AgentProjectAccess`** `(organização, agente, projeto, papel)`: <br>- o papel é **Colaborador ou Observador**; **Gerente não é permitido** para agentes; <br>- quem concede precisa de `agents.manage` na organização **e** de `project.members.manage` naquele projeto, o que impede conceder acesso a um projeto que a pessoa não gerencia; <br>- projeto arquivado: o agente lê, mas não escreve, pela regra que já vale para pessoas. <br>**Escopos da credencial** (pelo menos um, escolhidos na criação): <br>- `context:read`: contexto e projetos; <br>- `tasks:read`: listar e ler tarefas; <br>- `tasks:write`: criar, editar e mover tarefas, sem aprovação; <br>- `activities:write`: registrar atividades; <br>- `reports:write`: enviar relatórios. <br>**Regra única:** `AgentAccessGrant.Compute(acesso, escopos)` devolve um `ProjectAccessGrant` com `ActorKind.Agent`. As permissões são as do papel do projeto (`ProjectPermissions.For`) **intersectadas** com as que os escopos concedem. **`tasks.approve` nunca entra.** A regra fica em `Application/Projects`, ao lado de `ProjectAccessGrant`, e não é duplicada. <br>Projeto sem acesso responde 404; escopo ou permissão insuficiente, 403. | (a) Escopos no agente, e não na credencial: impediria uma credencial só de leitura para uma ferramenta de menor confiança. (b) Permissões avulsas por projeto, sem papel: duplicaria o catálogo de papéis da Fase 05. |
-| **D5** Autoria de agentes | O serviço passa a receber o **ator** (ID e `ActorKind`), em vez de só o `UserId`. <br>- **`tasks`:** `created_by_user_id` passa a aceitar nulo, e entra a coluna **`created_by_agent_id`**, com FK composta para `agents`. Uma restrição `CHECK` exige exatamente um dos dois. <br>- **`task_status_history`, `activity_events` e `activity_logs`:** guardam o ID do agente com `actor_kind = 'Agent'`. Essas tabelas já não têm FK de autor. <br>- **Contexto da atividade:** `HttpActivityContext` passa a usar `ActorKind.Agent` quando a credencial é de agente. A origem continua informativa (`X-Gestalyn-Client`). <br>- **Leitura:** as respostas de tarefa e atividade ganham `createdBy { id, kind, name }`, para a Web mostrar "Agente: nome". Os campos atuais continuam, para não quebrar contratos. | (a) Gravar o usuário que provisionou o agente como autor: perde a distinção entre pessoa e agente, que a seção 4.6 exige. (b) Conta técnica em `users`: veja a D1 (a). |
-| **D6** Endpoints de agentes | Seção 5.8 com **ajustes documentados** (a própria seção os permite). Todas as rotas ficam sob `/api/v1/agents`: <br>- `GET /me`: agente, organização, credencial (prefixo, escopos, expiração); <br>- `GET /projects`: projetos concedidos, com o papel; <br>- `GET /projects/{id}/context`: dados do projeto, estados e transições do workflow, fases e marcos, progresso, decisões aceitas, títulos dos documentos e as 20 atividades mais recentes, com tamanho limitado; <br>- `GET /projects/{id}/tasks`: os filtros e a paginação da lista de tarefas; <br>- **novo:** `GET /tasks/{id}`, os detalhes com as transições disponíveis para o agente; <br>- `POST /tasks`: com `projectId` no corpo; <br>- `PATCH /tasks/{id}`: com `expectedVersion` obrigatório (D8); <br>- **novo:** `POST /tasks/{id}/transitions`: o mesmo serviço e o mesmo `TransitionRules` da rota de pessoas. As transições que exigem aprovação são recusadas com 403, e a mudança fica no `TaskStatusHistory`; <br>- `POST /activities` e `POST /reports`. <br>Todas reutilizam os serviços existentes. Nenhuma regra de negócio é copiada para os controllers de agentes. O AGENTS.md passa a citar a rota de transição de agentes como o segundo caminho permitido, que usa a mesma regra. | (a) Só os oito endpoints literais: sem ler a tarefa nem mover o estado, o agente não consegue "sugerir a conclusão" (seção 4.5) nem conhecer as transições disponíveis. (b) Transição dentro do `PATCH`: misturaria a edição com a mudança de estado, que o ADR-013 isolou. |
-| **D7** Relatório de trabalho | **`WorkReport`**, imutável, com gatilho no banco como os eventos da Fase 08. <br>**Dados declarados pelo agente** (com limites de tamanho): <br>- `projectId` e `taskId` (opcional, mas, se vier, a tarefa precisa ser do projeto); <br>- `summary` e `changes` (Markdown); <br>- `files` (até 200 caminhos); <br>- `tests` (comando, aprovados, falhas, ignorados, declarados); <br>- `commit` (SHA e repositório opcional); <br>- `suggestedStatus` (o ID de um estado do workflow do projeto). <br>**Resposta:** `{ reportId, accepted, activityCreated, taskStatus, approvalRequired, evidence }`. <br>- `approvalRequired`: diz se a transição do estado atual até o sugerido exige aprovação. <br>- **O relatório não muda o estado da tarefa**; para isso, o agente usa a rota de transição. <br>**Os cinco níveis da seção 6.4**, guardados e devolvidos separados: <br>1. **Declarado:** o conteúdo do agente, marcado como declaração. <br>2. **Aceito:** a validação da API (projeto, tarefa, estado, tamanhos). <br>3. **Testes executados:** `notVerified`. O Gestalyn não executa testes, e a contagem do agente é só declaração. <br>4. **Confirmado pelo CI:** `notVerified` até a integração com o GitHub (Fase 12). <br>5. **Aprovado por uma pessoa:** derivado, na leitura, do histórico da tarefa (uma transição com aprovação feita por `ActorKind.User` depois do relatório). Nunca é gravado pelo agente. <br>**Leitura por pessoas:** `GET /projects/{id}/reports` e `GET /tasks/{id}/reports`, com `project.read`. | (a) Relatório como `ActivityLog` com um tipo novo: o log não tem estrutura para arquivos, testes e commit, e misturaria a declaração com o registro manual. (b) Aceitar `suggestedStatus` e mover a tarefa: um relatório viraria um atalho para mudar o estado sem a rota de transição. |
-| **D8** Idempotência e concorrência | **`Idempotency-Key`** (de 1 a 100 caracteres visíveis) **obrigatório** nos `POST` de agentes; sem ele, a resposta é 400. <br>**`IdempotencyRecord`** `(organização, agente, chave)` único, com: <br>- método e rota; <br>- o SHA-256 do corpo; <br>- o estado `Pending` ou `Completed`; <br>- o código e o corpo da resposta (até 64 KB); <br>- a criação e a expiração (24 horas). <br>**Fluxo:** <br>1. A chave é reservada (`Pending`) antes da operação, numa gravação própria; a restrição única resolve a corrida. <br>2. Depois da operação, a resposta é guardada. <br>3. Mesma chave com o mesmo corpo: a resposta guardada é devolvida, com `Idempotency-Replayed: true`. <br>4. Mesma chave com outro corpo: 422. <br>5. Mesma chave ainda em processamento: 409. <br>6. Erro 5xx libera a chave, para nova tentativa; erros 4xx ficam guardados. <br>Registros expirados são ignorados e sobrescritos na próxima reserva (limpeza em lote na Fase 14). <br>**Concorrência nas tarefas:** uma coluna nova, `version`, incrementada a cada alteração e usada como token de concorrência. <br>- O `PATCH` de agentes **exige** `expectedVersion` e responde 409 quando ela diverge. <br>- O `PATCH` de pessoas aceita o campo como **opcional**, para não quebrar a Web. A Web passa a enviá-lo. | (a) Idempotência opcional: um agente que repete a chamada depois de um tempo esgotado criaria tarefas duplicadas, o que a seção 6.5 proíbe. (b) Idempotência em memória: perderia as chaves ao reiniciar e não funcionaria com mais de uma instância. (c) ETag e `If-Match`: equivalente; o `expectedVersion` no corpo segue o padrão dos documentos (Fase 08). |
-| **D9** Auditoria de operações e rate limiting | **`AgentOperation`**, imutável, com gatilho no banco. Uma linha por requisição autenticada de agente, **inclusive leituras e negadas**: <br>- agente e credencial; <br>- método e modelo da rota (não a URL com valores); <br>- projeto e recurso, quando houver; <br>- código da resposta, duração, ID da requisição e se foi replay de idempotência. <br>**Nenhum corpo, token, cabeçalho ou e-mail** é gravado. Tokens inválidos não têm agente: só o log estruturado, sem o token nem o prefixo. <br>Leitura por pessoas: `GET /organizations/{id}/agents/{agentId}/operations`, com `agents.manage`. As escritas continuam gerando `ActivityEvent`, agora com `ActorKind.Agent`, e entram no `ActivityCoverageTests`. <br>**Rate limiting:** janela fixa **por credencial**, em `RateLimiting:Agents` (padrão: 120 requisições por minuto). O excesso responde 429 em Problem Details, com `Retry-After`. | (a) Registrar só as escritas: perde o padrão de leitura de um agente, que é o que mais interessa quando uma credencial vaza. (b) Gravar os corpos: copiaria textos longos e possíveis segredos, o que o ADR-014 proíbe. |
-| **D10** Interface web, tempo real e testes | **Interface web (F09-018):** <br>- **Configurações da organização → Agentes** (com `agents.manage`): lista, criação, desativação e reativação; <br>- **detalhes do agente:** <br> - credenciais (prefixo, escopos, expiração, último uso), criação e revogação; <br> - projetos concedidos, com concessão e remoção; <br> - operações recentes. <br>- **Detalhes da tarefa e atividades do projeto:** autoria "Agente: nome" e os relatórios de trabalho, com os níveis da D7 rotulados ("Declarado pelo agente", "Não verificado pelo CI"). <br>- **O token novo aparece uma única vez**, na resposta da criação: <br> - com `Cache-Control: no-store`; <br> - sem passar por URL, aviso ou cookie; <br> - com um botão de copiar, num módulo JS sem script inline. <br>A Web nunca recebe o hash nem o token depois disso. As telas ganham testes bUnit e entram em `docs/web/TELAS.md`. <br>**Tempo real:** reavaliado. Os relatórios e as operações de agentes são lidos ao abrir a tela; sem necessidade comprovada de SignalR, **continua fora**. <br>**Testes de segurança:** veja a estratégia de testes. Inclui o teste "agentes não aprovam o próprio trabalho" com um agente real, pendente desde a Fase 07. | (a) Mostrar o token numa página separada, com redirecionamento: o token precisaria ficar guardado entre as requisições. (b) Telas de agentes sem testes de componente: contraria o AGENTS.md. |
+| `GET /me` | — | `{ agentId, name, organizationId, credential { id, prefix, scopes, expiresAt } }` |
+| `GET /projects` | `context:read` | Projetos concedidos, com o papel |
+| `GET /projects/{id}/context` | `context:read` + `project.read` | Ver abaixo |
+| `GET /projects/{id}/tasks` | `tasks:read` + `project.read` | Filtros e paginação da lista de pessoas; até 100 por página |
+| `GET /tasks/{id}` (novo) | `tasks:read` + `project.read` | Detalhes, `version` e transições disponíveis para o agente (D5) |
+| `POST /tasks` | `tasks:write` + `tasks.write` + `Idempotency-Key` | `projectId` no corpo; 201; autoria de agente |
+| `PATCH /tasks/{id}` | `tasks:write` + `tasks.write` + `expectedVersion` | 200; 409 com versão divergente. Sem `Idempotency-Key`: a versão já protege |
+| `POST /tasks/{id}/transitions` (novo) | `tasks:write` + `tasks.write` + `Idempotency-Key` + `expectedVersion` | Mesmo serviço e mesma `TransitionRules`. 200; 403 (`AgentCannotApprove`, `AgentCannotEnterDone`); 409 (sem transição, dependências ou versão) |
+| `POST /activities` | `activities:write` + `documents.write` + `Idempotency-Key` | 201; registro manual com o ator agente |
+| `POST /reports` | `reports:write` + `tasks.write` + `Idempotency-Key` | 201; D8 |
 
-### Decisões de baixo risco (serão registradas no ADR-016)
+- **Contexto do projeto** (tamanho limitado, sem dados pessoais):
+  - projeto: ID, nome, descrição, arquivado;
+  - workflow: estados, com a categoria, e transições, com `requiresApproval` e se o agente pode executá-las;
+  - fases e marcos, com o progresso (`ProgressRule`);
+  - decisões aceitas: título e resumo, até 50;
+  - documentos: ID, título e versão, sem o conteúdo, até 100;
+  - as 20 atividades mais recentes: resumo e autor (tipo e nome).
+  - **Ficam de fora** e-mails, a lista de membros e qualquer dado pessoal além do nome de quem aparece como autor.
+- **Reuso:** todas as rotas usam os serviços existentes. Nenhuma regra de negócio é copiada para os controllers de agentes.
+- **Rotas de gestão por pessoas e de leitura de relatórios:** estão no ADR-016.
 
-- **Erros:** Problem Details em pt-BR. O 401 de agente é sempre o mesmo, sem distinguir token inexistente, expirado ou revogado.
-- **Limites:**
-  - nome do agente: até 100 caracteres;
-  - descrição: até 500;
-  - nome da credencial: até 100;
-  - `summary` do relatório: até 2.000; `changes`: até 20.000;
-  - caminho de arquivo: até 500 caracteres.
-- **Rotas de gestão** (pessoas, com `[OrganizationPermission("agents.manage")]`):
-  - `GET`, `POST /organizations/{id}/agents`;
-  - `GET`, `PATCH /organizations/{id}/agents/{agentId}`;
-  - `POST .../{agentId}/disable` e `.../enable`;
-  - `GET`, `POST .../{agentId}/credentials` e `POST .../credentials/{credentialId}/revoke`;
-  - `PUT`, `DELETE .../{agentId}/projects/{projectId}`, com `project.members.manage` no projeto;
-  - `GET .../{agentId}/operations`.
+### D8. Relatório de trabalho
 
-  Todas as escritas registram eventos com `ActivityRecorder` e entram no `ActivityCoverageTests`.
-- **Logs:** só os IDs do agente e da credencial, por `[LoggerMessage]`. Nunca o token, o prefixo, o hash nem o corpo.
-- **OpenAPI:**
-  - o esquema `AgentToken` documentado;
-  - as rotas de agentes agrupadas na tag "Agentes";
-  - o token nunca aparece nos exemplos.
+- **`work_reports`** (imutável e permanente):
+  - organização, projeto, tarefa (opcional; se vier, precisa ser do projeto), agente e credencial;
+  - **declarado:**
+    - `summary` (até 2.000 caracteres) e `changes` (Markdown, até 20.000);
+    - `files` (até 200 caminhos de até 500 caracteres);
+    - `tests` (comando de até 500 caracteres; aprovados, falhas e ignorados, inteiros não negativos);
+    - `commit` (SHA hexadecimal de 40 ou 64 caracteres e repositório opcional de até 200);
+    - `suggestedStatus` (ID de um estado do workflow do projeto);
+  - **retrato do recebimento:** o estado da tarefa naquele momento (ID e nome) e o estado sugerido (ID e nome), além da data e do ID da requisição.
+  - **Gatilho:** recusa `UPDATE`, `DELETE` e `TRUNCATE`, sem exceção de retenção.
+- **Os cinco níveis da seção 6.4**, sempre separados:
 
-## Contratos previstos
+  | Nível | Origem | Nesta fase |
+  |---|---|---|
+  | 1. Declarado | O conteúdo do relatório, sempre rotulado como declaração do agente | Gravado |
+  | 2. Aceito | **Recebido e validado pela API**: projeto, tarefa, estado sugerido e tamanhos. Não significa aprovado por uma pessoa | Sempre `true` num 201; o que não passa na validação não é gravado (400 ou 422) |
+  | 3. Testes executados | Registro de verificação separado e só de inclusão (`work_report_verifications`, Fase 12) | `notVerified`: a contagem do agente é declaração |
+  | 4. Confirmado pelo CI | Idem | `notVerified` |
+  | 5. Aprovado por uma pessoa | Calculado na leitura pelo histórico: a primeira entrada de `task_status_history` posterior ao relatório, com `actor_kind = 'User'` e `to_category = 'Done'`. Como agentes nunca entram em `Done` (D5), toda entrada assim é de uma pessoa | `approved` (com quem e quando), `pending` ou `notApplicable` (sem tarefa) |
 
-| Rota | Quem | Resumo |
+  - As verificações posteriores **nunca alteram** o relatório: ficam numa tabela própria, só de inclusão.
+  - A tabela `work_report_verifications` será criada na Fase 12, quando existir quem grave. Sem verificação, o nível é `notVerified`.
+- **O relatório não muda o estado da tarefa.** Para isso, o agente usa a rota de transição (D5).
+- **Resposta (201):**
+
+  ```json
+  {
+    "reportId": "…",
+    "accepted": true,
+    "activityCreated": "<id do ActivityEvent>",
+    "taskStatus": { "stateId": "…", "name": "…", "category": "…" },
+    "approvalRequired": true,
+    "evidence": {
+      "declared": true,
+      "accepted": true,
+      "testsExecuted": "notVerified",
+      "ciConfirmed": "notVerified",
+      "humanApproval": "pending"
+    }
+  }
+  ```
+
+  - `approvalRequired` vale `true` ou `false` se existe uma transição direta do estado atual até o sugerido, conforme ela exija aprovação.
+  - Vale `null` sem estado sugerido ou sem transição direta, e então `suggestedTransition` é `"none"`.
+  - Se o estado sugerido for da categoria `Done`, a conclusão será sempre de uma pessoa (D5).
+- **Leitura por pessoas** (`project.read`):
+  - `GET /api/v1/projects/{id}/reports`;
+  - `GET /api/v1/tasks/{id}/reports`;
+  - `GET /api/v1/reports/{id}`, com o cabeçalho de organização e `[ReportPermission]` no modelo de `[TaskPermission]`.
+- **Auditoria:** o recebimento gera o evento `work_report.received`, com o ator agente, dentro da mesma transação.
+
+### D9. Idempotência
+
+- **Onde vale:** em todos os `POST` de agentes (tarefas, transições, atividades e relatórios).
+- **Chave:** `Idempotency-Key` de 1 a 100 caracteres ASCII visíveis (0x21 a 0x7E); ausente ou inválida, 400.
+- **`idempotency_records`** (`IOrganizationOwned`):
+  - organização, agente e **credencial**;
+  - chave, **método HTTP** e **modelo da rota**;
+  - **SHA-256 dos bytes do corpo**;
+  - projeto e tarefa afetados;
+  - código e corpo da resposta (até 64 KB);
+  - criação e expiração lógica (24 horas).
+  - Índice único `(credential_id, key)`.
+- **Fluxo**, depois da autenticação, do rate limiting e da autorização da rota:
+  1. Abre **uma transação** e tenta `pg_try_advisory_xact_lock(hash(credential_id, key))`. Se a trava não vier, há outra requisição com a mesma chave em processamento: **409**, sem esperar.
+  2. Procura o registro não expirado da chave. Um registro expirado é tratado como inexistente e substituído.
+  3. **Registro encontrado:**
+     - método, rota ou hash diferentes: **422**;
+     - iguais: **reavalia a autorização**: `AgentAccessGrant.Compute` com os escopos e o acesso atuais, para o projeto e a tarefa guardados. Negada: responde a negação atual (403 ou 404) e **não devolve** a resposta guardada. Permitida: devolve o código e o corpo guardados, com `Idempotency-Replayed: true`.
+  4. **Sem registro:** executa a operação **na mesma transação**, grava o registro com a resposta e faz o commit. A operação e o registro entram juntos ou não entram.
+- **Atomicidade:**
+  - uma queda antes do commit desfaz os dois, e a nova tentativa executa de novo, com segurança;
+  - serviços que abrem transação própria verificam se já existe uma (`Database.CurrentTransaction`) e a reutilizam. Hoje, só operações fora das rotas de agentes abrem transação própria (veja a situação atual), e um teste garante que as rotas de agentes não abrem uma segunda.
+- **O que não fica guardado:** 401, 403, 404, 429 e 5xx, que dependem de autorização, limite ou falha transitória. A transação é desfeita e a chave fica livre.
+- **O que fica guardado:** 2xx e as respostas de regra determinística (400 de validação, 409 de conflito e 422).
+- **Credencial revogada ou expirada:** nunca chega ao passo 1, porque recebe 401 na autenticação. **Agente sem acesso:** é barrado no passo 3. Nenhum dos dois recupera respostas anteriores.
+- **Comportamentos documentados:**
+  - **Rotação de credencial:** a chave vale por credencial. Uma nova tentativa com outra credencial executa de novo. O cliente deve manter a credencial durante as novas tentativas.
+  - **Corpo:** o hash é dos bytes. JSON equivalente com outra serialização responde 422.
+- **Expiração e exclusão:** a expiração lógica é de 24 horas, e a exclusão física acontece depois de 7 dias (D12).
+
+### D10. Auditoria de operações (AgentOperation)
+
+- **`agent_operations`** (`IOrganizationOwned`): uma linha por requisição de agente com credencial identificada, inclusive leituras, negadas, credenciais revogadas ou expiradas e a primeira requisição bloqueada por limite em cada janela.
+- **Campos:**
+  - `agent_id` e `credential_id`;
+  - `occurred_at` (UTC) e `duration_ms`;
+  - `http_method` e `route_template` (o modelo, por exemplo `/api/v1/agents/tasks/{taskId}`, nunca a URL com valores ou a query string);
+  - `project_id` e `task_id`, quando houver;
+  - `status_code`;
+  - **`authorization_result`**: `Allowed`, `CredentialRevoked`, `CredentialExpired`, `AgentDisabled`, `OrganizationMismatch`, `ProjectNotVisible`, `ScopeMissing`, `PermissionMissing`, `BusinessRuleDenied` ou `RateLimited`;
+  - `denial_code` (até 64 caracteres, por exemplo `agent_cannot_approve`);
+  - **`correlation_id`** (o `TraceIdentifier`, o mesmo dos logs e do `RequestId` dos eventos);
+  - `idempotent_replay`;
+  - `client_origin` (`X-Gestalyn-Client`, informativo).
+- **Nunca gravado:** token, prefixo, hash, cabeçalhos, corpos de requisição ou resposta, e-mails.
+- **Gravação:**
+  - num middleware que envolve a requisição a partir da autenticação, com um escopo de DI e um `DbContext` próprios, **fora da transação da operação**: a linha sobrevive a um rollback;
+  - se a gravação falhar, a requisição não falha. Fica um log de erro e o health check `agents-audit` fica `Degraded`.
+  - As escritas bem-sucedidas continuam auditadas também pelo `ActivityEvent`, gravado na mesma transação (ADR-014).
+- **Tokens inexistentes** não têm agente nem organização: ficam fora da tabela, com um log estruturado (sem o token e sem o prefixo) e o limite por IP (D11).
+- **Gatilho:** recusa `UPDATE` e `TRUNCATE` sempre. O `DELETE` só é aceito quando `OLD.occurred_at < now() - interval '180 days'` (D12).
+- **Índices:** `(agent_id, occurred_at)`, `(organization_id, occurred_at)` e `(occurred_at)`, este para a retenção.
+- **Leitura por pessoas:** `GET /api/v1/organizations/{id}/agents/{agentId}/operations` (`agents.manage`), paginada, com filtros por resultado e período.
+
+### D11. Rate limiting no PostgreSQL
+
+- **Contador por credencial e janela** (`agent_rate_limit_counters`): `credential_id`, `organization_id`, `window_start` e `request_count`, com chave primária `(credential_id, window_start)`.
+- **Uma instrução por requisição**, depois da autenticação:
+
+  ```sql
+  INSERT INTO agent_rate_limit_counters (credential_id, organization_id, window_start, request_count)
+  VALUES (@credential, @organization, to_timestamp(floor(extract(epoch FROM now()) / @window) * @window), 1)
+  ON CONFLICT (credential_id, window_start)
+  DO UPDATE SET request_count = agent_rate_limit_counters.request_count + 1
+  RETURNING request_count, window_start;
+  ```
+
+- **Por que funciona:**
+  - **atômica sob concorrência:** o `ON CONFLICT` trava a linha;
+  - **correta com várias instâncias:** o estado está no banco, e a janela usa o relógio do banco, sem depender do relógio de cada instância;
+  - **sem leitura extra:** um único comando por requisição.
+- **Resultado:**
+  - `request_count > limite`: **429** em Problem Details, com `Retry-After` até o fim da janela;
+  - `request_count = limite + 1`: a primeira rejeição da janela vai para `AgentOperation` (`RateLimited`); as seguintes, não, para não multiplicar gravações durante uma enxurrada;
+  - `request_count = 1`: atualiza o último uso da credencial (D2), no máximo uma vez por janela.
+- **Configuração:** `RateLimiting:Agents` (`PermitLimit` 120 e `WindowSeconds` 60), validada na inicialização.
+- **Janela fixa:** admite até o dobro do limite na virada da janela. A limitação fica documentada no ADR-016.
+- **Banco indisponível:** a requisição falha com 503. Ela falharia de qualquer forma, porque a autenticação depende do banco.
+- **SQL bruto:** o EF Core não expressa o upsert com `RETURNING` de forma atômica. A justificativa exigida pelo `AGENTS.md` está no ADR-016.
+- **Limite complementar de falhas por IP:**
+  - tokens `gsk_` inexistentes contam por IP, em memória (`RateLimiting:AgentAuthFailures`, padrão 30 por minuto);
+  - acima disso, novas tentativas daquele IP recebem 429 antes da consulta ao banco;
+  - **não é a cota de agentes**, só uma proteção barata da consulta. Atrás de um proxy, depende dos forwarded headers (Fase 14).
+
+### D12. Retenção e limpeza
+
+| Registro | Retenção |
+|---|---|
+| `agent_operations` | 180 dias |
+| `idempotency_records` | Expiração lógica em 24 horas; exclusão depois de 7 dias |
+| `work_reports` | Permanente |
+| `agent_rate_limit_counters` | 1 dia (dado operacional, não de auditoria) |
+| Agentes, credenciais e acessos | Permanentes: desativação e revogação, nunca exclusão |
+
+- **Serviço:** `AgentRetentionService`, um `BackgroundService` hospedado na própria API, sem infraestrutura nova.
+- **Agenda:** `PeriodicTimer` com `Agents:Retention:Interval` (padrão de 1 hora) e um atraso inicial.
+- **Uma instância por vez:** `pg_try_advisory_lock` com uma chave fixa. Se outra instância estiver limpando, o ciclo é pulado.
+- **Exclusão em lotes** de até 1.000 linhas, cada lote com a própria transação e `statement_timeout` de 30 segundos:
+  - `agent_operations` com `occurred_at < now() - interval '180 days'`;
+  - `idempotency_records` com `created_at < now() - interval '7 days'`;
+  - `agent_rate_limit_counters` com `window_start < now() - interval '1 day'`.
+- **Exceção de isolamento:** a limpeza atravessa organizações. É a terceira exceção autorizada ao uso de `IgnoreQueryFilters` ou SQL bruto (ADR-016), restrita a este serviço e a esses predicados.
+- **Proteção no banco:**
+  - o gatilho de `agent_operations` só aceita o `DELETE` vencido. O prazo de 180 dias fica **no gatilho**: mudá-lo exige uma migração;
+  - a API recusa iniciar com uma configuração menor que a do gatilho;
+  - `work_reports` não tem nenhuma exceção.
+- **Idempotente:** repetir um ciclo não apaga nada além do vencido.
+- **Monitorável:**
+  - logs `[LoggerMessage]` com as contagens por tabela e a duração;
+  - health check `agents-retention`, que fica `Degraded` sem um ciclo bem-sucedido (ou pulado por trava) há mais de 3 intervalos.
+- **Falhas:** exceções são registradas e o próximo ciclo tenta de novo. O serviço usa um escopo próprio e nunca derruba a API nem bloqueia requisições.
+
+### D13. Interface Web e exibição do token
+
+- **Telas:**
+  - **Configurações da organização → Agentes** (`agents.manage`): lista, criação, desativação e reativação;
+  - **detalhes do agente:**
+    - credenciais: nome, prefixo, escopos, expiração e último uso, com criação e revogação;
+    - projetos concedidos, com concessão e remoção (o projeto precisa ser gerenciado por quem concede);
+    - operações recentes, com o resultado da autorização;
+  - **tarefa e atividades do projeto:** a autoria "Agente: nome" e os relatórios, com os níveis da D8 rotulados: "Declarado pelo agente", "Recebido e validado pela API", "Testes não verificados", "CI não verificado", "Aprovação humana pendente" ou "Aprovado por…".
+  - O que aparece depende só das permissões que a API devolve (ADR-015).
+- **Exibição do token** (decisão C4, exceção formal no ADR-016 à seção 7 da especificação mestre e ao ADR-006):
+  1. o token completo aparece **uma única vez**, na resposta do próprio formulário de criação, **sem redirecionamento** (sem post-redirect-get);
+  2. a API e a Web respondem com `Cache-Control: no-store`;
+  3. o token não é guardado no banco (só o hash), na Web, no navegador (sem `localStorage`, `sessionStorage`, cookie ou URL), na sessão nem em aviso;
+  4. o token não aparece em logs, telemetria, monitoramento nem em nenhuma resposta posterior. A Web não registra corpos de resposta da API, e um teste procura o token nos logs da execução;
+  5. o botão de copiar usa a Clipboard API num módulo de `wwwroot/js`, sem script inline e sem guardar nada;
+  6. ao sair da tela, o token não pode ser recuperado. A tela diz isso e orienta criar uma credencial nova e revogar a antiga.
+- **Fora dessa exceção:** os tokens de sessão dos usuários e qualquer outra credencial continuam sem chegar ao navegador.
+- **Testes e documentação:** as telas ganham testes bUnit e entram em `docs/web/TELAS.md`.
+
+### D14. Tempo real
+
+Reavaliado: os relatórios e as operações de agentes são lidos ao abrir a tela. Sem necessidade comprovada, o SignalR continua fora (decisão 23).
+
+## Modelo de dados e migrações
+
+| Tabela | Tipo | Proteções |
 |---|---|---|
-| `GET /api/v1/agents/me` | Agente (qualquer escopo) | `{ agentId, name, organizationId, credential { id, prefix, scopes, expiresAt } }` |
-| `GET /api/v1/agents/projects` | `context:read` | Projetos concedidos, com o papel |
-| `GET /api/v1/agents/projects/{id}/context` | `context:read` + `project.read` | Contexto limitado (D6) |
-| `GET /api/v1/agents/projects/{id}/tasks` | `tasks:read` | Lista paginada |
-| `GET /api/v1/agents/tasks/{id}` | `tasks:read` | Detalhes, versão e transições disponíveis para o agente |
-| `POST /api/v1/agents/tasks` | `tasks:write` + `tasks.write` + `Idempotency-Key` | 201 com a tarefa |
-| `PATCH /api/v1/agents/tasks/{id}` | `tasks:write` + `tasks.write`, com `expectedVersion` | 200, ou 409 se a versão divergir |
-| `POST /api/v1/agents/tasks/{id}/transitions` | `tasks:write` + `tasks.write` + `Idempotency-Key` | 200, 403 (aprovação), 409 (sem transição ou dependências abertas) |
-| `POST /api/v1/agents/activities` | `activities:write` + `tasks.write` + `Idempotency-Key` | 201 com o registro |
-| `POST /api/v1/agents/reports` | `reports:write` + `project.read` + `Idempotency-Key` | 201 com `{ reportId, accepted, activityCreated, taskStatus, approvalRequired, evidence }` |
-| `GET /api/v1/projects/{id}/reports`, `GET /api/v1/tasks/{id}/reports` | Pessoa com `project.read` | Relatórios com os cinco níveis |
-| Rotas de gestão (decisões de baixo risco) | Pessoa com `agents.manage` | Agentes, credenciais, acesso a projetos e operações |
+| `agents` | Organização | Nome único por organização; chave alternativa `(organization_id, id)` |
+| `agent_credentials` | Organização | `token_hash` único; FK composta para `agents` |
+| `agent_project_access` | Organização | FKs compostas para `agents` e `projects`; papel `Contributor` ou `Viewer` (`CHECK`) |
+| `agent_operations` | Organização | Gatilho: sem `UPDATE` e `TRUNCATE`; `DELETE` só depois de 180 dias |
+| `agent_rate_limit_counters` | Organização | Chave primária `(credential_id, window_start)` |
+| `idempotency_records` | Organização | Índice único `(credential_id, key)` |
+| `work_reports` | Organização | Gatilho: sem `UPDATE`, `DELETE` e `TRUNCATE`; FKs compostas para projeto, tarefa e agente |
+| `tasks` (alteração) | Organização | `created_by_agent_id`, `CHECK` de autor único, gatilho de autoria imutável, `version` |
+| `role_permissions` (dados) | Organização | `agents.manage` para Proprietário e Administrador existentes |
+
+- **Migrações:**
+  - geradas com `dotnet ef migrations add` e nunca aplicadas pela aplicação;
+  - gatilhos e `CHECK` com `num_nonnulls` são SQL escrito à mão na migração, por necessidade, como na Fase 08;
+  - cada migração tem um teste: aplica até a anterior, insere dados, aplica a nova e confere a preservação.
+
+## Impacto
+
+| Área | Impacto |
+|---|---|
+| Banco | 7 tabelas novas, alteração de `tasks`, dados de permissão, 4 gatilhos |
+| API | Políticas explícitas (todas as rotas); esquema `AgentToken`; organização ativa de agentes; `AgentAccessGrant`; `TransitionRules`; ator nos serviços; versão das tarefas; 10 rotas de agentes; rotas de gestão e de relatórios; idempotência; auditoria; rate limiting; retenção; 2 health checks |
+| Contratos existentes | `TaskDetails.CreatedByUserId` anulável e `createdBy`; `expectedVersion` opcional no `PATCH` de pessoas; `actor` nas atividades e no histórico. Mudanças registradas no ADR-016 |
+| Web | Telas de agentes; autoria e relatórios na tarefa e nas atividades; envio de `expectedVersion`; ajuste do modelo `TaskDetails` |
+| Testes | `ActivityCoverageTests` passa a cobrir as rotas novas de escrita, de agentes e de gestão; testes novos da estratégia de testes |
 
 ## Dependências
 
 | Item | Estado |
 |---|---|
-| Fases 03 a 09 | Completed. A Fase 09 integrada em `develop` (PR #17); o registro como Completed está no PR #18, ainda aberto |
-| Pacotes novos | **Nenhum.** Autenticação, rate limiting e hash usam o ASP.NET Core e o .NET |
-| Docker (PostgreSQL e Mailpit) | Instalado; precisa estar em execução para os testes de integração e a execução real |
+| Fases 03 a 09 | Completed. A Fase 09 está integrada em `develop` (PR #17); o registro como Completed está no PR #18, aberto |
+| Pacotes novos | **Nenhum.** ASP.NET Core, EF Core, Npgsql e .NET |
+| Docker (PostgreSQL e Mailpit) | Necessário para os testes de integração e a execução real |
 
 ## Tarefas
 
 | ID | Tarefa | Subtarefas |
 |---|---|---|
-| F10-001 | Implementar entidade Agent | Entidade, configuração, migração, permissão `agents.manage` com migração de dados (D1) |
-| F10-002 | Implementar provisionamento | Rotas de gestão, eventos de auditoria, testes de permissão e de isolamento (D1) |
-| F10-003 | Implementar credenciais | Criação com o token uma vez só, listagem pelo prefixo, até 3 ativas (D2) |
-| F10-004 | Implementar hash e armazenamento seguro de tokens | SHA-256 com índice único; nada do token em logs ou respostas posteriores (D2) |
-| F10-005 | Implementar expiração | Padrão e máximo configuráveis, checagem a cada requisição (D2) |
-| F10-006 | Implementar revogação | Credencial e desativação do agente, com efeito imediato (D2) |
-| F10-007 | Implementar escopos de acesso | Escopos na credencial e `AgentAccessGrant.Compute` (D4) |
-| F10-008 | Implementar AgentProjectAccess | Concessão e remoção com as duas permissões; papel Colaborador ou Observador (D4) |
-| F10-009 | Implementar autenticação de agentes | Esquema `AgentToken`, seletor por prefixo, separação das rotas, organização da credencial (D3) |
-| F10-010 | Implementar endpoints de contexto | `me`, `projects`, `projects/{id}/context` (D6) |
-| F10-011 | Implementar listagem de tarefas | `projects/{id}/tasks` e `tasks/{id}` (D6) |
-| F10-012 | Implementar criação e atualização de tarefas | `POST`, `PATCH` com `expectedVersion`, transições, autoria de agente (D5, D6 e D8) |
-| F10-013 | Implementar registro de atividades | `POST /agents/activities` com `ActorKind.Agent` (D5) |
-| F10-014 | Implementar relatórios de trabalho | `WorkReport`, os cinco níveis, leitura por pessoas (D7) |
-| F10-015 | Implementar idempotência | `IdempotencyRecord`, reserva, replay, conflito e expiração (D8) |
-| F10-016 | Implementar auditoria de operações | `AgentOperation`, imutabilidade, leitura por pessoas, rate limiting (D9) |
-| F10-017 | Criar testes de segurança | Veja a estratégia de testes (D10) |
-| F09-018 | Implementar interface de agentes (transferida) | Telas de agentes, credenciais, acesso, operações e relatórios (D10) |
+| F10-001 | Implementar entidade Agent | Entidade, configuração, migração, `agents.manage` com migração de dados (D1) |
+| F10-002 | Implementar provisionamento | Rotas de gestão, eventos de auditoria, permissão e isolamento (D1, ADR-016) |
+| F10-003 | Implementar credenciais | Criação com o token uma vez só, prefixo, até 3 ativas (D2) |
+| F10-004 | Implementar hash e armazenamento seguro de tokens | SHA-256 com índice único; nada do token em logs ou respostas posteriores (D2, D13) |
+| F10-005 | Implementar expiração | Padrão, mínimo e máximo, checagem a cada requisição (D2, D3) |
+| F10-006 | Implementar revogação | Credencial e desativação do agente, com efeito na requisição seguinte (D2, D3) |
+| F10-007 | Implementar escopos de acesso | Tabela de escopos e `AgentAccessGrant.Compute` (D4) |
+| F10-008 | Implementar AgentProjectAccess | Concessão e remoção com as duas permissões; Colaborador ou Observador (D4) |
+| F10-009 | Implementar autenticação de agentes | Políticas por esquema, handler, `AgentCredentialDirectory`, organização da credencial (D3) |
+| F10-010 | Implementar endpoints de contexto | `me`, `projects`, `projects/{id}/context` (D7) |
+| F10-011 | Implementar listagem de tarefas | `projects/{id}/tasks` e `tasks/{id}` (D7) |
+| F10-012 | Implementar criação e atualização de tarefas | `POST`, `PATCH` e transições; autoria e versão; `TransitionRules` (D5, D6, D7) |
+| F10-013 | Implementar registro de atividades | `POST /agents/activities` com `ActorKind.Agent` (D6, D7) |
+| F10-014 | Implementar relatórios de trabalho | `WorkReport`, os cinco níveis, leitura por pessoas (D8) |
+| F10-015 | Implementar idempotência | Transação, trava, replay com reautorização, 409 e 422, expiração (D9) |
+| F10-016 | Implementar auditoria de operações | `AgentOperation`, rate limiting no PostgreSQL, retenção (D10, D11, D12) |
+| F10-017 | Criar testes de segurança | [Estratégia de testes](#estratégia-de-testes) |
+| F09-018 | Implementar interface de agentes (transferida) | Telas e exibição única do token (D13) |
+
+## Plano de implementação
+
+Cada etapa termina com `dotnet build` sem avisos e todos os testes passando, num commit próprio.
+
+| Etapa | Conteúdo | Verificação |
+|---|---|---|
+| 0 | Depois do merge do PR #18, autorizado pelo responsável: rebase em `develop` e commit da documentação aprovada | `git log` sem o `788a6a2` duplicado |
+| 1 | Políticas `User` e `Agent` no lugar do `AuthorizeFilter` sem política (ainda sem agentes) | Teste de políticas de todos os endpoints; os 372 testes atuais passam |
+| 2 | `Agent`, `AgentCredential`, `AgentProjectAccess`; `agents.manage` com migração de dados | Testes de migração, de permissão e de isolamento |
+| 3 | Rotas de gestão por pessoas e eventos | `ActivityCoverageTests`; 403 e 404 por permissão; token só na criação |
+| 4 | Handler `AgentToken`, `AgentCredentialDirectory`, organização do agente, `GET /agents/me` | Revogação, expiração, agente desativado, organização divergente, separação das rotas |
+| 5 | `AgentAccessGrant` e as regras de agentes em `TransitionRules`; transições disponíveis por `TransitionRules` | Unitários de escopo × papel; workflows personalizados; testes de pessoas sem mudança |
+| 6 | Ator nos serviços; autoria, `CHECK`, gatilho e `version` nas tarefas; nomes de agentes; contratos e Web | Teste da migração com tarefas existentes; 409 de versão; autoria imutável |
+| 7 | Rotas de leitura de agentes (projetos, contexto, tarefas) | Escopos, isolamento, contexto sem dados pessoais |
+| 8 | Idempotência e rotas de escrita de agentes (tarefas, transições, atividades) | Replay, 422, 409 concorrente, reautorização, atomicidade |
+| 9 | `WorkReport` e leitura por pessoas | Imutabilidade no banco; níveis; estado da tarefa inalterado |
+| 10 | `AgentOperation`, rate limiting no PostgreSQL, retenção | Concorrência do contador; 429; auditoria das negadas; ciclo de limpeza |
+| 11 | Telas Web | bUnit; token uma vez só; `no-store` |
+| 12 | Suíte de segurança, ponta a ponta, mutações, execução real, documentação de encerramento | Critérios de aceitação |
 
 ## Arquivos previstos
 
 ```
-src/ProjectManager.Domain/Agents/                  Agent, AgentCredential, AgentProjectAccess, AgentScopes,
-                                                   AgentOperation, WorkReport
-src/ProjectManager.Application/Agents/             Contratos, IAgentService, IWorkReportService, IIdempotencyStore
-src/ProjectManager.Application/Projects/AgentAccessGrant.cs   Regra única de acesso de agentes (D4)
-src/ProjectManager.Infrastructure/Agents/          Serviços, autenticação de credenciais, idempotência
+src/ProjectManager.Domain/Agents/                     Agent, AgentCredential, AgentProjectAccess, AgentScopes,
+                                                      AgentOperation, WorkReport
+src/ProjectManager.Domain/Workflows/TransitionRules.cs     Regras de agentes (D5)
+src/ProjectManager.Domain/Tasks/ProjectTask.cs        Autoria por tipo de ator e versão (D6)
+src/ProjectManager.Application/Agents/                Contratos, serviços, IAgentProjectAccess, IIdempotencyStore
+src/ProjectManager.Application/Projects/AgentAccessGrant.cs     Regra única de acesso de agentes (D4)
+src/ProjectManager.Infrastructure/Agents/             Serviços, AgentCredentialDirectory, idempotência,
+                                                      rate limiting, AgentRetentionService
 src/ProjectManager.Infrastructure/Persistence/Configurations/AgentConfigurations.cs
-src/ProjectManager.Infrastructure/Persistence/Migrations/       Agentes, credenciais, acesso, operações,
-                                                   relatórios, idempotência, autoria e versão das tarefas
-src/ProjectManager.API/Authentication/AgentTokenAuthentication.cs
-src/ProjectManager.API/Agents/                     Controllers de agentes e de gestão, filtro de idempotência,
-                                                   registro de operações, rate limiting por credencial
-src/ProjectManager.Web/Components/Pages/Agents/    Telas de agentes (D10)
-tests/ProjectManager.UnitTests/Agents/             Escopos, AgentAccessGrant, credenciais, relatórios
-tests/ProjectManager.IntegrationTests/Agents/      Autenticação, isolamento, idempotência, segurança
-tests/ProjectManager.WebTests/Agents/              Telas de agentes
+src/ProjectManager.Infrastructure/Persistence/Migrations/        Migrações da D6 e do modelo de dados
+src/ProjectManager.API/Authentication/                Políticas, AgentTokenAuthenticationHandler
+src/ProjectManager.API/Agents/                        Controllers de agentes, atributos, idempotência,
+                                                      auditoria de operações
+src/ProjectManager.API/Controllers/                   Gestão de agentes e leitura de relatórios
+src/ProjectManager.Web/Components/Pages/Agents/       Telas de agentes (D13)
+tests/ProjectManager.UnitTests/Agents/                Escopos, AgentAccessGrant, TransitionRules, credenciais, níveis
+tests/ProjectManager.IntegrationTests/Agents/         Segurança, isolamento, idempotência, concorrência, retenção,
+                                                      ponta a ponta
+tests/ProjectManager.WebTests/Agents/                 Telas de agentes
 docs/decisions/ADR-016-AGENTES.md
-docs/security/AGENTES.md                           Modelo de ameaças e uso das credenciais
+docs/security/AGENTES.md                              Modelo de ameaças e uso das credenciais
 ```
 
 ## Critérios de aceitação
 
-| Critério (especificação mestre) | Como será verificado |
+| Critério | Como será verificado |
 |---|---|
-| Agentes autenticam independentemente de usuários | Teste de integração: credencial de agente sem nenhuma sessão de usuário; o token de agente recusado nas rotas de usuário e o token de usuário recusado nas rotas de agente |
-| Credenciais podem ser revogadas | Testes: credencial revogada, agente desativado e credencial expirada recebem 401 na requisição seguinte; outra credencial ativa continua funcionando |
-| Escopos são respeitados | Teste por escopo: cada rota recusa (403) a credencial sem o escopo; `tasks.approve` nunca é concedido |
-| Acesso limitado aos projetos autorizados | Testes: projeto da mesma organização sem concessão (404), projeto de outra organização (404), cabeçalho de organização divergente (404), Observador sem escrita (403) |
-| Operações registradas | Testes: cada requisição de agente gera uma `AgentOperation`, inclusive as negadas; cada escrita gera um `ActivityEvent` com `ActorKind.Agent` (`ActivityCoverageTests`); `UPDATE` e `DELETE` recusados pelo banco |
-| Idempotência funcional | Testes: repetir um `POST` não duplica e devolve a mesma resposta; outro corpo com a mesma chave responde 422; chamadas concorrentes com a mesma chave criam um registro só |
-| Tentativas de acesso indevido são bloqueadas | Testes de segurança da estratégia de testes; mutações; execução real com a credencial de um agente |
-| Agentes não aprovam o próprio trabalho (Fase 07) | Teste de integração com um agente real: a transição com aprovação é recusada (403) e o estado não muda |
+| Agentes autenticam independentemente de usuários | Credencial de agente sem nenhuma sessão de usuário; token de agente em rota de usuário e JWT em rota de agente recebem 401; teste de políticas de todos os endpoints |
+| Credenciais podem ser revogadas | Revogada, expirada e de agente desativado recebem 401 na requisição seguinte e ficam em `AgentOperation`; outra credencial ativa continua funcionando; a quarta credencial ativa é recusada |
+| Token inválido não acessa recursos | Token inexistente, adulterado, truncado, de outro agente ou sem `gsk_`: 401 igual, sem dados |
+| Escopos são respeitados | Cada rota recusa (403) a credencial sem o escopo; `tasks.approve` nunca é concedido (unitário e mutação) |
+| Acesso limitado aos projetos autorizados | Projeto da mesma organização sem concessão (404), de outra organização (404), organização divergente no cabeçalho ou na rota (404), Observador escrevendo (403) |
+| Isolamento entre organizações | Toda rota de agente, de gestão e de relatório testada com recursos de outra organização |
+| Agentes não aprovam nem concluem | Workflow padrão e personalizado com "Em andamento → Concluída" sem aprovação: 403, estado inalterado, sem histórico e com a recusa em `AgentOperation`; Cancelada sem aprovação permitida |
+| Autoria íntegra | Tarefa criada por agente com `created_by_agent_id`; `CHECK` recusa os dois autores e nenhum; o gatilho recusa a mudança de autoria; a migração preserva as tarefas existentes |
+| Concorrência | `expectedVersion` desatualizado responde 409 sem sobrescrever; duas edições simultâneas: uma vence e a outra recebe 409 |
+| Operações registradas | Cada requisição com credencial identificada gera uma `AgentOperation` com resultado e correlation ID; escritas geram `ActivityEvent` com `ActorKind.Agent`; `UPDATE` recusado |
+| Idempotência funcional | Replay idêntico sem duplicar; outro corpo, método ou rota: 422; chamadas simultâneas: uma executa e a outra recebe 409; credencial revogada ou acesso removido não recuperam a resposta; queda simulada antes do commit não deixa operação sem registro |
+| Relatórios íntegros | `UPDATE` e `DELETE` recusados pelo banco; o estado da tarefa não muda; os níveis aparecem separados |
+| Limite de requisições | A 121ª requisição na janela responde 429 com `Retry-After`; contagem correta com requisições concorrentes; só a primeira rejeição é registrada |
+| Retenção | O ciclo apaga só o vencido; o `DELETE` direto de operação recente é recusado; relatórios intactos; ciclo repetido sem efeito; dois ciclos simultâneos: um é pulado |
+| Token na Web | Aparece uma vez, com `no-store`; ausente de logs, banco, cookies e respostas posteriores |
+| Ponta a ponta | Teste de integração automatizado (estratégia de testes) |
 
 ## Estratégia de testes
 
 - **Unitários:**
-  - `AgentAccessGrant` (papel × escopos, sem `tasks.approve`);
-  - expiração e revogação;
-  - formato e prefixo do token;
-  - os níveis do relatório;
-  - a comparação do hash da idempotência.
-- **Integração (PostgreSQL real):**
-  - **autenticação:** separação das rotas; credencial revogada, expirada ou de agente desativado; token adulterado;
-  - **isolamento:** cross-tenant por rota e por cabeçalho, e projeto sem concessão;
-  - **escopos e papéis:** escopos por rota; Observador versus Colaborador; projeto arquivado;
-  - **quem pode gerir:** conceder acesso sem `project.members.manage`; a migração de `agents.manage`;
-  - **regras de trabalho:** aprovação do próprio trabalho; idempotência (replay, conflito, concorrência); `expectedVersion` (409);
-  - **registros:** autoria `Agent` em tarefas, histórico e eventos; operações e imutabilidade;
-  - **limites:** rate limiting (429).
-- **Componentes (bUnit):**
-  - telas de agentes e credenciais (token mostrado uma vez, permissões);
-  - relatórios com os níveis rotulados.
+  - `AgentAccessGrant` (escopo × papel × exigência; nunca `tasks.approve`);
+  - `TransitionRules` com agentes (aprovação, Concluída, Cancelada, dependências) e pessoas (sem mudança);
+  - formato e prefixo do token, expiração;
+  - níveis do relatório e `approvalRequired`;
+  - comparação do hash e do método e da rota na idempotência.
+- **Integração (PostgreSQL real via Testcontainers):**
+  1. **Isolamento entre organizações:** rotas de agentes, de gestão e de relatórios com IDs de outra organização; cabeçalho e rota divergentes; credencial de uma organização contra recursos de outra.
+  2. **Escopos e permissões:** cada rota sem o escopo; Observador e Colaborador; concessão sem `project.members.manage`; papel Gerente recusado; migração de `agents.manage`.
+  3. **Acesso por projeto:** sem concessão, concessão removida e projeto arquivado (leitura sim, escrita 409).
+  4. **Revogação e expiração:** revogada, expirada, agente desativado e reativado; efeito na requisição seguinte; limite de 3 ativas com criações concorrentes.
+  5. **Idempotência:** replay, 422 por corpo, método e rota, 409 em processamento, reautorização, não guardar 401, 403, 404 e 429, atomicidade com falha injetada antes do commit.
+  6. **Concorrência e versão:** `expectedVersion` divergente; edições e transições simultâneas; versão incrementada em todos os caminhos de alteração da tarefa.
+  7. **Workflows personalizados e bloqueio de aprovação:** transição direta para Concluída sem aprovação, transição com aprovação, Cancelada permitida, transições disponíveis coerentes com a regra.
+  8. **Autoria:** criação por agente e por pessoa; `CHECK` e gatilho; migração com tarefas existentes; nomes de agentes nas leituras.
+  9. **Integridade e imutabilidade de `WorkReport`:** `UPDATE`, `DELETE` e `TRUNCATE` recusados; tarefa de outro projeto recusada; estado inalterado; aprovação humana calculada pelo histórico.
+  10. **Auditoria de operações negadas:** cada resultado de autorização registrado; operações gravadas mesmo com a operação desfeita; tokens inexistentes fora da tabela e no log sem o token.
+- **Rate limiting e retenção:** contador sob concorrência (N requisições simultâneas, contagem exata), 429 e `Retry-After`, ciclo de limpeza e gatilhos.
+- **Teste de ponta a ponta (integração, automatizado), com um token real emitido pelo sistema:**
+  1. Uma pessoa com `agents.manage` cria o agente, cria a credencial (o token vem só nessa resposta) e concede um projeto como Colaborador.
+  2. Com o token, o agente consulta `me` e o contexto do projeto.
+  3. Cria uma tarefa (com `Idempotency-Key`; o replay não duplica) e a altera com `expectedVersion`.
+  4. Move a tarefa até um estado de revisão.
+  5. Registra uma atividade e envia um relatório, conferindo os níveis e o estado da tarefa inalterado.
+  6. Tenta a transição com aprovação e a entrada em Concluída: as duas são recusadas, sem mudança de estado e com o registro em `AgentOperation`.
+  7. Uma pessoa aprova e o nível de aprovação humana passa a `approved`.
+  8. A credencial é revogada e a chamada seguinte recebe 401, também registrada.
+- **Componentes (bUnit):** telas de agentes, credenciais (token uma vez, permissões), acessos, operações e relatórios com os níveis rotulados.
 - **Mutação:** cada uma destas deve fazer os testes falharem:
-  - remover a checagem de revogação;
-  - incluir `tasks.approve` nos escopos;
-  - aceitar o cabeçalho de outra organização;
-  - pular o hash do corpo na idempotência.
+  - remover a checagem de revogação ou de expiração;
+  - incluir `tasks.approve` nas permissões de agentes;
+  - remover a regra de `Done` para agentes;
+  - aceitar a organização do cabeçalho;
+  - devolver o replay sem reautorizar;
+  - pular o hash do corpo;
+  - remover o `CHECK` de autoria.
 - **Execução real:**
-  - API e Web sobre o banco local: uma pessoa provisiona um agente, cria a credencial e concede um projeto;
-  - com o token, chamadas reais (`curl`) a contexto, criação e transição de tarefa, relatório e replay;
-  - a aprovação recusada; a revogação pela Web e o 401 em seguida;
-  - nenhum token nos logs (busca no log da execução) nem no banco (só o hash).
+  - API e Web sobre o banco local, com o fluxo do teste de ponta a ponta pela Web e por `curl`;
+  - busca do token nos logs da execução e no banco: só o hash e o prefixo.
 
 ## Riscos
 
 | Risco | Mitigação |
 |---|---|
-| Vazamento de credencial | Token mostrado uma vez, hash no banco, expiração obrigatória, revogação imediata, escopos mínimos, rate limiting e registro de todas as operações |
-| Agente ganhar poderes de pessoa | Esquemas e rotas separados; Gerente proibido; `tasks.approve` nunca concedido; testes de mutação |
-| Regra de acesso duplicada | `AgentAccessGrant.Compute` é a única regra de agentes e reaproveita `ProjectPermissions.For`; os serviços continuam os mesmos |
-| Migração da autoria das tarefas (`created_by_user_id` nulo) | `CHECK` de exatamente um autor; os dados existentes ficam inalterados; teste da migração |
-| `version` nas tarefas quebrar a Web | Campo opcional para pessoas; a Web passa a enviá-lo; testes existentes mantidos |
-| Volume de `AgentOperation` | Uma linha pequena por requisição, com índice por agente e data; retenção na Fase 14 |
-| Corrida na idempotência | Reserva com restrição única antes da operação; teste com chamadas concorrentes |
-| Volume da fase (18 tarefas) | Entrega por partes, um commit por área: domínio e migração; autenticação e escopos; endpoints; relatórios; idempotência e operações; Web; testes de segurança |
+| Vazamento de credencial | Token uma vez só, hash no banco, expiração obrigatória, revogação imediata, escopos mínimos, rate limiting, operações registradas |
+| Agente com poderes de pessoa | Políticas por esquema com teste de todos os endpoints; sem Gerente; regras de agentes em `TransitionRules`; serviços que recusam um ator agente nas autorias de pessoas |
+| Regra de acesso ou de transição duplicada | `AgentAccessGrant.Compute` e `TransitionRules` são as únicas regras; as transições disponíveis passam a usar `TransitionRules` |
+| Migração de `tasks` | `CHECK` válido para as linhas existentes, gatilho de autoria, teste com dados reais da migração anterior |
+| Mudança de contrato em `TaskDetails` | Campo anulável mais `createdBy`; Web ajustada na mesma etapa; CLI ainda não existe |
+| Volume de `AgentOperation` | Linha pequena, índices por agente e data, retenção de 180 dias |
+| Falha ao gravar a auditoria de operações | Log de erro e health check `Degraded`; as escritas continuam auditadas pelo `ActivityEvent` na mesma transação |
+| Latência do rate limiting no banco | Uma instrução por requisição sobre a chave primária; medição na Fase 13 |
+| Corrida na idempotência | Trava consultiva por chave e índice único, com teste de concorrência |
+| Limpeza concorrente ou longa | Trava consultiva global, lotes pequenos, `statement_timeout` |
+| Volume da fase | 13 etapas pequenas, cada uma com verificação própria |
 
 ## Definição de conclusão
 
-- Todos os critérios verificados com evidência, local e no CI.
+- Todos os critérios de aceitação verificados com evidência, local e no CI.
 - Mutações de segurança detectadas.
-- ADR-016 registrado, inclusive os ajustes nos contratos da seção 5.8.
+- ADR-016 aceito e coerente com o código entregue.
 - `docs/security/AGENTES.md` escrito.
-- Documentação atualizada: README, AGENTS.md (rota de transição de agentes, autoria e escopos), ARCHITECTURE, `docs/web/TELAS.md`, `PROJECT_STATUS.md` e relatório da Fase 10.
+- Atualizados: README, AGENTS.md, `docs/security/AUTENTICACAO.md`, ARCHITECTURE, `docs/web/TELAS.md`, `PROJECT_STATUS.md` e o relatório da Fase 10.
 - Alterações integradas por PR, com o check "Build e testes" aprovado.
+
+## Rastreabilidade da revisão técnica (2026-11-15)
+
+| Item | Correção |
+|---|---|
+| C1 Política global sem esquema | D3: políticas explícitas, sem seletor como padrão, teste de todos os endpoints |
+| C2 Conclusão por workflow personalizado | D5: `AgentCannotApprove` e `AgentCannotEnterDone` em `TransitionRules`; Cancelada permitida |
+| C3 Busca da credencial sem organização | D3: `AgentCredentialDirectory` (exceção no ADR-016) e organização ativa de agentes |
+| C4 Token na Web | D13 e ADR-016: exceção formal, com as condições aprovadas |
+| C5 Idempotência não atômica | D9: transação única com trava consultiva |
+| C6 Replay sem reautorização | D9: reautorização, chave por credencial, método e rota, códigos não guardados |
+| A1 Permissão das atividades | D4: `documents.write` |
+| A2 Observador enviando relatórios | D4: `reports:write` exige `tasks.write` |
+| A3 Contexto do `AgentAccessGrant` | D4: ator, estado, escopos, papel e exigência da operação; ator no `ProjectAccessGrant` |
+| A4 Imutabilidade do relatório | D8: verificações em tabela separada e só de inclusão; aprovação calculada pelo histórico; "aceito" definido |
+| A5 Versão das tarefas | D6: token de concorrência no `UPDATE`, quando incrementa, 409 |
+| A6 Limite e retenção | D11 e D12 |
+| A7 Campos da `AgentOperation` | D10: resultado da autorização, correlation ID, credenciais conhecidas inválidas, primeira rejeição por limite, gravação fora da transação |
+| M1 Contratos e nomes de autores | D6 |
+| M2 `ActorKind` fixo | D6 |
+| M3 Cobertura de auditoria | Impacto e estratégia de testes |
+| M4 Contexto sem dados pessoais | D7 |
+| M5 Hash dos bytes | D9 |
+| M6 Rotação e idempotência | D9 |
+| M7 Limite de falhas por IP | D3 e D11 |
+| M8 Acesso depois da perda de permissão | D4 |
+| M9 `PATCH` sem `Idempotency-Key` | D7 |
+| B1 ADR-016 | Criado |
+| B2 Decisões aprovadas | Tabela de decisões aprovadas |
+| B3 Testes ausentes | Estratégia de testes |
+| B4 Ordem no `PROJECT_STATUS.md` | Corrigida |
+| B5 `AUTENTICACAO.md` | Atualizado |
