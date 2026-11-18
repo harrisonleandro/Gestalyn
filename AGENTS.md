@@ -93,6 +93,7 @@ Worker → Application (abstrações) + Infrastructure (implementações)
     - `Agent` (esquema `AgentToken`) só em `/api/v1/agents/*`.
 
     Não registre um seletor de esquema como padrão. O teste de políticas exige exatamente uma política, ou `[AllowAnonymous]`, em cada endpoint.
+  - Controllers de agentes levam a marca `[AgentApi]` e ficam todos sob `/api/v1/agents`. O namespace não decide a política. Uma marca fora do prefixo, ou uma rota no prefixo sem a marca, impede a API de iniciar.
   - A identidade do usuário e da sessão vem das claims `sub`/`sid` do token, nunca do corpo da requisição.
   - Respostas de autenticação não podem revelar se um e-mail está cadastrado.
   - Tokens nunca vão para o navegador: a Web guarda-os no cookie HttpOnly (BFF). Única exceção ([ADR-016](docs/decisions/ADR-016-AGENTES.md)): o token de uma credencial de agente recém-criada aparece uma vez, na resposta da criação, com `Cache-Control: no-store`, sem ser guardado nem registrado em lugar nenhum.

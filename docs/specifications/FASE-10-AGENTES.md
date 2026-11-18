@@ -147,8 +147,8 @@ Os agentes trabalham sobre as mesmas tarefas, atividades e histórico que as pes
   - em `Agents:Credentials` (`DefaultLifetimeDays`, `MaxLifetimeDays`), validados na inicialização;
   - a API recusa pedidos acima do máximo (400).
 - **Até 3 credenciais ativas por agente** (não revogadas e não expiradas):
-  - a contagem e a criação rodam numa transação `Serializable`, como em `AddDependencyAsync`;
-  - uma falha de serialização responde 409, para nova tentativa.
+  - a contagem e a criação são protegidas por uma trava otimista na linha do próprio agente (`xmin`): a gravação atualiza também o agente, conferindo a versão lida, e uma criação simultânea para o mesmo agente responde 409;
+  - criações para agentes diferentes não disputam nada entre si. Uma transação `Serializable`, prevista na primeira versão, fazia agentes de organizações diferentes receberem 409 sob concorrência (revisão independente de 2026-11-18).
 - **Revogação imediata:** grava a data e o autor; a credencial deixa de valer na requisição seguinte, porque toda requisição a confere (D3).
 - **Último uso:** gravado no máximo uma vez por minuto por credencial, aproveitando o contador do rate limiting (D11), sem uma gravação extra por requisição.
 - **Perda do token:** não há recuperação. A pessoa cria uma credencial nova e revoga a antiga.
@@ -166,7 +166,8 @@ Os agentes trabalham sobre as mesmas tarefas, atividades e histórico que as pes
   | `User` | JWT | Usuário autenticado e claim `sid` (sessão conferida pelo `OnTokenValidated`) |
   | `Agent` | `AgentToken` | Claim `actor_kind=agent` |
 
-  - Uma convenção aplica `Agent` aos controllers de agentes (namespace `ProjectManager.API.Agents`, rotas `/api/v1/agents/*`) e `User` a todos os demais.
+  - A política `Agent` vale para os controllers marcados com `[AgentApi]`; os demais recebem `User`. A marca é explícita, e não depende do namespace (revisão independente de 2026-11-18).
+  - A marca é conferida contra a rota combinada de cada ação. Um controller marcado com rota fora de `/api/v1/agents`, ou uma rota sob esse prefixo sem a marca, impede a API de iniciar: os endpoints são montados na inicialização.
   - `[AllowAnonymous]` continua explícito e justificado.
   - **Teste de políticas:** percorre o `EndpointDataSource` e exige que todo endpoint `/api/...` tenha exatamente uma das três situações (`User`, `Agent` ou anônimo), e que `Agent` ocorra se e somente se a rota começar com `/api/v1/agents/`.
 - **Handler `AgentToken`, a cada requisição:**
@@ -567,7 +568,7 @@ Cada etapa termina com `dotnet build` sem avisos e todos os testes passando, num
 | 7 | Rotas de leitura de agentes (projetos, contexto, tarefas) | Escopos, isolamento, contexto sem dados pessoais |
 | 8 | Idempotência e rotas de escrita de agentes (tarefas, transições, atividades) | Replay, 422, 409 concorrente, reautorização, atomicidade |
 | 9 | `WorkReport` e leitura por pessoas | Imutabilidade no banco; níveis; estado da tarefa inalterado |
-| 10 | `AgentOperation`, rate limiting no PostgreSQL, retenção | Concorrência do contador; 429; auditoria das negadas; ciclo de limpeza |
+| 10 | **Obrigatória; bloqueia a conclusão e qualquer uso em produção:** `AgentOperation` (inclusive as recusas de credenciais conhecidas e a primeira rejeição por limite), gravação de `last_used_at`, rate limiting por credencial no PostgreSQL, limite de falhas por IP para tokens desconhecidos e malformados (antes da consulta ao banco), `GET .../agents/{agentId}/operations` e retenção | Concorrência do contador; 429; auditoria das negadas e das credenciais recusadas; último uso no máximo uma vez por janela; falhas por IP barradas sem consultar o banco; ciclo de limpeza |
 | 11 | Telas Web | bUnit; token uma vez só; `no-store` |
 | 12 | Suíte de segurança, ponta a ponta, mutações, execução real, documentação de encerramento | Critérios de aceitação |
 
@@ -616,6 +617,8 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | Limite de requisições | A 121ª requisição na janela responde 429 com `Retry-After`; contagem correta com requisições concorrentes; só a primeira rejeição é registrada |
 | Retenção | O ciclo apaga só o vencido; o `DELETE` direto de operação recente é recusado; relatórios intactos; ciclo repetido sem efeito; dois ciclos simultâneos: um é pulado |
 | Token na Web | Aparece uma vez, com `no-store`; ausente de logs, banco, cookies e respostas posteriores |
+| Abuso de autenticação | Tokens desconhecidos ou malformados acima do limite por IP recebem 429 antes da consulta ao banco; recusas de credenciais conhecidas ficam em `AgentOperation`; as respostas continuam indistinguíveis entre si |
+| Último uso da credencial | `last_used_at` atualizado no máximo uma vez por janela, visível na gestão de credenciais |
 | Ponta a ponta | Teste de integração automatizado (estratégia de testes) |
 
 ## Estratégia de testes
@@ -679,6 +682,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 ## Definição de conclusão
 
 - Todos os critérios de aceitação verificados com evidência, local e no CI.
+- **A autenticação de agentes não está pronta para produção sem a etapa 10** (auditoria persistente de operações, último uso e proteção contra abuso de autenticação). Concluir as etapas 1 a 9 não basta para liberar o uso de agentes.
 - Mutações de segurança detectadas.
 - ADR-016 aceito e coerente com o código entregue.
 - `docs/security/AGENTES.md` escrito.
@@ -726,6 +730,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 2 | Concluída em 2026-11-18 | Ver abaixo |
 | 3 | Concluída em 2026-11-18 | Ver abaixo |
 | 4 | Concluída em 2026-11-18 | Ver abaixo |
+| Revisão | Correções concluídas em 2026-11-18 | Ver "Correções da revisão independente" |
 
 ### Etapa 1: políticas explícitas
 
@@ -794,7 +799,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
   - a resposta da criação traz `Cache-Control: no-store` e é a única que contém o token.
 - **Validade e limite:**
   - padrão de 90 dias e máximo em `Agents:Credentials`, validados na inicialização;
-  - a criação conta as credenciais ativas e grava numa transação serializável, então o limite de 3 vale também sob concorrência.
+  - a criação conta as credenciais ativas e grava numa transação serializável, então o limite de 3 vale também sob concorrência. (Substituída depois por uma trava otimista na linha do agente; veja as correções da revisão independente.)
 - **Eventos:**
   - `agent.created`, `agent.updated`, `agent.disabled` e `agent.enabled`;
   - `agent.credential_created` e `agent.credential_revoked`, só com o ID do agente, os escopos e a validade, sem o token, o prefixo ou o hash;
@@ -834,7 +839,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
   - define a organização ativa do agente (`TenantContext.SetActiveAgent`, exclusiva com a associação de pessoas);
   - monta o principal com `sub`, `actor_kind=agent`, `org`, `cid` e os escopos.
 - **Recusas:** qualquer uma responde o mesmo 401, com `WWW-Authenticate: Bearer` e o corpo em Problem Details. O log traz só os IDs da credencial e do agente e o motivo, nunca o token ou o prefixo.
-- **Política `Agent`:** esquema `AgentToken` e `actor_kind=agent`. A convenção a aplica aos controllers do namespace `ProjectManager.API.Agents`, junto com `AgentOrganizationFilter`: rota ou cabeçalho de organização diferentes da credencial, ou inválidos, recebem 404.
+- **Política `Agent`:** esquema `AgentToken` e `actor_kind=agent`. A convenção a aplicava aos controllers do namespace `ProjectManager.API.Agents` (substituída depois pela marca `[AgentApi]`; veja as correções da revisão independente), junto com `AgentOrganizationFilter`: rota ou cabeçalho de organização diferentes da credencial, ou inválidos, recebem 404.
 - **`GET /api/v1/agents/me`:** agente, organização e credencial em uso (prefixo, escopos e validade), na tag "Agentes" do OpenAPI.
 - **Teste de arquitetura novo (`TenantFilterBypassTests`):** `IgnoreQueryFilters` só pode aparecer no `MembershipDirectory` e no `AgentCredentialDirectory`. Um uso novo faz o teste falhar até ser autorizado num ADR.
 - **Adiado para a etapa 10:**
@@ -862,3 +867,65 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
   - depois da revogação, 401 com o mesmo título;
   - o log mostra só IDs e motivos, sem erros.
 
+### Correções da revisão independente (2026-11-18)
+
+A revisão técnica independente do pacote das etapas 1 a 4 manteve a arquitetura e pediu correções pontuais. Antes das correções, os testes estavam em 416/416 (198 unitários, 43 de componentes e 175 de integração).
+
+- **C1, política dependente do namespace** (`ApiPolicies.cs`):
+  - **mudança:** a política `Agent` passa a valer para controllers marcados com `[AgentApi]` (`AgentApiAttribute`);
+  - **conferência:** a convenção confere a marca contra a rota combinada de cada ação, e `ApiPolicies.IsAgentRoute` é a regra única do prefixo, usada também pelo teste de políticas;
+  - **inicialização:** uma marca fora de `/api/v1/agents`, ou uma rota nesse prefixo sem a marca, impede a API de iniciar. `Program.cs` monta os endpoints antes de começar a atender;
+  - **testes (`AgentPolicyMarkerTests`, 6), com controllers de sonda** (`[NonController]`, adicionados só nos testes):
+    - um controller marcado fora do namespace convencional recebe `Agent`, inclusive numa rota absoluta;
+    - controllers sem marca recebem `User`, até um declarado no namespace `ProjectManager.API.Agents`;
+    - as quatro incoerências impedem a inicialização: marca fora do prefixo, ação com rota absoluta fora do prefixo, rota no prefixo sem marca e rota absoluta na ação sem marca.
+- **Problema encontrado durante as correções (credenciais):**
+  - **sintoma:** com mais testes criando credenciais em paralelo, a transação `Serializable` da criação fez agentes diferentes, inclusive de organizações diferentes, receberem 409 ("O agente foi alterado ao mesmo tempo...");
+  - **correção:** o limite de 3 ativas passou a ser garantido por uma trava otimista na linha do próprio agente (`xmin`);
+  - **efeito colateral aceito:** `agents.updated_at` muda quando uma credencial é criada;
+  - **teste:** `ConcurrentCreations_ForDifferentAgents_DoNotConflict` faz 8 criações simultâneas em agentes de duas organizações. O código anterior falhou nele 2 de 2 vezes; o novo passou em todas as execuções. O teste de criações simultâneas para o mesmo agente continua passando.
+- **C2, isolamento multi-tenant:** `TenantFilterBypassTests` foi mantido como proteção complementar. Os 6 testes de `AgentIsolationTests` usam uma sonda com `[AgentApi]` que lê o banco com o contexto montado pelo pipeline real:
+  - o agente só enxerga os agentes, credenciais, concessões, projetos e a organização da própria credencial;
+  - a credencial de outra organização, buscada pelo ID, dá 404;
+  - organização divergente na rota ou no cabeçalho dá 404, inclusive com dois valores, `Guid.Empty` e valor inválido; o mesmo GUID em maiúsculas é aceito;
+  - as rotas de pessoas recusam a credencial com 401;
+  - outra organização não consegue revogar nem desativar (404), e a credencial continua válida;
+  - **projetos com ou sem concessão:** não são alcançáveis antes da etapa 7, que cria as rotas de projeto para agentes. O acesso por concessão (`AgentAccessGrant`) será testado nas etapas 5 e 7;
+  - **mutações detectadas:** a guarda sem checar a rota, e a credencial fora do filtro por organização, que derruba 4 dos 6 testes.
+- **C3, recusas equivalentes:** `EveryRejection_IsIndistinguishable_AndRevealsNothingAboutTheCredential` compara cinco casos: token desconhecido, malformado, revogado, expirado (com relógio controlado) e de agente desativado.
+  - **o que é comparado:** o status, todos os cabeçalhos (exceto a data) e o corpo (exceto o ID de rastreio);
+  - **o que o corpo não pode conter:** IDs de agente, de credencial e de organização, prefixos, ou palavras como "revog", "expir", "desativ" e "desconhec";
+  - **mutação:** um cabeçalho que expõe o estado da credencial só é detectado por este teste;
+  - **limite conhecido:** o tempo de resposta não é comparado. O token malformado é recusado antes da consulta ao banco e responde mais rápido. Isso não ajuda a enumerar credenciais, porque o formato é público e um token válido tem 256 bits aleatórios. O limite por IP da etapa 10 reduz o volume de tentativas.
+- **C4, integridade dos escopos:**
+  - **quem grava:** só o construtor do domínio (`AgentScopes.Normalize`). Nenhum código de produção escreve em `agent_credentials` por SQL ou `ExecuteUpdate`;
+  - **restrição:** `CHECK ck_agent_credentials_scopes_known`, na migração `AddAgentCredentialScopesCheck` (`AddAgents` intacta). Aceita só os escopos de `AgentScopes.All` e nenhum elemento nulo. O texto é gerado do catálogo do domínio, então um escopo novo exige uma migração;
+  - **testes:**
+    - cada escopo do catálogo é gravável sozinho, o que mantém a sincronia;
+    - escopo desconhecido, maiúsculas, espaço, nulo e inserção direta são recusados;
+    - a migração mantém credenciais válidas existentes;
+  - **mutações:** retirar um escopo da restrição é detectado. Retirar a cláusula do nulo **não** é detectado, porque o `<@` do PostgreSQL já recusa arrays com nulo. É uma mutação equivalente; a cláusula fica explícita como defesa;
+  - **não restringido:** escopos repetidos, porque o domínio deduplica e a semântica é de conjunto;
+  - **banco de desenvolvimento local:** migração aplicada.
+- **Proteções obrigatórias (pendentes, etapa 10):**
+  - `AgentOperation`;
+  - `last_used_at`;
+  - limite de falhas por IP e rate limiting por credencial.
+
+  **Onde estão no documento:** no plano (linha da etapa 10), nos critérios de aceitação ("Abuso de autenticação" e "Último uso da credencial") e na definição de conclusão.
+
+  **Dependências conferidas:**
+  - a autenticação (etapa 4) já existe;
+  - as tabelas de idempotência, para a retenção, vêm da etapa 8;
+  - os resultados de autorização das etapas 5 a 8 entram em `AgentOperation` à medida que existirem.
+- **Validação:**
+  - `dotnet restore` e `dotnet build -c Release --no-incremental`: 0 avisos e 0 erros;
+  - `dotnet test -c Release --no-build`: **432/432** (198 unitários, 43 de componentes, 191 de integração), em 3 execuções seguidas sem falhas;
+  - antes das correções: 416/416. São 16 testes de integração novos: 6 da marca, 1 de concorrência, 6 de isolamento, 1 de recusas e 2 de escopos.
+- **Regressão das Fases 01 a 09:**
+  - **o que poderia ter sido afetado:** a política de todas as rotas (convenção e montagem dos endpoints na inicialização). As demais mudanças ficam restritas a agentes;
+  - **coberto pela suíte:** `EndpointPolicyTests` e os testes de integração das Fases 01 a 09, inclusive `ActivityCoverageTests`, que exercita todas as rotas de escrita;
+  - **execução real** com a API e a Web locais, sem erros nos logs:
+    - na API, a entrada e todas as rotas de leitura das Fases 03 a 09 responderam 200: organização, membros, papéis, convites, dashboards, atividades, projetos, fases, marcos, workflow, documentos, decisões, progresso, estatísticas, tarefas, histórico, comentários e anexos;
+    - na Web, a página inicial e a de entrada responderam 200, e uma página protegida redirecionou para a entrada;
+  - **não verificado:** a navegação autenticada pela Web no navegador. O ambiente recusou exibir as credenciais de teste. Os testes de componentes (43) cobrem as telas.

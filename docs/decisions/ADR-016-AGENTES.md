@@ -42,7 +42,7 @@ A revisão técnica de 2026-11-15 confirmou no código seis problemas críticos 
 - **Armazenamento:** só o SHA-256 do token completo (índice único) e o prefixo de 8 caracteres.
 - **Exibição:** o token aparece uma única vez, na criação.
 - **Expiração obrigatória:** padrão de 90 dias, máxima de 365.
-- **Até 3 credenciais ativas por agente:** a criação e a contagem rodam numa transação `Serializable`.
+- **Até 3 credenciais ativas por agente:** a contagem e a criação são protegidas por uma trava otimista na linha do agente (`xmin`), que só faz disputar criações para o mesmo agente.
 - **Revogação:** vale na requisição seguinte, porque toda requisição confere a credencial.
 - **Escopos na credencial:** `context:read`, `tasks:read`, `tasks:write`, `activities:write` e `reports:write`.
 
@@ -52,7 +52,7 @@ A revisão técnica de 2026-11-15 confirmou no código seis problemas críticos 
 - **O `new AuthorizeFilter()` sem política é substituído por duas políticas explícitas:**
   - `User`: esquema JWT e claim `sid`;
   - `Agent`: esquema `AgentToken` e claim `actor_kind=agent`.
-  - Uma convenção aplica `Agent` às rotas `/api/v1/agents/*` e `User` às demais.
+  - Uma convenção aplica `Agent` aos controllers marcados com `[AgentApi]` e `User` aos demais. A marca é conferida contra a rota, e uma incoerência impede a API de iniciar.
   - Um teste percorre todos os endpoints e exige exatamente uma das duas políticas, ou `[AllowAnonymous]` explícito.
 - **A organização de um agente vem só da credencial.** Rota ou cabeçalho divergentes respondem 404.
 - **O 401 é igual** para token inexistente, expirado, revogado ou de agente desativado.
@@ -229,6 +229,16 @@ Os tokens de sessão dos usuários continuam sem chegar ao navegador, sem exceç
 | Redis para rate limiting | Infraestrutura nova sem aprovação; o PostgreSQL já atende |
 | Limpeza num projeto `Worker` | Um serviço em segundo plano na API basta; o `Worker` surge quando houver necessidade concreta |
 | Criar credenciais só pela API e pela CLI | Impediria a gestão de agentes pela Web; recusada pelo responsável |
+
+## Revisão de 2026-11-18 (revisão técnica independente das etapas 1 a 4)
+
+A revisão manteve a arquitetura e pediu correções pontuais:
+
+- **C1, política por marca:** a política `Agent` deixou de depender do namespace do controller e passou a depender da marca explícita `[AgentApi]`, conferida contra a rota na inicialização.
+- **C2 e C3, testes:** isolamento multi-tenant testado no pipeline real de agentes, e recusas de autenticação comprovadamente indistinguíveis. Nenhuma mudança de comportamento foi necessária.
+- **C4, escopos:** `CHECK ck_agent_credentials_scopes_known` restringe o `text[]` aos escopos do catálogo também fora do domínio. O armazenamento em `text[]` foi mantido.
+- **Limite de credenciais:** durante as correções, os testes revelaram que a transação `Serializable` da criação de credenciais fazia agentes diferentes, inclusive de outras organizações, receberem 409 sob concorrência. Ela foi substituída pela trava otimista na linha do agente. A decisão original (até 3 ativas) não muda.
+- **Proteções obrigatórias:** `AgentOperation`, `last_used_at` e a proteção contra abuso de autenticação (limite por IP para tokens desconhecidos) continuam na etapa 10. Sem elas, a autenticação de agentes não está pronta para produção.
 
 ## Consequências
 
