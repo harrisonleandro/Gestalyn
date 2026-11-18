@@ -1,6 +1,6 @@
 # Arquitetura do Gestalyn
 
-> Estado: Fases 01 a 08 concluídas (fundação, persistência, identidade, organizações, projetos, tarefas, workflow, auditoria, documentos e dashboards); Fase 09 (interface web) em revisão. Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
+> Estado: Fases 01 a 09 concluídas (fundação, persistência, identidade, organizações, projetos, tarefas, workflow, auditoria, documentos, dashboards e interface web). Fonte de verdade: [Especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md). Decisão de base: [ADR-001: Monólito modular](../decisions/ADR-001-MODULAR-MONOLITH.md).
 
 ## 1. Visão geral
 
@@ -274,7 +274,7 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 |---|---|
 | ~~Modelo de domínio inicial, PostgreSQL + EF Core, migrations, auditoria de persistência, health check do banco~~ (ADR-002, 003 e 004) | 02 (concluída) |
 | ~~Autor e origem das alterações (auditoria imutável), documentos, decisões e dashboards~~ (ADR-014) | 08 (concluída) |
-| ~~Interface web completa, design system e permissões na interface~~ (ADR-015) | 09 |
+| ~~Interface web completa, design system e permissões na interface~~ (ADR-015) | 09 (concluída) |
 | ~~Resolução da organização ativa pela identidade~~ (ADR-008) | 04 (concluída) |
 | Reavaliação de Row-Level Security | 13 |
 | ~~Estratégia de sessão da Web e autenticação da API (ASP.NET Core Identity)~~ (ADR-006 e ADR-007) | 03 (concluída) |

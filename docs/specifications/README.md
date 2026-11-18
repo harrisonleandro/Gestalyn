@@ -11,7 +11,7 @@
 | [FASE-06-TAREFAS.md](FASE-06-TAREFAS.md) | Especificação da Fase 06: fases, marcos e tarefas (Completed). |
 | [FASE-07-WORKFLOW.md](FASE-07-WORKFLOW.md) | Especificação da Fase 07: workflow configurável e histórico (Completed). |
 | [FASE-08-AUDITORIA.md](FASE-08-AUDITORIA.md) | Especificação da Fase 08: auditoria, documentação e dashboards (Completed). |
-| [FASE-09-WEB.md](FASE-09-WEB.md) | Especificação da Fase 09: interface web completa (In Review). |
+| [FASE-09-WEB.md](FASE-09-WEB.md) | Especificação da Fase 09: interface web completa (Completed). |
 
 Cada fase recebe um documento próprio (`FASE-NN-<TEMA>.md`) antes da implementação, com objetivo, escopo, fora de escopo, dependências, tarefas, arquivos previstos, critérios de aceitação, estratégia de testes, riscos e definição de conclusão (seção 12, etapa B, da especificação mestre).
 
