@@ -8,4 +8,6 @@ internal sealed class TestTenantContext(Guid? organizationId) : ITenantContext
     public Guid? OrganizationId { get; } = organizationId;
 
     public ActiveMembership? Membership => null;
+
+    public ActiveAgent? Agent => null;
 }

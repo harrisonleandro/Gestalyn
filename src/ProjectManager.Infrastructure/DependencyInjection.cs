@@ -94,6 +94,8 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddScoped<IAgentService, AgentService>();
+        services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
+        services.AddScoped<IAgentWorkService, AgentWorkService>();
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

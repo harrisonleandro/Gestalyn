@@ -13,6 +13,8 @@ public sealed class TenantContext : ITenantContext
 
     public ActiveMembership? Membership { get; private set; }
 
+    public ActiveAgent? Agent { get; private set; }
+
     /// <summary>Define a organização ativa a partir de uma associação já validada.</summary>
     public void SetActiveMembership(ActiveMembership membership)
     {
@@ -20,6 +22,17 @@ public sealed class TenantContext : ITenantContext
 
         OrganizationId = membership.OrganizationId;
         Membership = membership;
+        Agent = null;
+    }
+
+    /// <summary>Define a organização ativa a partir da credencial de um agente já validada (ADR-016).</summary>
+    public void SetActiveAgent(ActiveAgent agent)
+    {
+        ArgumentNullException.ThrowIfNull(agent);
+
+        OrganizationId = agent.OrganizationId;
+        Agent = agent;
+        Membership = null;
     }
 
     /// <summary>
@@ -30,5 +43,6 @@ public sealed class TenantContext : ITenantContext
     {
         OrganizationId = organizationId;
         Membership = null;
+        Agent = null;
     }
 }

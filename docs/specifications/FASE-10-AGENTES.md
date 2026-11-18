@@ -725,6 +725,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 1 | Concluída em 2026-11-18 | Ver abaixo |
 | 2 | Concluída em 2026-11-18 | Ver abaixo |
 | 3 | Concluída em 2026-11-18 | Ver abaixo |
+| 4 | Concluída em 2026-11-18 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -823,4 +824,41 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
   - os eventos ficam registrados com a origem `Cli` informada pelo cabeçalho, sem o token;
   - no banco, um hash de 64 caracteres e um prefixo de 8;
   - nenhum erro no log.
+
+### Etapa 4: autenticação de agentes
+
+- **Esquema `AgentToken`** (`AgentTokenAuthenticationHandler`): adicional ao JWT, que continua sendo o padrão, sem seletor. A cada requisição:
+  - lê `Bearer gsk_...` e recusa o token malformado;
+  - busca a credencial pelo hash no `AgentCredentialDirectory`, a exceção ao filtro por organização autorizada pelo ADR-016;
+  - confere a revogação, o estado do agente e a validade (`AgentCredentialMatch.Evaluate`);
+  - define a organização ativa do agente (`TenantContext.SetActiveAgent`, exclusiva com a associação de pessoas);
+  - monta o principal com `sub`, `actor_kind=agent`, `org`, `cid` e os escopos.
+- **Recusas:** qualquer uma responde o mesmo 401, com `WWW-Authenticate: Bearer` e o corpo em Problem Details. O log traz só os IDs da credencial e do agente e o motivo, nunca o token ou o prefixo.
+- **Política `Agent`:** esquema `AgentToken` e `actor_kind=agent`. A convenção a aplica aos controllers do namespace `ProjectManager.API.Agents`, junto com `AgentOrganizationFilter`: rota ou cabeçalho de organização diferentes da credencial, ou inválidos, recebem 404.
+- **`GET /api/v1/agents/me`:** agente, organização e credencial em uso (prefixo, escopos e validade), na tag "Agentes" do OpenAPI.
+- **Teste de arquitetura novo (`TenantFilterBypassTests`):** `IgnoreQueryFilters` só pode aparecer no `MembershipDirectory` e no `AgentCredentialDirectory`. Um uso novo faz o teste falhar até ser autorizado num ADR.
+- **Adiado para a etapa 10:**
+  - o registro das recusas de credenciais conhecidas em `AgentOperation` (por ora, ficam no log estruturado);
+  - o limite de falhas por IP (D11).
+- **Testes novos:**
+  - `AgentAuthenticationTests`, 9: autenticação sem sessão de usuário; cada esquema só nas próprias rotas (JWT em rota de agente, token de agente em rotas de pessoas e anônimo, todos 401); revogação e desativação na requisição seguinte, com a resposta igual à de um token desconhecido e outra credencial ainda válida; expiração no instante exato (relógio controlado); tokens malformados e adulterados; organização só da credencial; nenhum token ou prefixo nos logs;
+  - 1 unitário de arquitetura.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet test`: 416/416 (198 unitários, 43 de componentes, 175 de integração).
+- **Mutações detectadas:**
+  - a política de pessoas nas rotas de agentes (derruba o teste de políticas e os de autenticação);
+  - a revogação ignorada;
+  - a expiração ignorada;
+  - a guarda de organização desligada.
+
+  Cada uma derruba o teste correspondente.
+- **Incidente na verificação:** depois de uma rodada de mutações, os arquivos restaurados mantiveram a data de modificação antiga, e a compilação incremental reutilizou binários mutados. A suíte falhou até uma recompilação completa (`--no-incremental`), que voltou a 416/416. O script de mutação passou a restaurar com data nova e a recompilar por completo.
+- **Execução real** (API local, banco de desenvolvimento):
+  - `/agents/me` com o token responde 200, com a organização certa;
+  - o JWT da pessoa em `/agents/me` e o token do agente em `/organizations` respondem 401;
+  - outra organização no cabeçalho responde 404;
+  - um token desconhecido responde 401 com `WWW-Authenticate: Bearer`;
+  - depois da revogação, 401 com o mesmo título;
+  - o log mostra só IDs e motivos, sem erros.
 
