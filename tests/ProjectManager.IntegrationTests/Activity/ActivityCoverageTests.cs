@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using ProjectManager.Application.Agents;
 using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
 using ProjectManager.Application.Planning;
@@ -33,6 +34,8 @@ public sealed class ActivityCoverageTests : IDisposable
     };
 
     private static readonly string[] WebLabel = ["web"];
+
+    private static readonly string[] ReadScope = ["tasks:read"];
 
     private readonly ApiFactory _factory;
     private readonly ActivityTestKit _kit;
@@ -178,6 +181,23 @@ public sealed class ActivityCoverageTests : IDisposable
         await ReadAsync<DecisionDetails>(HttpMethod.Post, $"/api/v1/decisions/{replacement.Id}/accept");
         await ExpectAsync("POST /api/v1/decisions/{decisionId:guid}/supersede", "decision.superseded",
             HttpMethod.Post, $"{c}/supersede", new { supersededById = replacement.Id });
+
+        // Agentes (ADR-016).
+        var agents = $"{org}/agents";
+        var agent = await ReadAfterExpectAsync<AgentDetails>("POST /api/v1/organizations/{organizationId:guid}/agents", "agent.created",
+            HttpMethod.Post, agents, new { name = "Revisor" });
+        var a = $"{agents}/{agent.Id}";
+        await ExpectAsync("PATCH /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}", "agent.updated", HttpMethod.Patch, a, new { description = "Revisa PRs" });
+        var credential = await ReadAfterExpectAsync<CreatedAgentCredential>("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/credentials", "agent.credential_created",
+            HttpMethod.Post, $"{a}/credentials", new { name = "CI", scopes = ReadScope });
+        await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/credentials/{credentialId:guid}/revoke", "agent.credential_revoked",
+            HttpMethod.Post, $"{a}/credentials/{credential.Credential.Id}/revoke");
+        await ExpectAsync("PUT /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/projects/{projectId:guid}", "agent.project_access_granted",
+            HttpMethod.Put, $"{a}/projects/{project.Id}", new { role = "Contributor" });
+        await ExpectAsync("DELETE /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/projects/{projectId:guid}", "agent.project_access_removed",
+            HttpMethod.Delete, $"{a}/projects/{project.Id}");
+        await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/disable", "agent.disabled", HttpMethod.Post, $"{a}/disable");
+        await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/enable", "agent.enabled", HttpMethod.Post, $"{a}/enable");
 
         // Saídas: da equipe, do projeto (arquivamento) e da organização.
         await ExpectAsync("DELETE /api/v1/projects/{projectId:guid}/members/{userId:guid}", "project.member_removed", HttpMethod.Delete, $"{p}/members/{member.Id}");

@@ -10,6 +10,7 @@ using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Abstractions.Storage;
 using ProjectManager.Application.Activity;
+using ProjectManager.Application.Agents;
 using ProjectManager.Application.Dashboards;
 using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
@@ -18,6 +19,7 @@ using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
 using ProjectManager.Application.Workflows;
 using ProjectManager.Infrastructure.Activity;
+using ProjectManager.Infrastructure.Agents;
 using ProjectManager.Infrastructure.Dashboards;
 using ProjectManager.Infrastructure.Documents;
 using ProjectManager.Infrastructure.Email;
@@ -53,6 +55,7 @@ public static class DependencyInjection
         services.AddIdentityServices();
         services.AddEmail();
         services.AddOrganizations();
+        services.AddAgents();
 
         return services;
     }
@@ -81,6 +84,16 @@ public static class DependencyInjection
             .Validate(options => !string.IsNullOrWhiteSpace(options.RootPath), $"Configure o diretório dos anexos em '{StorageOptions.SectionName}:RootPath'.")
             .ValidateOnStart();
         services.AddSingleton<IFileStorage, LocalFileStorage>();
+    }
+
+    private static void AddAgents(this IServiceCollection services)
+    {
+        services.AddOptions<AgentCredentialOptions>()
+            .BindConfiguration(AgentCredentialOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{AgentCredentialOptions.SectionName}': a validade padrão deve ficar entre 1 dia e o máximo, que vai até 365 dias.")
+            .ValidateOnStart();
+
+        services.AddScoped<IAgentService, AgentService>();
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

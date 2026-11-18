@@ -59,6 +59,16 @@ public static class ActivityActions
     public const string DecisionAccepted = "decision.accepted";
     public const string DecisionRejected = "decision.rejected";
     public const string DecisionSuperseded = "decision.superseded";
+
+    public const string AgentCreated = "agent.created";
+    public const string AgentUpdated = "agent.updated";
+    public const string AgentDisabled = "agent.disabled";
+    public const string AgentEnabled = "agent.enabled";
+    public const string AgentCredentialCreated = "agent.credential_created";
+    public const string AgentCredentialRevoked = "agent.credential_revoked";
+    public const string AgentProjectAccessGranted = "agent.project_access_granted";
+    public const string AgentProjectAccessUpdated = "agent.project_access_updated";
+    public const string AgentProjectAccessRemoved = "agent.project_access_removed";
 }
 
 /// <summary>Tipos de entidade dos eventos.</summary>
@@ -80,4 +90,7 @@ public static class ActivityEntityTypes
     public const string WorkflowTransition = "workflow_transition";
     public const string Document = "document";
     public const string Decision = "decision";
+    public const string Agent = "agent";
+    public const string AgentCredential = "agent_credential";
+    public const string AgentProjectAccess = "agent_project_access";
 }

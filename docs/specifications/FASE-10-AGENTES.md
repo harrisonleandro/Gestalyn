@@ -724,6 +724,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 0 | Concluída em 2026-11-18 | Merge do PR #18 (`d6c34fc`), CI de `develop` aprovado (run 44385682944); branch rebaseada antes de qualquer envio |
 | 1 | Concluída em 2026-11-18 | Ver abaixo |
 | 2 | Concluída em 2026-11-18 | Ver abaixo |
+| 3 | Concluída em 2026-11-18 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -774,4 +775,52 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
   - com o papel Gerente liberado no domínio, o teste do acesso falha.
 - **Banco de desenvolvimento:** migração aplicada. 20 papéis (os Proprietários e Administradores existentes) receberam `agents.manage`, e nenhum outro.
 - **Execução real:** `GET /organizations/{id}/me` devolve `agents.manage` para o Proprietário e não para o Membro; nenhum erro no log.
+
+### Etapa 3: gestão de agentes por pessoas
+
+- **Rotas** (`AgentsController`, política `User`, `[OrganizationPermission("agents.manage")]`) sob `/api/v1/organizations/{organizationId}/agents`:
+  - listar, criar, ler e alterar;
+  - desativar e reativar;
+  - listar, criar e revogar credenciais;
+  - conceder, alterar e remover o acesso a um projeto (`PUT` e `DELETE .../projects/{projectId}`), que exige também `project.members.manage` no projeto.
+- **Serviço** (`AgentService`):
+  - nome duplicado na organização responde 409;
+  - credencial para agente desativado responde 409;
+  - revogar de novo responde 200 sem gerar outro evento.
+- **Token:**
+  - `gsk_` + 32 bytes de `RandomNumberGenerator` (`OpaqueTokens`);
+  - no banco, só o SHA-256 e o prefixo;
+  - a resposta da criação traz `Cache-Control: no-store` e é a única que contém o token.
+- **Validade e limite:**
+  - padrão de 90 dias e máximo em `Agents:Credentials`, validados na inicialização;
+  - a criação conta as credenciais ativas e grava numa transação serializável, então o limite de 3 vale também sob concorrência.
+- **Eventos:**
+  - `agent.created`, `agent.updated`, `agent.disabled` e `agent.enabled`;
+  - `agent.credential_created` e `agent.credential_revoked`, só com o ID do agente, os escopos e a validade, sem o token, o prefixo ou o hash;
+  - `agent.project_access_granted`, `agent.project_access_updated` e `agent.project_access_removed`, no projeto;
+  - todas as rotas novas de escrita entram no `ActivityCoverageTests`.
+- **Ajustes em relação ao plano:**
+  - **`GET .../agents/{agentId}/operations`** fica para a etapa 10, junto com `AgentOperation`: criá-la agora daria uma rota sem dados reais.
+  - **Correção em código compartilhado (`SaveChangesConflicts`):** sob concorrência, o provedor do Npgsql embrulha a falha de serialização (40001) numa `InvalidOperationException` de "falha transitória". O teste de concorrência mostrou que isso virava 500 em vez de 409. `TrySaveChangesAsync` passa a tratar esse caso como conflito, e `IsSerializationFailure` reconhece a falha embrulhada. A correção beneficia também `AddDependencyAsync`, que usa o mesmo caminho.
+- **Testes novos (`AgentManagementTests`, 7):**
+  - ciclo de vida;
+  - token só na criação, com o hash do token completo no banco e o token fora de leituras, eventos e logs;
+  - escopos e validade inválidos (400), limite de 3, revogação e substituição;
+  - 6 criações simultâneas sem passar do limite;
+  - acesso a projetos (Gerente recusado; quem tem `agents.manage` mas não gerencia o projeto recebe 404 e depois 403);
+  - permissões: Membro 403, fora da organização 404, anônimo 401 e Administrador permitido;
+  - isolamento entre organizações (404 sem efeito).
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet test`: 406/406 (197 unitários, 43 de componentes, 166 de integração);
+  - a suíte de integração repetida mais duas vezes, sem falhas.
+- **Mutações detectadas:** permissão `agents.manage` retirada da criação de credencial, `no-store` retirado e a checagem de `project.members.manage` ignorada. Cada uma derruba um teste diferente.
+- **Execução real** (API local, banco de desenvolvimento):
+  - o Proprietário cria o agente (201) e o Membro recebe 403;
+  - a credencial é criada com `no-store`, um token bem formado e o prefixo conferindo;
+  - as leituras trazem o prefixo, sem o token;
+  - concessão como Colaborador (200) e como Gerente (400), revogação, remoção e desativação;
+  - os eventos ficam registrados com a origem `Cli` informada pelo cabeçalho, sem o token;
+  - no banco, um hash de 64 caracteres e um prefixo de 8;
+  - nenhum erro no log.
 
