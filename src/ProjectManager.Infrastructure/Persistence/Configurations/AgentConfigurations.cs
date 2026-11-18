@@ -48,11 +48,19 @@ internal sealed class AgentConfiguration : IEntityTypeConfiguration<Agent>
 /// </summary>
 internal sealed class AgentCredentialConfiguration : IEntityTypeConfiguration<AgentCredential>
 {
+    private static readonly string KnownScopesSql =
+        $"scopes <@ ARRAY[{string.Join(", ", AgentScopes.All.Select(scope => $"'{scope}'"))}]::text[] AND array_position(scopes, NULL) IS NULL";
+
     public void Configure(EntityTypeBuilder<AgentCredential> builder)
     {
         builder.ToTable("agent_credentials", table =>
         {
             table.HasCheckConstraint("ck_agent_credentials_scopes_not_empty", "cardinality(scopes) > 0");
+
+            // Integridade dos escopos também fora do domínio (SQL direto, manutenção, código futuro com ExecuteUpdate):
+            // só os escopos do catálogo e nenhum elemento nulo. O texto vem de AgentScopes.All; um escopo novo muda
+            // a restrição e exige uma migração.
+            table.HasCheckConstraint("ck_agent_credentials_scopes_known", KnownScopesSql);
             table.HasCheckConstraint("ck_agent_credentials_expires_after_creation", "expires_at > created_at");
         });
         builder.ConfigureEntityBase();

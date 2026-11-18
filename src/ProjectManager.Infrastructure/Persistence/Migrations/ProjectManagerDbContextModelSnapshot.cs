@@ -458,6 +458,8 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_agent_credentials_expires_after_creation", "expires_at > created_at");
 
+                            t.HasCheckConstraint("ck_agent_credentials_scopes_known", "scopes <@ ARRAY['context:read', 'tasks:read', 'tasks:write', 'activities:write', 'reports:write']::text[] AND array_position(scopes, NULL) IS NULL");
+
                             t.HasCheckConstraint("ck_agent_credentials_scopes_not_empty", "cardinality(scopes) > 0");
                         });
                 });

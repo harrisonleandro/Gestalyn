@@ -172,6 +172,98 @@ public sealed class AgentPersistenceTests(PostgresDatabaseFixture database)
         Assert.Equal(PostgresErrorCodes.UniqueViolation, Assert.IsType<PostgresException>(duplicateName.InnerException).SqlState);
     }
 
+    /// <summary>
+    /// Revisão C4: o banco aceita só os escopos do catálogo, mesmo por SQL direto. Cada escopo de
+    /// <see cref="AgentScopes.All"/> é gravável sozinho, o que mantém a restrição em sincronia com o domínio.
+    /// </summary>
+    [Fact]
+    public async Task Database_AcceptsOnlyCatalogScopes_EvenOutsideTheDomain()
+    {
+        var own = await CreateAgentWithCredentialAndAccessAsync("Org agentes escopos");
+
+        foreach (var scope in AgentScopes.All)
+        {
+            Assert.Null(await UpdateScopesAsync(own.CredentialId, [scope]));
+        }
+
+        Assert.Null(await UpdateScopesAsync(own.CredentialId, [.. AgentScopes.All]));
+
+        string?[][] invalid =
+        [
+            ["tasks:approve"],
+            [AgentScopes.TasksRead, "admin"],
+            ["TASKS:READ"],
+            [" tasks:read"],
+            [AgentScopes.TasksRead, null],
+            [null],
+        ];
+        foreach (var scopes in invalid)
+        {
+            Assert.True(
+                await UpdateScopesAsync(own.CredentialId, scopes) == PostgresErrorCodes.CheckViolation,
+                $"Escopos aceitos indevidamente: [{string.Join(", ", scopes.Select(s => s ?? "NULL"))}]");
+        }
+
+        var insertWithUnknownScope = await ExecuteAsync(
+            """
+            INSERT INTO agent_credentials (id, organization_id, agent_id, name, token_hash, prefix, scopes, expires_at, created_by_user_id, created_at, updated_at)
+            VALUES (gen_random_uuid(), @organization, @agent, 'Fora do domínio', @hash, 'ZZZZZZZZ', ARRAY['tasks:approve'], now() + interval '1 day', @user, now(), now())
+            """,
+            ("organization", own.OrganizationId), ("agent", own.AgentId), ("hash", NewHash()), ("user", own.UserId));
+        Assert.Equal(PostgresErrorCodes.CheckViolation, insertWithUnknownScope);
+    }
+
+    [Fact]
+    public async Task ScopesCheckMigration_KeepsExistingValidCredentials()
+    {
+        var connectionString = new NpgsqlConnectionStringBuilder(database.ConnectionString)
+        {
+            Database = $"migration_{Guid.NewGuid():N}",
+        }.ConnectionString;
+
+        var options = new DbContextOptionsBuilder<ProjectManagerDbContext>();
+        ProjectManagerDatabase.Configure(options, connectionString);
+        await using var context = new ProjectManagerDbContext(options.Options, new TestTenantContext(organizationId: null), TimeProvider.System);
+        var migrator = context.GetService<IMigrator>();
+        await migrator.MigrateAsync("20261118201335_AddAgents", cancellationToken: CancellationToken);
+
+        var credentialId = Guid.NewGuid();
+        await using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync(CancellationToken);
+            await using var seed = new NpgsqlCommand(
+                """
+                INSERT INTO organizations (id, name, created_at, updated_at) VALUES (@organization, 'Antiga', now(), now());
+                INSERT INTO users (id, display_name, email_confirmed, phone_number_confirmed, two_factor_enabled, lockout_enabled, access_failed_count, created_at, updated_at)
+                    VALUES (@user, 'Pessoa', true, false, false, true, 0, now(), now());
+                INSERT INTO agents (id, organization_id, name, normalized_name, status, created_by_user_id, created_at, updated_at)
+                    VALUES (@agent, @organization, 'Agente', 'AGENTE', 'Active', @user, now(), now());
+                INSERT INTO agent_credentials (id, organization_id, agent_id, name, token_hash, prefix, scopes, expires_at, created_by_user_id, created_at, updated_at)
+                    VALUES (@credential, @organization, @agent, 'Antiga', @hash, 'ABCDEFGH', ARRAY['context:read', 'tasks:write'], now() + interval '30 days', @user, now(), now());
+                """,
+                connection);
+            seed.Parameters.AddWithValue("organization", Guid.NewGuid());
+            seed.Parameters.AddWithValue("user", Guid.NewGuid());
+            seed.Parameters.AddWithValue("agent", Guid.NewGuid());
+            seed.Parameters.AddWithValue("credential", credentialId);
+            seed.Parameters.AddWithValue("hash", NewHash());
+            await seed.ExecuteNonQueryAsync(CancellationToken);
+        }
+
+        await migrator.MigrateAsync(cancellationToken: CancellationToken);
+
+        var kept = await context.AgentCredentials.IgnoreQueryFilters().SingleAsync(c => c.Id == credentialId, CancellationToken);
+        Assert.Equal([AgentScopes.ContextRead, AgentScopes.TasksWrite], kept.Scopes);
+
+        await context.Database.EnsureDeletedAsync(CancellationToken);
+    }
+
+    private Task<string?> UpdateScopesAsync(Guid credentialId, string?[] scopes) =>
+        ExecuteAsync(
+            "UPDATE agent_credentials SET scopes = @scopes WHERE id = @credential",
+            ("scopes", scopes),
+            ("credential", credentialId));
+
     private static string NewHash() => Convert.ToHexString(Guid.NewGuid().ToByteArray()) + Convert.ToHexString(Guid.NewGuid().ToByteArray());
 
     private async Task<SeededAgent> CreateAgentWithCredentialAndAccessAsync(string organizationName)
