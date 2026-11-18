@@ -1,7 +1,5 @@
-using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Npgsql;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Agents;
 using ProjectManager.Application.Common;
@@ -169,62 +167,46 @@ internal sealed class AgentService(
         }
 
         var now = Timestamps.TruncateToMicroseconds(timeProvider.GetUtcNow());
-        NewAgentToken token;
-        AgentCredential credential;
-        try
+        var agent = await dbContext.Agents.SingleOrDefaultAsync(a => a.Id == agentId, cancellationToken);
+        if (agent is null)
         {
-            // Serializável: duas criações simultâneas não passam juntas do limite de credenciais ativas.
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-
-            var agent = await dbContext.Agents.SingleOrDefaultAsync(a => a.Id == agentId, cancellationToken);
-            if (agent is null)
-            {
-                return Result.Failure<CreatedAgentCredential>(ErrorKind.NotFound, AgentNotFoundMessage);
-            }
-
-            if (!agent.IsActive)
-            {
-                return Result.Failure<CreatedAgentCredential>(ErrorKind.Conflict, AgentCredential.DisabledAgentMessage);
-            }
-
-            var active = await dbContext.AgentCredentials.CountAsync(c => c.AgentId == agentId && c.RevokedAt == null && c.ExpiresAt > now, cancellationToken);
-            if (active >= AgentCredential.MaxActivePerAgent)
-            {
-                return Result.Failure<CreatedAgentCredential>(
-                    ErrorKind.Conflict,
-                    $"O agente já tem {AgentCredential.MaxActivePerAgent} credenciais ativas. Revogue uma antes de criar outra.");
-            }
-
-            token = AgentCredentialTokens.Generate();
-            credential = new AgentCredential(agent, request.Name, scopes, token.Hash, token.Prefix, now.AddDays(lifetimeDays), actor.UserId, now);
-            dbContext.AgentCredentials.Add(credential);
-            activity.Record(
-                ActivityActions.AgentCredentialCreated,
-                ActivityEntityTypes.AgentCredential,
-                credential.Id,
-                $"Credencial '{credential.Name}' criada para o agente '{agent.Name}'",
-                changes: new ActivityChanges()
-                    .Set("agentId", null, agent.Id)
-                    .List("scopes", [], credential.Scopes)
-                    .Set("expiresAt", null, credential.ExpiresAt));
-
-            if (!await dbContext.TrySaveChangesAsync(cancellationToken))
-            {
-                return Result.Failure<CreatedAgentCredential>(ErrorKind.Conflict, ConflictMessage);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-        }
-        catch (PostgresException exception) when (SaveChangesConflicts.IsSerializationFailure(exception))
-        {
-            return Result.Failure<CreatedAgentCredential>(ErrorKind.Conflict, ConflictMessage);
-        }
-        catch (InvalidOperationException exception) when (SaveChangesConflicts.IsSerializationFailure(exception))
-        {
-            return Result.Failure<CreatedAgentCredential>(ErrorKind.Conflict, ConflictMessage);
+            return Result.Failure<CreatedAgentCredential>(ErrorKind.NotFound, AgentNotFoundMessage);
         }
 
-        return Result.Success(new CreatedAgentCredential(ToDetails(credential, now), token.Token));
+        if (!agent.IsActive)
+        {
+            return Result.Failure<CreatedAgentCredential>(ErrorKind.Conflict, AgentCredential.DisabledAgentMessage);
+        }
+
+        var active = await dbContext.AgentCredentials.CountAsync(c => c.AgentId == agentId && c.RevokedAt == null && c.ExpiresAt > now, cancellationToken);
+        if (active >= AgentCredential.MaxActivePerAgent)
+        {
+            return Result.Failure<CreatedAgentCredential>(
+                ErrorKind.Conflict,
+                $"O agente já tem {AgentCredential.MaxActivePerAgent} credenciais ativas. Revogue uma antes de criar outra.");
+        }
+
+        var token = AgentCredentialTokens.Generate();
+        var credential = new AgentCredential(agent, request.Name, scopes, token.Hash, token.Prefix, now.AddDays(lifetimeDays), actor.UserId, now);
+        dbContext.AgentCredentials.Add(credential);
+        activity.Record(
+            ActivityActions.AgentCredentialCreated,
+            ActivityEntityTypes.AgentCredential,
+            credential.Id,
+            $"Credencial '{credential.Name}' criada para o agente '{agent.Name}'",
+            changes: new ActivityChanges()
+                .Set("agentId", null, agent.Id)
+                .List("scopes", [], credential.Scopes)
+                .Set("expiresAt", null, credential.ExpiresAt));
+
+        // Trava otimista na linha do agente (xmin): a gravação também atualiza o agente, conferindo a versão lida.
+        // Duas criações simultâneas para o mesmo agente não passam juntas do limite (a segunda recebe 409), e
+        // criações para agentes diferentes não disputam nada entre si, ao contrário de uma transação serializável.
+        dbContext.Entry(agent).Property(a => a.Status).IsModified = true;
+
+        return await dbContext.TrySaveChangesAsync(cancellationToken)
+            ? Result.Success(new CreatedAgentCredential(ToDetails(credential, now), token.Token))
+            : Result.Failure<CreatedAgentCredential>(ErrorKind.Conflict, ConflictMessage);
     }
 
     public async Task<Result<AgentCredentialDetails>> RevokeCredentialAsync(

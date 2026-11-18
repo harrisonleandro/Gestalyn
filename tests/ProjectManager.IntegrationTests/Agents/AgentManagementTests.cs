@@ -192,6 +192,40 @@ public sealed class AgentManagementTests : IDisposable
     }
 
     [Fact]
+    public async Task ConcurrentCreations_ForDifferentAgents_DoNotConflict()
+    {
+        // Antes da revisão C1, a transação serializável fazia criações de agentes diferentes (até de outras
+        // organizações) disputarem entre si e receberem 409. A trava fica só na linha de cada agente.
+        var (ownerA, organizationA) = await CreateOwnerAsync();
+        var (ownerB, organizationB) = await CreateOwnerAsync();
+        var targets = new List<(TestUser Owner, Guid OrganizationId, Guid AgentId)>();
+        for (var i = 0; i < 4; i++)
+        {
+            targets.Add((ownerA, organizationA, (await CreateAgentAsync(ownerA, organizationA, $"Agente A{i}")).Id));
+            targets.Add((ownerB, organizationB, (await CreateAgentAsync(ownerB, organizationB, $"Agente B{i}")).Id));
+        }
+
+        var responses = await Task.WhenAll(targets.Select(target =>
+            CreateCredentialAsync(target.Owner, target.OrganizationId, target.AgentId, new { name = "Paralela", scopes = new[] { AgentScopes.TasksRead } })));
+        try
+        {
+            foreach (var response in responses)
+            {
+                Assert.True(
+                    response.StatusCode == HttpStatusCode.Created,
+                    $"{response.StatusCode}: {await response.Content.ReadAsStringAsync(CancellationToken)}");
+            }
+        }
+        finally
+        {
+            foreach (var response in responses)
+            {
+                response.Dispose();
+            }
+        }
+    }
+
+    [Fact]
     public async Task ProjectAccess_IsContributorOrViewer_AndRequiresManagingTheProject()
     {
         var (owner, organizationId) = await CreateOwnerAsync();

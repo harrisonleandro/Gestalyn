@@ -30,7 +30,7 @@ internal sealed class AgentTestKit(HttpClient client, MailpitFixture mailpit)
     public async Task<AgentDetails> CreateAgentAsync(TestUser owner, Guid organizationId, string name)
     {
         using var response = await Projects.SendAsync(HttpMethod.Post, AgentsPath(organizationId), owner, new { name });
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        await EnsureCreatedAsync(response);
         return await ProjectTestKit.ReadAsync<AgentDetails>(response);
     }
 
@@ -46,7 +46,7 @@ internal sealed class AgentTestKit(HttpClient client, MailpitFixture mailpit)
             $"{AgentsPath(organizationId)}/{agentId}/credentials",
             owner,
             new { name = "Credencial de teste", scopes, expiresInDays });
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        await EnsureCreatedAsync(response);
         return await ProjectTestKit.ReadAsync<CreatedAgentCredential>(response);
     }
 
@@ -75,6 +75,12 @@ internal sealed class AgentTestKit(HttpClient client, MailpitFixture mailpit)
 
         return await client.SendAsync(request, CancellationToken);
     }
+
+    /// <summary>Falha com o status e o corpo da resposta, para o diagnóstico não depender de repetir o teste.</summary>
+    private static async Task EnsureCreatedAsync(HttpResponseMessage response) =>
+        Assert.True(
+            response.StatusCode == HttpStatusCode.Created,
+            $"Esperado 201, recebido {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(CancellationToken)}");
 
     private static string AgentsPath(Guid organizationId) => $"/api/v1/organizations/{organizationId}/agents";
 }
