@@ -139,6 +139,67 @@ public sealed class AgentAuthenticationTests : IDisposable
         Assert.Equal(HttpStatusCode.Unauthorized, expired.StatusCode);
     }
 
+    /// <summary>
+    /// Revisão C3: token desconhecido, malformado, revogado, expirado e de agente desativado produzem respostas
+    /// idênticas (status, cabeçalhos e corpo, exceto o ID de rastreio), sem nada que ajude a enumerar credenciais.
+    /// </summary>
+    [Fact]
+    public async Task EveryRejection_IsIndistinguishable_AndRevealsNothingAboutTheCredential()
+    {
+        var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+        using var factory = new ApiFactory(_database.ConnectionString, _mailpit, timeProvider: clock);
+        var kit = new AgentTestKit(factory.CreateClient(), _mailpit);
+        var (owner, organizationId) = await kit.CreateOwnerAsync();
+        var active = await kit.CreateAgentAsync(owner, organizationId, "Agente com credenciais");
+        var disabledAgent = await kit.CreateAgentAsync(owner, organizationId, "Agente desativado");
+        var revoked = await kit.CreateCredentialAsync(owner, organizationId, active.Id, ReadScopes);
+        var expiring = await kit.CreateCredentialAsync(owner, organizationId, active.Id, ReadScopes, expiresInDays: 1);
+        var ofDisabled = await kit.CreateCredentialAsync(owner, organizationId, disabledAgent.Id, ReadScopes);
+
+        using (var revoke = await kit.ManageAsync(HttpMethod.Post, owner, organizationId, $"/{active.Id}/credentials/{revoked.Credential.Id}/revoke"))
+        using (var disable = await kit.ManageAsync(HttpMethod.Post, owner, organizationId, $"/{disabledAgent.Id}/disable"))
+        {
+            revoke.EnsureSuccessStatusCode();
+            disable.EnsureSuccessStatusCode();
+        }
+
+        clock.UtcNow = expiring.Credential.ExpiresAt;
+
+        var cases = new Dictionary<string, string>
+        {
+            ["desconhecido"] = AgentTokens.Marker + new string('Q', AgentTokens.RandomPartLength),
+            ["malformado"] = "gsk_curto",
+            ["revogado"] = revoked.Token,
+            ["expirado"] = expiring.Token,
+            ["agente desativado"] = ofDisabled.Token,
+        };
+
+        var responses = new Dictionary<string, (RawRejection Shape, string Body)>();
+        foreach (var (name, token) in cases)
+        {
+            using var response = await kit.SendAsAgentAsync(token, HttpMethod.Get, MePath);
+            var body = await response.Content.ReadAsStringAsync(CancellationToken);
+            responses[name] = (RawRejection.From(response, body), body);
+        }
+
+        var reference = responses["desconhecido"].Shape;
+        Assert.Equal(HttpStatusCode.Unauthorized, reference.Status);
+        foreach (var (name, (shape, body)) in responses)
+        {
+            Assert.True(shape == reference, $"'{name}' difere de 'desconhecido': {shape} | {reference}");
+
+            string[] secrets =
+            [
+                active.Id.ToString(), disabledAgent.Id.ToString(), organizationId.ToString(),
+                revoked.Credential.Id.ToString(), expiring.Credential.Id.ToString(), ofDisabled.Credential.Id.ToString(),
+                revoked.Credential.Prefix, expiring.Credential.Prefix, ofDisabled.Credential.Prefix,
+            ];
+            string[] hints = ["revog", "expir", "desativ", "desconhec", "disabled", "revoked", "expired", "unknown"];
+            Assert.DoesNotContain(secrets, secret => body.Contains(secret, StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(hints, hint => body.Contains(hint, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
     [Theory]
     [InlineData("gsk_curto")]
     [InlineData("gsk_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmno+q")]
@@ -207,4 +268,25 @@ public sealed class AgentAuthenticationTests : IDisposable
     }
 
     private sealed record RejectionShape(HttpStatusCode Status, string? Title, string? Detail, string Challenge);
+
+    /// <summary>A resposta inteira, normalizada: status, todos os cabeçalhos (menos a data) e o corpo sem o ID de rastreio.</summary>
+    private sealed record RawRejection(HttpStatusCode Status, string Headers, string Body)
+    {
+        public static RawRejection From(HttpResponseMessage response, string body)
+        {
+            var headers = response.Headers.Concat(response.Content.Headers)
+                .Where(header => !header.Key.Equals("Date", StringComparison.OrdinalIgnoreCase)
+                    && !header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                .Select(header => $"{header.Key}={string.Join(",", header.Value)}")
+                .Order(StringComparer.Ordinal);
+
+            using var document = JsonDocument.Parse(body);
+            var fields = document.RootElement.EnumerateObject()
+                .Where(property => property.Name != "traceId")
+                .Select(property => $"{property.Name}={property.Value}")
+                .Order(StringComparer.Ordinal);
+
+            return new RawRejection(response.StatusCode, string.Join(";", headers), string.Join(";", fields));
+        }
+    }
 }
