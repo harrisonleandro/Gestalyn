@@ -14,11 +14,6 @@ namespace ProjectManager.IntegrationTests.Api;
 /// </summary>
 public sealed class EndpointPolicyTests(PostgresDatabaseFixture database) : IDisposable
 {
-    /// <summary>Política das rotas de agentes, criada com o esquema <c>AgentToken</c> (ADR-016, etapa 4 do plano).</summary>
-    private const string AgentPolicy = "Agent";
-
-    private const string AgentRoutePrefix = "api/v1/agents/";
-
     /// <summary>Únicas rotas anônimas: entrada, cadastro e recuperação de conta (ADR-006).</summary>
     private static readonly HashSet<string> AnonymousRoutes = new(StringComparer.Ordinal)
     {
@@ -53,7 +48,7 @@ public sealed class EndpointPolicyTests(PostgresDatabaseFixture database) : IDis
             }
 
             var policies = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(data => data.Policy).ToList();
-            var expected = route.StartsWith(AgentRoutePrefix, StringComparison.Ordinal) ? AgentPolicy : ApiPolicies.User;
+            var expected = ApiPolicies.IsAgentRoute(route) ? ApiPolicies.Agent : ApiPolicies.User;
 
             Assert.True(
                 policies.Count == 1 && policies[0] == expected,

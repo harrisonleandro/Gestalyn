@@ -4,8 +4,9 @@ using ProjectManager.Application.Agents;
 
 namespace ProjectManager.API.Agents;
 
-/// <summary>Rotas do próprio agente (ADR-016), com a política <c>Agent</c> aplicada pela convenção deste namespace.</summary>
+/// <summary>Rotas do próprio agente (ADR-016), com a política <c>Agent</c> aplicada pela marca <see cref="AgentApiAttribute"/>.</summary>
 [ApiController]
+[AgentApi]
 [Route("api/v1/agents")]
 [Tags("Agentes")]
 public sealed class AgentSelfController(IAgentWorkService work, ITenantContext tenantContext) : ControllerBase

@@ -61,4 +61,11 @@ app.MapHealthChecks(HealthEndpoints.Path, new HealthCheckOptions
 });
 app.MapControllers();
 
+// Monta os endpoints já na inicialização: uma rota de agentes sem [AgentApi], ou o contrário, impede a API de
+// iniciar (ApiPolicyConvention), em vez de falhar só na primeira requisição.
+foreach (var dataSource in ((IEndpointRouteBuilder)app).DataSources)
+{
+    _ = dataSource.Endpoints;
+}
+
 await app.RunAsync();
