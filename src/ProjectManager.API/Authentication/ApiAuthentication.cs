@@ -35,7 +35,7 @@ internal static class ApiAuthentication
                 bearer.Events = new JwtBearerEvents { OnTokenValidated = EnsureSessionIsActiveAsync };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorizationBuilder().AddApiPolicies();
 
         return services;
     }

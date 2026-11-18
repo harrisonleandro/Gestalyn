@@ -716,3 +716,32 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | B3 Testes ausentes | Estratégia de testes |
 | B4 Ordem no `PROJECT_STATUS.md` | Corrigida |
 | B5 `AUTENTICACAO.md` | Atualizado |
+
+## Execução e ajustes em relação ao plano
+
+| Etapa | Estado | Evidência |
+|---|---|---|
+| 0 | Concluída em 2026-11-18 | Merge do PR #18 (`d6c34fc`), CI de `develop` aprovado (run 44385682944); branch rebaseada antes de qualquer envio |
+| 1 | Concluída em 2026-11-18 | Ver abaixo |
+
+### Etapa 1: políticas explícitas
+
+- **O que mudou:**
+  - o `new AuthorizeFilter()` global deu lugar à política `User` (esquema JWT, usuário autenticado e claim `sid`);
+  - uma convenção (`ApiPolicyConvention`) aplica essa política à metadata de todos os endpoints dos controllers;
+  - `[AllowAnonymous]` continua valendo.
+- **Ajuste em relação ao plano:** a política `Agent` não foi registrada nesta etapa. Ela depende do esquema `AgentToken`, que só existe na etapa 4, e registrá-la antes criaria uma política sem uso. O teste já exige a política `Agent` em qualquer rota `/api/v1/agents/*`.
+- **Teste novo (`EndpointPolicyTests`):**
+  - todo endpoint `/api` tem exatamente a política esperada;
+  - as rotas anônimas são só as 7 de conta (cadastro, confirmação, reenvio, entrada, renovação, recuperação e redefinição);
+  - um token `gsk_` numa rota de usuário recebe 401.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet test`: 374/374 (178 unitários, 43 de componentes, 153 de integração).
+- **Mutação:** sem a convenção, o teste estrutural falha. Os testes de sessão continuam passando nesse caso, porque o controller também recusa a requisição sem usuário; por isso o teste estrutural é necessário.
+- **Execução real** (API local com o banco de desenvolvimento):
+  - sem token, `GET /auth/me` responde 401;
+  - com um token `gsk_`, `GET /auth/me` e `GET /organizations` respondem 401;
+  - a entrada anônima responde 200, e com o JWT `/auth/me` e `/organizations` respondem 200;
+  - `/health` continua anônimo (200);
+  - nenhum erro no log.

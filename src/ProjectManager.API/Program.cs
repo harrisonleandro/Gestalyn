@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Mvc.Authorization;
 using ProjectManager.API.Activity;
 using ProjectManager.API.Authentication;
 using ProjectManager.API.ErrorHandling;
@@ -20,8 +19,8 @@ builder.Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IActivityContext, HttpActivityContext>();
 
-// Seguro por padrão: todo controller exige autenticação, salvo [AllowAnonymous] explícito.
-builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
+// Seguro por padrão: todo endpoint tem uma política explícita por esquema (ADR-016), salvo [AllowAnonymous].
+builder.Services.AddControllers(options => options.Conventions.Add(new ApiPolicyConvention()))
     // Enumerações (prioridade, papéis de projeto, provedor) trafegam pelo nome, não pelo número.
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
