@@ -1,6 +1,6 @@
 # Fase 10: API e autenticação de agentes
 
-- **Estado:** Planned. As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15:
+- **Estado:** In Progress (desde 2026-11-18). As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15:
   - as 24 decisões da revisão;
   - as 4 decisões complementares (exibição do token, rate limiting, retenção e transição para Cancelada).
 
@@ -12,10 +12,8 @@
   - seção 5.8 (contratos de agentes);
   - seções 6.1, 6.4 e 6.5 (REST, relatório de trabalho, idempotência e concorrência);
   - seção 7 (segurança).
-- **Branch:** `feature/fase-10-agentes`, hoje sobre `docs/fase-09-concluida` (`788a6a2`, PR #18 ainda aberto).
-  - Depois do merge do PR #18, a branch será rebaseada em `develop`.
-  - Ela ainda não foi enviada ao remoto, então o rebase não reescreve nada publicado.
-- **Pré-requisito para implementar:** documentação aprovada em 2026-11-18. Falta a etapa 0 do plano: o merge do PR #18, que depende de autorização do responsável, e o rebase da branch em `develop`.
+- **Branch:** `feature/fase-10-agentes`, rebaseada em `develop` `d6c34fc` (merge do [PR #18](https://github.com/harrisonleandro/Gestalyn/pull/18)) em 2026-11-18, antes de qualquer envio ao remoto.
+- **Pré-requisito para implementar:** cumprido. A documentação foi aprovada em 2026-11-18, e a etapa 0 foi concluída no mesmo dia (merge do [PR #18](https://github.com/harrisonleandro/Gestalyn/pull/18), autorizado pelo responsável, e rebase).
 
 ## Objetivo
 
@@ -526,7 +524,7 @@ Reavaliado: os relatórios e as operações de agentes são lidos ao abrir a tel
 
 | Item | Estado |
 |---|---|
-| Fases 03 a 09 | Completed. A Fase 09 está integrada em `develop` (PR #17); o registro como Completed está no PR #18, aberto |
+| Fases 03 a 09 | Completed e integradas em `develop`; o registro da Fase 09 entrou pelo [PR #18](https://github.com/harrisonleandro/Gestalyn/pull/18) (merge `d6c34fc`) |
 | Pacotes novos | **Nenhum.** ASP.NET Core, EF Core, Npgsql e .NET |
 | Docker (PostgreSQL e Mailpit) | Necessário para os testes de integração e a execução real |
 
@@ -559,7 +557,7 @@ Cada etapa termina com `dotnet build` sem avisos e todos os testes passando, num
 
 | Etapa | Conteúdo | Verificação |
 |---|---|---|
-| 0 | Depois do merge do PR #18, autorizado pelo responsável: rebase em `develop` e commit da documentação aprovada | `git log` sem o `788a6a2` duplicado |
+| 0 | Depois do merge do PR #18, autorizado pelo responsável: rebase em `develop` e commit da documentação aprovada | Concluída em 2026-11-18: merge `d6c34fc`; a branch tem só os commits da Fase 10 sobre `develop` |
 | 1 | Políticas `User` e `Agent` no lugar do `AuthorizeFilter` sem política (ainda sem agentes) | Teste de políticas de todos os endpoints; os 372 testes atuais passam |
 | 2 | `Agent`, `AgentCredential`, `AgentProjectAccess`; `agents.manage` com migração de dados | Testes de migração, de permissão e de isolamento |
 | 3 | Rotas de gestão por pessoas e eventos | `ActivityCoverageTests`; 403 e 404 por permissão; token só na criação |

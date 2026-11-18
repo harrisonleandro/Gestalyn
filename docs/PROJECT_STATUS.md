@@ -8,7 +8,7 @@
 
 ## Fase atual
 
-**Fase 10, API e autenticação de agentes: Planned.** As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15: as 24 da revisão técnica e as 4 complementares (exibição única do token na Web, rate limiting no PostgreSQL, retenção e transição para Cancelada). A [especificação](specifications/FASE-10-AGENTES.md) e o [ADR-016](decisions/ADR-016-AGENTES.md) foram corrigidos depois da revisão técnica e **aprovados pelo responsável em 2026-11-18**. Nada foi implementado. A implementação começa depois do merge do PR #18, que depende de autorização. A interface de agentes transferida da Fase 09 (F09-018) e o teste "agentes não aprovam o próprio trabalho" estão incluídos. O tempo real continua fora, sem necessidade comprovada.
+**Fase 10, API e autenticação de agentes: In Progress.** As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15: as 24 da revisão técnica e as 4 complementares (exibição única do token na Web, rate limiting no PostgreSQL, retenção e transição para Cancelada). A [especificação](specifications/FASE-10-AGENTES.md) e o [ADR-016](decisions/ADR-016-AGENTES.md) foram corrigidos depois da revisão técnica e **aprovados pelo responsável em 2026-11-18**. O [PR #18](https://github.com/harrisonleandro/Gestalyn/pull/18) foi integrado (merge `d6c34fc`) e a branch `feature/fase-10-agentes` foi rebaseada em `develop`; a implementação segue as etapas do plano da especificação. A interface de agentes transferida da Fase 09 (F09-018) e o teste "agentes não aprovam o próprio trabalho" estão incluídos. O tempo real continua fora, sem necessidade comprovada.
 
 **Fase 09, Interface web completa: Completed.** Validada localmente (372/372 testes, quatro mutações da interface detectadas e execução real no navegador com Gerente, Colaboradora e Observador, em 375 px e 1440 px). A interface de agentes (F09-018) foi transferida para a Fase 10 e o tempo real (F09-021) não foi implementado, por falta de necessidade comprovada (ADR-015). Validada também no CI ([run 43716683611](https://github.com/harrisonleandro/Gestalyn/actions/runs/43716683611): 0 avisos, 178/178, 43/43 e 151/151) e integrada em `develop` pelo [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) (merge `5960bde`). A próxima é a Fase 10, que depende de autorização.
 
@@ -37,7 +37,7 @@
 | Branch | Commit | Conteúdo |
 |---|---|---|
 | `main` | `c6bd32a` | Fase 01. Recebe `develop` só por PR de release, num marco definido pelo responsável. |
-| `develop` | `5960bde` | Fases 01 a 09 e correções da auditoria |
+| `develop` | `d6c34fc` | Fases 01 a 09, correções da auditoria e registro da Fase 09 como concluída |
 
 **Proteção** (rulesets ativos desde 2026-11-14, sem exceções de bloqueio), nas duas branches:
 - não podem ser excluídas nem receber force push;
@@ -60,7 +60,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 07 | Workflow configurável e histórico | Completed | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
 | 08 | Auditoria, documentação e dashboards | Completed | [FASE-08-AUDITORIA.md](specifications/FASE-08-AUDITORIA.md) | [FASE-08-RELATORIO.md](reports/FASE-08-RELATORIO.md) |
 | 09 | Interface web completa | Completed | [FASE-09-WEB.md](specifications/FASE-09-WEB.md) | [FASE-09-RELATORIO.md](reports/FASE-09-RELATORIO.md) |
-| 10 | API e autenticação de agentes | Planned | [FASE-10-AGENTES.md](specifications/FASE-10-AGENTES.md) | — |
+| 10 | API e autenticação de agentes | In Progress | [FASE-10-AGENTES.md](specifications/FASE-10-AGENTES.md) | — |
 | 11 | CLI gestalyn | Not Started | — | — |
 | 12 | MCP e integrações com agentes | Not Started | — | — |
 | 13 | Testes integrados e hardening | Not Started | — | — |
@@ -251,7 +251,7 @@ Evidências na [especificação da Fase 09](specifications/FASE-09-WEB.md#execu�
 
 ## Tarefas pendentes
 
-- Fase 10: merge do PR #18 (depende de autorização) e rebase de `feature/fase-10-agentes` em `develop`; depois, a implementação nas etapas do plano da [especificação](specifications/FASE-10-AGENTES.md#plano-de-implementação), aprovada em 2026-11-18.
+- Fase 10: implementação nas etapas 1 a 12 do plano da [especificação](specifications/FASE-10-AGENTES.md#plano-de-implementação), aprovada em 2026-11-18.
 
 
 - Configurações recomendadas pela auditoria e ainda não aplicadas (dependem de decisão):
@@ -339,6 +339,7 @@ Incidentes já resolvidos, mantidos como referência:
 | 2026-11-14 | Proteção de `main` e `develop` por rulesets: PR obrigatório, CI "Build e testes" obrigatório, sem force push nem exclusão | Rulesets 27277722 e 27277724 |
 | 2026-11-15 | Fase 07 integrada em `develop` (PR #13, merge `a6f87f9`) | [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) |
 | 2026-11-15 | Fase 08 integrada em `develop` (PR #15, merge `0e9dbdd`) | [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) |
+| 2026-11-18 | Fase 09 registrada como Completed em `develop` (PR #18, merge `d6c34fc`) | [PR #18](https://github.com/harrisonleandro/Gestalyn/pull/18) |
 | 2026-11-15 | Fase 09 integrada em `develop` (PR #17, merge `5960bde`) | [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) |
 | 2026-11-15 | Fase 10: agentes provisionados com `agents.manage`; credencial `gsk_` com hash; esquema `AgentToken` e políticas explícitas; `AgentAccessGrant`; agentes sem aprovação e sem entrar em Concluída (`TransitionRules`); idempotência transacional; `AgentOperation`; rate limiting no PostgreSQL; retenção; token exibido uma vez na Web (exceção à seção 7) | [ADR-016](decisions/ADR-016-AGENTES.md) |
 | 2026-11-15 | Fase 09: Web SSR (BFF) com design system próprio sobre o Bootstrap, organização na URL, permissões da API refletidas na tela (`GET /organizations/{id}/me`), quadro por estado, Markdown com Markdig e CSP, testes com bUnit; agentes para a Fase 10 e sem tempo real (D1 a D8) | [ADR-015](decisions/ADR-015-INTERFACE-WEB.md) |
@@ -348,5 +349,4 @@ Incidentes já resolvidos, mantidos como referência:
 
 ## Próxima atividade
 
-1. Merge do PR #18, se autorizado, e rebase de `feature/fase-10-agentes` em `develop`.
-2. Implementação da Fase 10 nas etapas do plano da [especificação](specifications/FASE-10-AGENTES.md#plano-de-implementação) (documentação aprovada em 2026-11-18), começando pela etapa 1: as políticas `User` e `Agent`.
+1. Implementação da Fase 10 nas etapas do plano da [especificação](specifications/FASE-10-AGENTES.md#plano-de-implementação) (documentação aprovada em 2026-11-18), começando pela etapa 1: as políticas `User` e `Agent`.
