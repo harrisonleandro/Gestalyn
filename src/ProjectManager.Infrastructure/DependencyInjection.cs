@@ -97,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
         services.AddScoped<IAgentWorkService, AgentWorkService>();
         services.AddScoped<IAgentProjectAccess, AgentProjectAccessResolver>();
+        services.AddScoped<IAgentIdempotencyStore, AgentIdempotencyStore>();
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

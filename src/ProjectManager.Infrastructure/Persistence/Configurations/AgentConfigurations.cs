@@ -124,3 +124,38 @@ internal sealed class AgentProjectAccessConfiguration : IEntityTypeConfiguration
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+/// <summary>
+/// Respostas guardadas de POSTs de agentes (ADR-016, D9): a chave é única por credencial; índice pela expiração para a
+/// limpeza de retenção.
+/// </summary>
+internal sealed class IdempotencyRecordConfiguration : IEntityTypeConfiguration<IdempotencyRecord>
+{
+    public void Configure(EntityTypeBuilder<IdempotencyRecord> builder)
+    {
+        builder.ToTable("idempotency_records");
+        builder.ConfigureEntityBase();
+
+        builder.Property(record => record.Key).HasMaxLength(IdempotencyRecord.KeyMaxLength).IsRequired();
+        builder.Property(record => record.Method).HasMaxLength(IdempotencyRecord.MethodMaxLength).IsRequired();
+        builder.Property(record => record.RouteTemplate).HasMaxLength(IdempotencyRecord.RouteMaxLength).IsRequired();
+        builder.Property(record => record.RequestHash).HasMaxLength(AgentTokens.HashLength).IsFixedLength().IsRequired();
+        builder.Property(record => record.ResponseBody).HasMaxLength(IdempotencyRecord.ResponseBodyMaxLength).IsRequired();
+        builder.Property(record => record.Location).HasMaxLength(IdempotencyRecord.LocationMaxLength);
+
+        builder.HasIndex(record => new { record.CredentialId, record.Key }).IsUnique();
+        builder.HasIndex(record => record.CreatedAt);
+
+        builder.HasOne<AgentCredential>()
+            .WithMany()
+            .HasForeignKey(record => new { record.OrganizationId, record.CredentialId })
+            .HasPrincipalKey(credential => new { credential.OrganizationId, credential.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Agent>()
+            .WithMany()
+            .HasForeignKey(record => new { record.OrganizationId, record.AgentId })
+            .HasPrincipalKey(agent => new { agent.OrganizationId, agent.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}

@@ -119,7 +119,7 @@ As transições disponíveis passam a ser calculadas por `TransitionRules`, para
 ### Idempotência
 
 - **`Idempotency-Key`** é obrigatório em todos os `POST` de agentes.
-- **A chave** é única por credencial e vinculada ao método, ao modelo da rota e ao SHA-256 do corpo.
+- **A chave** é única por credencial e vinculada ao método, ao modelo da rota e ao SHA-256 do caminho concreto, da query e do corpo (o caminho entra no hash desde a etapa 8: a mesma chave em outra tarefa é outra requisição).
 - **Tudo numa transação:** a reserva, a operação e a resposta guardada.
 - **Respostas:**
   - chave em processamento: 409, pela trava consultiva;

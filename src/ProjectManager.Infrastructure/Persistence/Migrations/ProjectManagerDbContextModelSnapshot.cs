@@ -528,6 +528,101 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Agents.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("method");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("request_hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("ResponseBody")
+                        .IsRequired()
+                        .HasMaxLength(262144)
+                        .HasColumnType("character varying(262144)")
+                        .HasColumnName("response_body");
+
+                    b.Property<int>("ResponseStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status");
+
+                    b.Property<string>("RouteTemplate")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("route_template");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_idempotency_records");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_idempotency_records_created_at");
+
+                    b.HasIndex("CredentialId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_idempotency_records_credential_id_key");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_idempotency_records_organization_id_agent_id");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_idempotency_records_organization_id_credential_id");
+
+                    b.ToTable("idempotency_records", (string)null);
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2451,6 +2546,25 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_agent_project_access_projects_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.IdempotencyRecord", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_idempotency_records_agents_organization_id_agent_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_idempotency_records_agent_credentials_organization_id_crede");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>

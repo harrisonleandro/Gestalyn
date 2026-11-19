@@ -10,6 +10,9 @@ using Microsoft.Extensions.DependencyInjection;
 using ProjectManager.API.Agents;
 using ProjectManager.Application.Abstractions.Activity;
 using ProjectManager.Application.Abstractions.MultiTenancy;
+using ProjectManager.Application.Projects;
+using ProjectManager.Application.Tasks;
+using ProjectManager.Domain.Agents;
 using ProjectManager.Infrastructure.Persistence;
 using ProjectManager.IntegrationTests.Infrastructure;
 
@@ -141,4 +144,35 @@ public sealed class UnmarkedActionRouteProbeController : ControllerBase
 {
     [HttpGet("/api/v1/agents/__probe/action-only")]
     public IActionResult Get() => Ok();
+}
+
+/// <summary>
+/// Idempotência e atomicidade (ADR-016, D9): cria uma tarefa pelo serviço real e termina conforme
+/// <c>{outcome}</c>: <c>ok</c> (200), <c>conflict</c> (409, guardado, com a operação desfeita), <c>unavailable</c>
+/// (503, não guardado) ou <c>throw</c> (exceção depois da gravação).
+/// </summary>
+[ApiController]
+[AgentApi]
+[NonController]
+[Route("api/v1/agents/__probe/idempotent")]
+public sealed class AgentIdempotencyProbeController(ITaskService tasks) : ControllerBase
+{
+    [HttpPost("projects/{projectId:guid}/{outcome}")]
+    [AgentProjectPermission(AgentScopes.TasksWrite)]
+    [AgentIdempotent(AgentScopes.TasksWrite)]
+    public async Task<IActionResult> CreateThenAsync(string outcome, CancellationToken cancellationToken)
+    {
+        // O projeto da rota ({projectId}) já foi autorizado pelo atributo, que guardou a concessão.
+        var access = (ProjectAccessGrant)HttpContext.Items[typeof(ProjectAccessGrant)]!;
+        var created = await tasks.CreateAsync(access, new CreateTaskRequest { Title = $"Sonda {outcome}" }, cancellationToken);
+        Assert.True(created.Succeeded);
+
+        return outcome switch
+        {
+            "throw" => throw new InvalidOperationException("Falha simulada depois da gravação."),
+            "unavailable" => StatusCode(503),
+            "conflict" => Conflict(),
+            _ => Ok(created.Value!.Id),
+        };
+    }
 }

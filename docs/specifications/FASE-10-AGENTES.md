@@ -363,9 +363,9 @@ Todos ficam sob `/api/v1/agents`, com a política `Agent`. Os oito da seção 5.
 - **`idempotency_records`** (`IOrganizationOwned`):
   - organização, agente e **credencial**;
   - chave, **método HTTP** e **modelo da rota**;
-  - **SHA-256 dos bytes do corpo**;
-  - projeto e tarefa afetados;
-  - código e corpo da resposta (até 64 KB);
+  - **SHA-256 do caminho concreto, da query e dos bytes do corpo** (etapa 8: o caminho entra no hash para que a mesma chave e o mesmo corpo em outra tarefa sejam outra requisição, com 422);
+  - projeto afetado (etapa 8: a tarefa não é guardada; ela nunca muda de projeto, e as rotas por tarefa já reavaliam o acesso pela tarefa antes da idempotência);
+  - código e corpo da resposta (até 256 KB, ajustado na etapa 8: o detalhe de uma tarefa com a descrição máxima de 20.000 caracteres pode passar de 64 KB depois do escape JSON);
   - criação e expiração lógica (24 horas).
   - Índice único `(credential_id, key)`.
 - **Fluxo**, depois da autenticação, do rate limiting e da autorização da rota:
@@ -734,6 +734,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 5 | Concluída em 2026-11-18 | Ver abaixo |
 | 6 | Concluída em 2026-11-18 | Ver abaixo |
 | 7 | Concluída em 2026-11-19 | Ver abaixo |
+| 8 | Concluída em 2026-11-19 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -1101,3 +1102,65 @@ A revisão técnica independente do pacote das etapas 1 a 4 manteve a arquitetur
   - nenhum erro no log;
   - o agente de verificação foi desativado.
 - **Ainda não feito:** `AgentOperation` (etapa 10). As leituras de agentes ainda não ficam registradas na auditoria de operações.
+
+### Etapa 8: idempotência e rotas de escrita de agentes
+
+- **Rotas** (`AgentWritesController`, `[AgentApi]`, tag "Agentes"), pelos mesmos serviços das pessoas:
+  - `POST /api/v1/agents/tasks`: `projectId` no corpo, `tasks:write` e `tasks.write`; 201 com `Location`. O agente é o autor, e agentes não definem responsáveis;
+  - `PATCH /api/v1/agents/tasks/{taskId}`: `expectedVersion` obrigatório (sem ele, 400); versão divergente dá 409, sem sobrescrever. Sem `Idempotency-Key`, porque a versão já protege;
+  - `POST /api/v1/agents/tasks/{taskId}/transitions`: `expectedVersion` e `Idempotency-Key` obrigatórios. A recusa de aprovação e de Concluída vem de `TransitionRules` (403), inclusive num atalho sem aprovação para Concluída;
+  - `POST /api/v1/agents/activities`: `projectId` no corpo, `activities:write` e `documents.write`; registro manual com o ator agente.
+- **Autorização das rotas com o projeto no corpo:** a ação chama `IAgentProjectAccess` e decide por `AgentAccessGrant.Compute`, com as mesmas respostas dos atributos (404 sem concessão, 403 sem escopo ou permissão).
+- **Idempotência** (`AgentIdempotentAttribute`, `IAgentIdempotencyStore`, tabela `idempotency_records`, migração `AddIdempotencyRecords`):
+  - filtro de recurso, depois da autenticação e da autorização da rota;
+  - uma transação por requisição: trava consultiva `pg_try_advisory_xact_lock` pela credencial e pela chave (409 imediato se estiver presa), leitura do registro, ponto de salvamento, operação e gravação da resposta, e só então o commit;
+  - repetição idêntica: reavalia o acesso ao projeto guardado e devolve o código e o corpo originais com `Idempotency-Replayed: true`. Sem acesso, a recusa atual (403 ou 404); credencial revogada, 401 na autenticação;
+  - outra requisição com a mesma chave (método, rota, caminho, query ou corpo diferentes): 422;
+  - guardados: 2xx, 400, 409 e 422. Nas recusas guardadas, o que a operação gravou é desfeito pelo ponto de salvamento antes de guardar a resposta;
+  - não guardados: 401, 403, 404, 429 e 5xx, e as exceções. A transação é desfeita e a chave fica livre;
+  - registro expirado (24 horas) é apagado e substituído na mesma transação.
+- **Ajustes ao texto aprovado do D9** (registrados na especificação e no ADR-016):
+  - o hash inclui o caminho concreto e a query, além do corpo. Sem isso, a mesma chave e o mesmo corpo em outra tarefa (`tasks/{taskId}/transitions`) devolveriam a resposta da primeira tarefa;
+  - a resposta guardada vai até 256 KB em vez de 64 KB: o detalhe de uma tarefa com a descrição máxima pode passar de 64 KB depois do escape JSON. Uma resposta maior que o limite faz a gravação falhar, e a operação é desfeita (500), nunca gravada sem registro;
+  - o registro guarda o projeto, não a tarefa: a tarefa nunca muda de projeto, e as rotas por tarefa já reavaliam o acesso pela tarefa (`AgentTaskPermission`) antes da idempotência.
+- **Transações dos serviços:** nenhum serviço usado pelas rotas de agentes abre transação própria (hoje só `AddDependencyAsync`, `PlanningService` e `ProjectService` abrem, fora dessas rotas). Uma segunda transação faria o EF Core lançar exceção e a rota responder 500; os testes de escrita executam todas as rotas de agentes dentro da transação da idempotência e falhariam.
+- **Auditoria:** `ActivityCoverageTests` cobre as três rotas de escrita de tarefas de agentes (`task.created`, `task.updated` e `task.transitioned`). O registro manual de agentes entra nas exceções, como o das pessoas: o próprio registro é a atividade.
+- **Testes novos:**
+  - `AgentWriteRoutesTests` (5):
+    - criação com o agente como autor, `Location`, sem responsáveis, e visível para a pessoa;
+    - matriz de recusas: projeto sem concessão, de outra organização e inexistente (404), Observador e escopos ausentes (403), sem `projectId` (400); nenhuma tarefa criada;
+    - `PATCH` sem versão (400), com versão atual (200, versão 2) e desatualizada (409);
+    - transições: sem versão (400), versão errada (409), passos válidos (200), atalho para Concluída e saída da revisão com aprovação (403);
+    - registro de atividade com o agente como autor;
+  - `AgentIdempotencyTests` (8):
+    - repetição sem nova tarefa, com o mesmo ID e `Idempotency-Replayed`;
+    - 422 com outro corpo, outra rota e outra tarefa no caminho;
+    - chave ausente, com espaço e com 101 caracteres (400); com 100, aceita;
+    - chave por credencial;
+    - 8 requisições simultâneas com a mesma chave: 201 ou 409, uma única tarefa;
+    - reautorização: Observador (403), sem concessão (404), concessão restaurada (repetição), credencial revogada (401);
+    - 404 não fica guardado; 400 e 409 ficam e são repetidos;
+    - atomicidade com uma sonda que grava e depois lança exceção (500, nada gravado, a chave executa de novo), responde 503 (nada gravado) ou 409 (resposta guardada, operação desfeita);
+  - `IdempotencyRecordTests` (unitários, 13): formato e tamanho da chave, expiração exata, recusas do construtor e comparação da requisição.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet ef migrations has-pending-model-changes`: nenhuma mudança pendente;
+  - `dotnet test`: **495/495** (232 unitários, 44 de componentes, 219 de integração);
+  - antes da etapa: 469/469.
+- **Mutações detectadas:**
+  - reautorização da repetição desligada;
+  - hash sem o caminho e a query;
+  - operação não desfeita nas recusas guardadas;
+  - 404 guardado;
+  - trava consultiva ignorada;
+  - `PATCH` sem exigir a versão;
+  - exceção guardada como resposta em vez de desfazer a operação.
+- **Execução real** (API local, banco de desenvolvimento com a migração aplicada):
+  - criação 201 e repetição 201 com `Idempotency-Replayed: true` e o mesmo ID; autor `Agent`, versão 1;
+  - mesma chave com outro corpo, 422; sem chave, 400;
+  - `PATCH` sem versão, 400; com a versão 1, 200 (versão 2); de novo com a versão 1, 409;
+  - transições para A fazer, Em andamento e Em revisão, 200 (versões 3, 4 e 5); em revisão, Concluída não é oferecida, e a tentativa dá 403 com a mensagem de aprovação;
+  - registro de atividade 201 com autor `Agent`;
+  - repetição depois de remover o acesso, 404; depois de revogar a credencial, 401;
+  - nenhum erro e nenhum token no log; o agente de verificação foi desativado.
+- **Ainda não feito:** `AgentOperation`, rate limiting, `last_used_at`, limite por IP e retenção (etapa 10, obrigatórios). A limpeza dos registros de idempotência vencidos chega com a retenção.

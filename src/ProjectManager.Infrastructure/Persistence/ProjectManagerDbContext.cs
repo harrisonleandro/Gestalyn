@@ -73,6 +73,8 @@ public sealed class ProjectManagerDbContext(
 
     public DbSet<AgentProjectAccess> AgentProjectAccess => Set<AgentProjectAccess>();
 
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
     public DbSet<ProjectTag> ProjectTags => Set<ProjectTag>();

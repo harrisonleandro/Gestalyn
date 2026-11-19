@@ -7,6 +7,8 @@ using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
 using ProjectManager.Application.Workflows;
+using ProjectManager.Domain.Agents;
+using ProjectManager.IntegrationTests.Agents;
 using ProjectManager.IntegrationTests.Infrastructure;
 using ProjectManager.IntegrationTests.Organizations;
 using ProjectManager.IntegrationTests.Projects;
@@ -31,14 +33,18 @@ public sealed class ActivityCoverageTests : IDisposable
         ["POST /api/v1/auth/forgot-password"] = "autenticação",
         ["POST /api/v1/auth/reset-password"] = "autenticação",
         ["POST /api/v1/projects/{projectId:guid}/activities"] = "o próprio registro manual é a atividade",
+        ["POST /api/v1/agents/activities"] = "o próprio registro manual é a atividade (agentes)",
     };
 
     private static readonly string[] WebLabel = ["web"];
 
     private static readonly string[] ReadScope = ["tasks:read"];
 
+    private static readonly string[] AllAgentScopes = [.. AgentScopes.All];
+
     private readonly ApiFactory _factory;
     private readonly ActivityTestKit _kit;
+    private readonly AgentTestKit _agentKit;
     private readonly HashSet<string> _covered = new(StringComparer.Ordinal);
 
     private TestUser _owner = null!;
@@ -48,6 +54,7 @@ public sealed class ActivityCoverageTests : IDisposable
     {
         _factory = new ApiFactory(database.ConnectionString, mailpit);
         _kit = new ActivityTestKit(_factory.CreateClient(), mailpit);
+        _agentKit = new AgentTestKit(_factory.CreateClient(), mailpit);
     }
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -199,6 +206,16 @@ public sealed class ActivityCoverageTests : IDisposable
         await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/disable", "agent.disabled", HttpMethod.Post, $"{a}/disable");
         await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/enable", "agent.enabled", HttpMethod.Post, $"{a}/enable");
 
+        // Escritas de agentes (ADR-016, D7): os mesmos eventos das pessoas, pelos mesmos serviços.
+        await ReadAsync<AgentProjectAccessDetails>(HttpMethod.Put, $"{a}/projects/{project.Id}", new { role = "Contributor" });
+        var agentToken = (await ReadAsync<CreatedAgentCredential>(HttpMethod.Post, $"{a}/credentials", new { name = "Escritas", scopes = AllAgentScopes })).Token;
+        var agentTask = await ReadAfterExpectAsync<TaskDetails>("POST /api/v1/agents/tasks", "task.created",
+            () => AsAgentAsync(agentToken, HttpMethod.Post, "/api/v1/agents/tasks", new { projectId = project.Id, title = "Criada pelo agente" }));
+        await ExpectAsync("PATCH /api/v1/agents/tasks/{taskId:guid}", "task.updated",
+            () => AsAgentAsync(agentToken, HttpMethod.Patch, $"/api/v1/agents/tasks/{agentTask.Id}", new { title = "Ajustada pelo agente", expectedVersion = 1 }));
+        await ExpectAsync("POST /api/v1/agents/tasks/{taskId:guid}/transitions", "task.transitioned",
+            () => AsAgentAsync(agentToken, HttpMethod.Post, $"/api/v1/agents/tasks/{agentTask.Id}/transitions", new { toStateId = todo.Id, expectedVersion = 2 }));
+
         // Saídas: da equipe, do projeto (arquivamento) e da organização.
         await ExpectAsync("DELETE /api/v1/projects/{projectId:guid}/members/{userId:guid}", "project.member_removed", HttpMethod.Delete, $"{p}/members/{member.Id}");
         await ExpectAsync("DELETE /api/v1/projects/{projectId:guid}", "project.archived", HttpMethod.Delete, p);
@@ -224,6 +241,9 @@ public sealed class ActivityCoverageTests : IDisposable
                 .Select(method => $"{method} /{endpoint.RoutePattern.RawText!.TrimStart('/')}"))
             .ToHashSet(StringComparer.Ordinal);
     }
+
+    private Task<HttpResponseMessage> AsAgentAsync(string token, HttpMethod method, string path, object body) =>
+        _agentKit.SendAsAgentAsync(token, method, path, body, new Dictionary<string, string> { [IdempotencyRecord.HeaderName] = Guid.NewGuid().ToString() });
 
     private Task ExpectAsync(string route, string action, HttpMethod method, string path, object? body = null) =>
         ExpectAsync(route, action, () => Projects.SendAsync(method, path, _owner, body, _organizationId.ToString()));
