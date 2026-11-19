@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ProjectManager.API.Agents;
+using ProjectManager.Application.Abstractions.Activity;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Infrastructure.Persistence;
 using ProjectManager.IntegrationTests.Infrastructure;
@@ -45,10 +46,18 @@ internal static class Probes
 [AgentApi]
 [NonController]
 [Route("api/v1/agents/__probe")]
-public sealed class AgentIsolationProbeController(ProjectManagerDbContext dbContext, ITenantContext tenantContext) : ControllerBase
+public sealed class AgentIsolationProbeController(
+    ProjectManagerDbContext dbContext,
+    ITenantContext tenantContext,
+    IActivityContext activityContext) : ControllerBase
 {
     [HttpGet("visible")]
     public Task<VisibleData> VisibleAsync(CancellationToken cancellationToken) => ReadVisibleAsync(cancellationToken);
+
+    /// <summary>O autor que a auditoria registraria nesta requisição (ADR-014 e ADR-016).</summary>
+    [HttpGet("actor")]
+    public ProbeActor Actor() =>
+        new(activityContext.Actor.ActorId, activityContext.Actor.Kind.ToString(), activityContext.Actor.Origin.ToString());
 
     /// <summary>Rota com <c>{organizationId}</c>: a guarda de organização confere também a rota.</summary>
     [HttpGet("organizations/{organizationId:guid}/visible")]
@@ -72,6 +81,8 @@ public sealed class AgentIsolationProbeController(ProjectManagerDbContext dbCont
             await dbContext.Projects.Select(p => p.Id).ToListAsync(cancellationToken),
             await dbContext.Organizations.Select(o => o.Id).ToListAsync(cancellationToken));
 }
+
+public sealed record ProbeActor(Guid? ActorId, string Kind, string Origin);
 
 public sealed record VisibleData(
     Guid? OrganizationId,

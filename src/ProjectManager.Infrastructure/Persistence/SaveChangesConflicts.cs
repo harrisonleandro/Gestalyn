@@ -7,7 +7,8 @@ internal static class SaveChangesConflicts
 {
     /// <summary>
     /// Grava as alterações e devolve <c>false</c> em conflito: concorrência (<c>xmin</c>), unicidade, vínculo removido
-    /// ao mesmo tempo ou transação serializável recusada. Qualquer outro erro continua sendo exceção.
+    /// ao mesmo tempo, transação serializável recusada ou deadlock entre gravações simultâneas (o PostgreSQL desfaz uma
+    /// delas, que pode ser repetida). Qualquer outro erro continua sendo exceção.
     /// </summary>
     public static async Task<bool> TrySaveChangesAsync(this DbContext dbContext, CancellationToken cancellationToken)
     {
@@ -33,7 +34,10 @@ internal static class SaveChangesConflicts
         exception is DbUpdateConcurrencyException
         || exception.InnerException is PostgresException
         {
-            SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.ForeignKeyViolation or PostgresErrorCodes.SerializationFailure,
+            SqlState: PostgresErrorCodes.UniqueViolation
+                or PostgresErrorCodes.ForeignKeyViolation
+                or PostgresErrorCodes.SerializationFailure
+                or PostgresErrorCodes.DeadlockDetected,
         };
 
     /// <summary>

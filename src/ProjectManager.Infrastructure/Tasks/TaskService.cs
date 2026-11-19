@@ -36,12 +36,10 @@ internal sealed partial class TaskService(
     private const string FinalStateMessage = "A tarefa está num estado final e é somente leitura. Para alterá-la, reabra-a pela transição configurada.";
 
     public async Task<Result<TaskDetails>> CreateAsync(
-        ActiveMembership actor,
         ProjectAccessGrant access,
         CreateTaskRequest request,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(access);
         ArgumentNullException.ThrowIfNull(request);
 
@@ -83,9 +81,12 @@ internal sealed partial class TaskService(
             var initialState = await dbContext.WorkflowStates.SingleAsync(state => state.ProjectId == projectId && state.IsInitial, cancellationToken);
 
             var now = timeProvider.GetUtcNow();
-            var task = new ProjectTask(project, project.AllocateTaskNumber(), request.Title, actor.UserId);
+            // Autor da concessão: pessoa ou agente (ADR-016).
+            var task = access.AgentId is { } agentId
+                ? ProjectTask.CreatedByAgent(project, project.AllocateTaskNumber(), request.Title, agentId)
+                : new ProjectTask(project, project.AllocateTaskNumber(), request.Title, access.UserId);
             task.EnterState(initialState);
-            dbContext.TaskStatusHistory.Add(new TaskStatusHistory(task, from: null, initialState, actor.UserId, ActorKind.User, comment: null, now));
+            dbContext.TaskStatusHistory.Add(new TaskStatusHistory(task, from: null, initialState, access.ActorId, access.ActorKind, comment: null, now));
             task.ChangeDescription(request.Description);
             task.ChangePriority(request.Priority ?? Priority.Medium);
             task.ChangeDueDate(request.DueDate);
@@ -112,7 +113,7 @@ internal sealed partial class TaskService(
                 return Result.Failure<TaskDetails>(ErrorKind.Conflict, ConflictMessage);
             }
 
-            LogTaskCreated(logger, task.Id, task.Number, projectId, actor.UserId);
+            LogTaskCreated(logger, task.Id, task.Number, projectId, access.ActorId);
             return await GetAsync(access, task.Id, cancellationToken);
         }
 
@@ -292,7 +293,23 @@ internal sealed partial class TaskService(
             task.ArchivedByUserId,
             task.CreatedAt,
             task.UpdatedAt,
-            access.Permissions.Order(StringComparer.Ordinal).ToList()));
+            access.Permissions.Order(StringComparer.Ordinal).ToList(),
+            await AuthorOfAsync(task, cancellationToken),
+            task.Revision));
+    }
+
+    /// <summary>Autor da tarefa, pessoa ou agente, com o nome para exibição.</summary>
+    private async Task<ActorReference> AuthorOfAsync(ProjectTask task, CancellationToken cancellationToken)
+    {
+        if (task.CreatedByAgentId is { } agentId)
+        {
+            var agentName = await dbContext.Agents.Where(a => a.Id == agentId).Select(a => a.Name).SingleOrDefaultAsync(cancellationToken);
+            return new ActorReference(agentId, ActorKind.Agent, agentName);
+        }
+
+        var userId = task.CreatedByUserId!.Value;
+        var userName = await dbContext.Users.Where(u => u.Id == userId).Select(u => u.DisplayName).SingleOrDefaultAsync(cancellationToken);
+        return new ActorReference(userId, ActorKind.User, userName);
     }
 
     public async Task<Result<TaskDetails>> UpdateAsync(ProjectAccessGrant access, Guid taskId, UpdateTaskRequest request, CancellationToken cancellationToken)
@@ -310,6 +327,11 @@ internal sealed partial class TaskService(
         if (request.Labels is not null && Labels.Normalize(request.Labels, out var labelError) is null)
         {
             return Result.Failure<TaskDetails>(ErrorKind.Validation, labelError!);
+        }
+
+        if (VersionConflict(task, request.ExpectedVersion) is { } versionConflict)
+        {
+            return versionConflict;
         }
 
         var links = await FindLinksAsync(
@@ -358,10 +380,11 @@ internal sealed partial class TaskService(
             task.SetLabels(request.Labels);
         }
 
-        // Mudanças só nas etiquetas não alteram a linha da tarefa; marcá-la faz o xmin detectar edições
-        // simultâneas.
+        // Mudanças só nas etiquetas não alteram a linha da tarefa: marcar a versão força o UPDATE, que sobe a versão e
+        // confere as versões lidas (version e xmin), detectando edições simultâneas. Só a versão é marcada, e não a
+        // tarefa inteira, para o UPDATE não reescrever colunas de chaves e de autoria.
         var changes = activity.ChangesOf(task).List("labels", labelsBefore, task.Labels.Select(label => label.Name));
-        dbContext.Entry(task).State = EntityState.Modified;
+        dbContext.Entry(task).Property(t => t.Revision).IsModified = true;
         if (!changes.IsEmpty)
         {
             activity.Record(ActivityActions.TaskUpdated, ActivityEntityTypes.Task, task.Id, $"Tarefa #{task.Number} alterada", task.ProjectId, task.Id, changes);
@@ -411,6 +434,11 @@ internal sealed partial class TaskService(
     {
         ArgumentNullException.ThrowIfNull(access);
         ArgumentNullException.ThrowIfNull(request);
+
+        if (!access.IsPerson)
+        {
+            return Result.Failure<TaskDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage);
+        }
 
         var found = await FindWritableTaskAsync(taskId, cancellationToken, includeAssignments: true);
         if (found.Error is not null)
@@ -706,13 +734,11 @@ internal sealed partial class TaskService(
     /// trabalho, dependências) e, ao gravar, a trava otimista da tarefa.
     /// </summary>
     public async Task<Result<TaskDetails>> TransitionAsync(
-        ActiveMembership actor,
         ProjectAccessGrant access,
         Guid taskId,
         TransitionTaskRequest request,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(actor);
         ArgumentNullException.ThrowIfNull(access);
         ArgumentNullException.ThrowIfNull(request);
 
@@ -726,6 +752,11 @@ internal sealed partial class TaskService(
         if (request.ExpectedStateId is { } expected && expected != task.StateId)
         {
             return Result.Failure<TaskDetails>(ErrorKind.Conflict, "A tarefa mudou de estado desde que você a abriu. Recarregue e tente novamente.");
+        }
+
+        if (VersionConflict(task, request.ExpectedVersion) is { } versionConflict)
+        {
+            return versionConflict;
         }
 
         var target = await dbContext.WorkflowStates.SingleOrDefaultAsync(s => s.ProjectId == task.ProjectId && s.Id == request.ToStateId, cancellationToken);
@@ -774,7 +805,7 @@ internal sealed partial class TaskService(
             task.ProjectId,
             task.Id,
             new ActivityChanges().Set("state", current.Name, target.Name));
-        dbContext.TaskStatusHistory.Add(new TaskStatusHistory(task, current, target, actor.UserId, ActorKind.User, request.Comment, timeProvider.GetUtcNow()));
+        dbContext.TaskStatusHistory.Add(new TaskStatusHistory(task, current, target, access.ActorId, access.ActorKind, request.Comment, timeProvider.GetUtcNow()));
 
         // A trava otimista da tarefa impede que duas transições simultâneas partam do mesmo estado.
         if (!await dbContext.TrySaveChangesAsync(cancellationToken))
@@ -782,7 +813,7 @@ internal sealed partial class TaskService(
             return Result.Failure<TaskDetails>(ErrorKind.Conflict, ConflictMessage);
         }
 
-        LogTaskTransitioned(logger, task.Id, current.Id, target.Id, actor.UserId);
+        LogTaskTransitioned(logger, task.Id, current.Id, target.Id, access.ActorId);
         return await GetAsync(access, taskId, cancellationToken);
     }
 
@@ -791,6 +822,8 @@ internal sealed partial class TaskService(
             from entry in dbContext.TaskStatusHistory.AsNoTracking()
             join user in dbContext.Users on entry.ChangedById equals user.Id into users
             from user in users.DefaultIfEmpty()
+            join agent in dbContext.Agents on entry.ChangedById equals agent.Id into agents
+            from agent in agents.DefaultIfEmpty()
             where entry.TaskId == taskId
             orderby entry.ChangedAt, entry.Id
             select new TaskHistoryEntry(
@@ -800,7 +833,7 @@ internal sealed partial class TaskService(
                 entry.ToStateId,
                 entry.ToStateName,
                 entry.ChangedById,
-                user == null ? null : user.DisplayName,
+                user != null ? user.DisplayName : agent != null ? agent.Name : null,
                 entry.ActorKind,
                 entry.Comment,
                 entry.ChangedAt)).ToListAsync(cancellationToken);
@@ -839,6 +872,15 @@ internal sealed partial class TaskService(
             .Select(option => new AvailableTransition(option.Id, option.TargetId, option.Name, option.Category, option.RequiresApproval))
             .ToList();
     }
+
+    /// <summary>
+    /// Versão esperada pelo cliente diferente da atual: 409, sem sobrescrever (ADR-016, D6). A versão também é token de
+    /// concorrência, então uma alteração entre esta leitura e a gravação também resulta em conflito.
+    /// </summary>
+    private static Result<TaskDetails>? VersionConflict(ProjectTask task, int? expectedVersion) =>
+        expectedVersion is { } expected && expected != task.Revision
+            ? Result.Failure<TaskDetails>(ErrorKind.Conflict, $"A tarefa foi alterada por outra pessoa ou agente (versão atual {task.Revision}). Recarregue e tente novamente.")
+            : null;
 
     /// <summary>
     /// Ator da transição pela concessão: pessoa ou agente (ADR-016). Agentes nunca são responsáveis por tarefas nem têm

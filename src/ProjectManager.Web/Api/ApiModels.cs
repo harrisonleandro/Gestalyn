@@ -108,6 +108,9 @@ public sealed record TaskAssignee(Guid UserId, string DisplayName, DateTimeOffse
 
 public sealed record TaskReference(Guid Id, int Number, string Title, DateTimeOffset? ArchivedAt);
 
+/// <summary>Autor de algo: pessoa ou agente (ADR-016).</summary>
+public sealed record ActorReference(Guid Id, ActorKind Kind, string? Name);
+
 public sealed record TaskDetails(
     Guid Id,
     Guid ProjectId,
@@ -124,12 +127,14 @@ public sealed record TaskDetails(
     IReadOnlyList<TaskReference> Blocks,
     TaskState State,
     IReadOnlyList<AvailableTransition> AvailableTransitions,
-    Guid CreatedByUserId,
+    Guid? CreatedByUserId,
     DateTimeOffset? ArchivedAt,
     Guid? ArchivedByUserId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<string> MyPermissions)
+    IReadOnlyList<string> MyPermissions,
+    ActorReference? CreatedBy = null,
+    int Version = 0)
 {
     public bool Can(string permission) => MyPermissions.Contains(permission, StringComparer.Ordinal);
 }

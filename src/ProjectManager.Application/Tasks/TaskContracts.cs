@@ -101,6 +101,13 @@ public sealed class UpdateTaskRequest
 
     [JsonIgnore]
     public bool HasMilestoneId { get; private init; }
+
+    /// <summary>
+    /// Versão em que o cliente viu a tarefa. Se ela tiver mudado, a edição é recusada (409) e nada é sobrescrito.
+    /// Opcional para pessoas; obrigatória nas rotas de agentes (ADR-016).
+    /// </summary>
+    [Range(1, int.MaxValue, ErrorMessage = "A versão esperada deve ser positiva.")]
+    public int? ExpectedVersion { get; init; }
 }
 
 public sealed class AddAssignmentRequest
@@ -212,12 +219,14 @@ public sealed record TaskDetails(
     IReadOnlyList<TaskReference> Blocks,
     TaskState State,
     IReadOnlyList<AvailableTransition> AvailableTransitions,
-    Guid CreatedByUserId,
+    Guid? CreatedByUserId,
     DateTimeOffset? ArchivedAt,
     Guid? ArchivedByUserId,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<string> MyPermissions);
+    IReadOnlyList<string> MyPermissions,
+    ActorReference CreatedBy,
+    int Version);
 
 public sealed class CommentRequest
 {
@@ -247,6 +256,10 @@ public sealed class TransitionTaskRequest
 
     /// <summary>Estado em que o cliente viu a tarefa. Se ela tiver mudado, a transição é recusada (409).</summary>
     public Guid? ExpectedStateId { get; init; }
+
+    /// <summary>Versão em que o cliente viu a tarefa (opcional para pessoas; obrigatória para agentes).</summary>
+    [Range(1, int.MaxValue, ErrorMessage = "A versão esperada deve ser positiva.")]
+    public int? ExpectedVersion { get; init; }
 
     [StringLength(TaskStatusHistory.CommentMaxLength, ErrorMessage = "O comentário deve ter no máximo {1} caracteres.")]
     public string? Comment { get; init; }

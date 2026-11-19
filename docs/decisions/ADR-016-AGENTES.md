@@ -240,6 +240,13 @@ A revisão manteve a arquitetura e pediu correções pontuais:
 - **Limite de credenciais:** durante as correções, os testes revelaram que a transação `Serializable` da criação de credenciais fazia agentes diferentes, inclusive de outras organizações, receberem 409 sob concorrência. Ela foi substituída pela trava otimista na linha do agente. A decisão original (até 3 ativas) não muda.
 - **Proteções obrigatórias:** `AgentOperation`, `last_used_at` e a proteção contra abuso de autenticação (limite por IP para tokens desconhecidos) continuam na etapa 10. Sem elas, a autenticação de agentes não está pronta para produção.
 
+## Implementação da etapa 6 (2026-11-18)
+
+- **Ator na concessão:** `TaskService.CreateAsync` e `TransitionAsync` recebem só a concessão, que identifica a pessoa ou o agente. Isso muda a assinatura interna dos serviços, mas não as rotas.
+- **Contrato de tarefa:** `createdByUserId` passou a anulável; `createdBy { id, kind, name }` e `version` foram acrescentados, e `expectedVersion` é opcional no `PATCH` e na transição de pessoas. A Web foi ajustada na mesma etapa, e a CLI ainda não existe.
+- **Versão:** `ProjectTask.Revision`, na coluna `version`, é incrementada num ponto único do `SaveChanges` (`TaskRevisionRules`) e convive com o `xmin`, que continua sendo o token de concorrência de todas as entidades.
+- **Deadlock entre edições simultâneas:** o `PATCH` marcava a tarefa inteira como modificada, e edições simultâneas da mesma tarefa podiam causar um deadlock (40P01), que virava 500. Agora só a versão é marcada, e `SaveChangesConflicts` trata o 40P01 como conflito (409).
+
 ## Consequências
 
 - **Políticas:** todas as rotas passam a ter uma política explícita. Uma rota sem política faz o teste falhar.

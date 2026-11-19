@@ -67,6 +67,9 @@ public sealed class TaskForm
     /// <summary>Etiquetas separadas por vírgula.</summary>
     public string? Labels { get; set; }
 
+    /// <summary>Versão em que a tarefa foi aberta: uma edição de outra pessoa ou agente nesse meio-tempo dá conflito (409).</summary>
+    public int? ExpectedVersion { get; set; }
+
     public IReadOnlyList<string> LabelList => (Labels ?? string.Empty)
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .ToList();

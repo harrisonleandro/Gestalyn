@@ -64,6 +64,7 @@
                             <summary>Editar tarefa</summary>
                             <EditForm Model="Edit" FormName="edit-task" OnValidSubmit="SaveAsync" Enhance>
                                 <DataAnnotationsValidator />
+                                <input type="hidden" name="Edit.ExpectedVersion" value="@Edit.ExpectedVersion" />
                                 <TaskFields Model="Edit" Prefix="Edit" Phases="_phases" Milestones="_milestones" />
                                 <button type="submit" class="btn btn-primary mt-3">Salvar</button>
                             </EditForm>
@@ -356,6 +357,7 @@
             Edit.PhaseId = _task.PhaseId;
             Edit.MilestoneId = _task.MilestoneId;
             Edit.Labels = string.Join(", ", _task.Labels);
+            Edit.ExpectedVersion = _task.Version > 0 ? _task.Version : null;
         }
     }
 
@@ -376,6 +378,7 @@
         phaseId = Edit.PhaseId,
         milestoneId = Edit.MilestoneId,
         labels = Edit.LabelList,
+        expectedVersion = Edit.ExpectedVersion,
     }), "salvo");
 
     private async Task AssignAsync()

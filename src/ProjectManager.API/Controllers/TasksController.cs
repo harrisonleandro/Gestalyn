@@ -36,7 +36,7 @@ public sealed class TasksController(ITaskService tasks, IAttachmentService attac
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateAsync(CreateTaskRequest request, CancellationToken cancellationToken)
     {
-        var result = await tasks.CreateAsync(Actor, Access, request, cancellationToken);
+        var result = await tasks.CreateAsync(Access, request, cancellationToken);
 
         return result.Succeeded
             ? Created(new Uri($"/api/v1/tasks/{result.Value!.Id}", UriKind.Relative), result.Value)
@@ -104,7 +104,7 @@ public sealed class TasksController(ITaskService tasks, IAttachmentService attac
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> TransitionAsync(Guid taskId, TransitionTaskRequest request, CancellationToken cancellationToken)
     {
-        var result = await tasks.TransitionAsync(Actor, Access, taskId, request, cancellationToken);
+        var result = await tasks.TransitionAsync(Access, taskId, request, cancellationToken);
 
         return result.Succeeded ? Ok(result.Value) : this.ToProblem(result.Error!);
     }

@@ -136,6 +136,7 @@ public sealed class ProjectManagerDbContext(
     {
         ChangeTracker.DetectChanges();
         TenantIsolationRules.Enforce(ChangeTracker, CurrentOrganizationId);
+        TaskRevisionRules.Apply(ChangeTracker);
         AuditingRules.Apply(ChangeTracker, timeProvider.GetUtcNow());
     }
 }

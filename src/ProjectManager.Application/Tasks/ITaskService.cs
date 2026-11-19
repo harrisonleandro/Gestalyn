@@ -10,7 +10,7 @@ namespace ProjectManager.Application.Tasks;
 /// </summary>
 public interface ITaskService
 {
-    Task<Result<TaskDetails>> CreateAsync(ActiveMembership actor, ProjectAccessGrant access, CreateTaskRequest request, CancellationToken cancellationToken);
+    Task<Result<TaskDetails>> CreateAsync(ProjectAccessGrant access, CreateTaskRequest request, CancellationToken cancellationToken);
 
     Task<PagedResult<TaskSummary>> ListAsync(ActiveMembership actor, Guid projectId, TaskListQuery query, CancellationToken cancellationToken);
 
@@ -43,7 +43,6 @@ public interface ITaskService
 
     /// <summary>Muda o estado da tarefa por uma transição do workflow, com todas as validações (ADR-013).</summary>
     Task<Result<TaskDetails>> TransitionAsync(
-        ActiveMembership actor,
         ProjectAccessGrant access,
         Guid taskId,
         TransitionTaskRequest request,

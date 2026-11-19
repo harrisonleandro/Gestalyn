@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using ProjectManager.Domain.Agents;
 using ProjectManager.Domain.Projects;
 using ProjectManager.Domain.Tasks;
 using ProjectManager.Domain.Workflows;
@@ -11,13 +12,22 @@ internal sealed class ProjectTaskConfiguration : IEntityTypeConfiguration<Projec
 {
     public void Configure(EntityTypeBuilder<ProjectTask> builder)
     {
-        builder.ToTable("tasks", table => table.HasCheckConstraint("ck_tasks_number_positive", "number > 0"));
+        builder.ToTable("tasks", table =>
+        {
+            table.HasCheckConstraint("ck_tasks_number_positive", "number > 0");
+
+            // Exatamente um autor: uma pessoa ou um agente (ADR-016, D6).
+            table.HasCheckConstraint("ck_tasks_single_author", "num_nonnulls(created_by_user_id, created_by_agent_id) = 1");
+        });
         builder.ConfigureEntityBase();
         builder.Ignore(task => task.IsArchived);
 
         builder.Property(task => task.Title).HasMaxLength(ProjectTask.TitleMaxLength).IsRequired();
         builder.Property(task => task.Description).HasMaxLength(ProjectTask.DescriptionMaxLength);
         builder.Property(task => task.Priority).HasConversion<string>().HasMaxLength(16);
+
+        // Versão exposta aos clientes; também token de concorrência (o UPDATE confere a versão lida).
+        builder.Property(task => task.Revision).HasColumnName("version").HasDefaultValue(1).IsConcurrencyToken();
 
         // Número único e estável no projeto (ADR-011).
         builder.HasIndex(task => new { task.ProjectId, task.Number }).IsUnique();
@@ -52,6 +62,12 @@ internal sealed class ProjectTaskConfiguration : IEntityTypeConfiguration<Projec
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(task => task.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Agent>()
+            .WithMany()
+            .HasForeignKey(task => new { task.OrganizationId, task.CreatedByAgentId })
+            .HasPrincipalKey(agent => new { agent.OrganizationId, agent.Id })
             .OnDelete(DeleteBehavior.Restrict);
 
         // Alvo das FKs compostas das entidades da tarefa: organização, projeto e tarefa coerentes.

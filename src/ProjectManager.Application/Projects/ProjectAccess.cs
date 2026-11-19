@@ -16,6 +16,17 @@ public sealed record ProjectAccessGrant(Guid ProjectId, ProjectRole? Role, IRead
 
     public ActorKind ActorKind => AgentId is null ? ActorKind.User : ActorKind.Agent;
 
+    /// <summary>Autor das alterações: o usuário ou o agente.</summary>
+    public Guid ActorId => AgentId ?? UserId;
+
+    /// <summary>
+    /// Operações que gravam autoria com FK para <c>users</c> (comentários, responsáveis, documentos, decisões) são só de
+    /// pessoas (ADR-016). Os serviços recusam um agente com esta mensagem, como defesa em profundidade.
+    /// </summary>
+    public bool IsPerson => ActorKind == ActorKind.User;
+
+    public const string PeopleOnlyMessage = "Esta operação é exclusiva de pessoas: agentes não escrevem comentários, responsáveis, documentos nem decisões.";
+
     public bool HasPermission(string permission) => Permissions.Contains(permission);
 
     /// <summary>

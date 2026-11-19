@@ -22,7 +22,12 @@ public sealed class ProjectTask : Entity, IOrganizationOwned, IAuditable
     private readonly List<TaskAssignment> _assignments = [];
     private readonly List<TaskLabel> _labels = [];
 
+    /// <summary>Tarefa criada por uma pessoa.</summary>
     public ProjectTask(Project project, int number, string title, Guid createdByUserId)
+        : this(project, number, title) =>
+        CreatedByUserId = Guard.RequiredId(createdByUserId, nameof(createdByUserId));
+
+    private ProjectTask(Project project, int number, string title)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(number);
@@ -33,8 +38,15 @@ public sealed class ProjectTask : Entity, IOrganizationOwned, IAuditable
         Number = number;
         Title = Guard.RequiredText(title, TitleMaxLength, nameof(title));
         Priority = Priority.Medium;
-        CreatedByUserId = Guard.RequiredId(createdByUserId, nameof(createdByUserId));
+        Revision = 1;
     }
+
+    /// <summary>
+    /// Tarefa criada por um agente (ADR-016). Uma tarefa tem exatamente um autor, pessoa ou agente, e a autoria nunca
+    /// muda depois da criação (também garantido no banco).
+    /// </summary>
+    public static ProjectTask CreatedByAgent(Project project, int number, string title, Guid agentId) =>
+        new(project, number, title) { CreatedByAgentId = Guard.RequiredId(agentId, nameof(agentId)) };
 
     [SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "Construtor usado pelo EF Core na materialização.")]
     private ProjectTask(string title) => Title = title;
@@ -60,7 +72,18 @@ public sealed class ProjectTask : Entity, IOrganizationOwned, IAuditable
     /// <summary>Estado atual no workflow do projeto. Muda só por transição validada (ADR-013).</summary>
     public Guid StateId { get; private set; }
 
-    public Guid CreatedByUserId { get; private set; }
+    /// <summary>Pessoa que criou a tarefa; nulo quando foi um agente.</summary>
+    public Guid? CreatedByUserId { get; private set; }
+
+    /// <summary>Agente que criou a tarefa; nulo quando foi uma pessoa.</summary>
+    public Guid? CreatedByAgentId { get; private set; }
+
+    /// <summary>
+    /// Versão da tarefa (coluna <c>version</c>), exposta aos clientes como <c>version</c>/<c>expectedVersion</c>. Começa
+    /// em 1 e sobe a cada alteração bem-sucedida da linha da tarefa, num ponto único da persistência; também é token de
+    /// concorrência, então uma versão desatualizada nunca sobrescreve outra alteração (ADR-016, D6).
+    /// </summary>
+    public int Revision { get; private set; }
 
     public DateTimeOffset? ArchivedAt { get; private set; }
 

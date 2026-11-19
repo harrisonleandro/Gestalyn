@@ -732,6 +732,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 4 | Concluída em 2026-11-18 | Ver abaixo |
 | Revisão | Correções concluídas em 2026-11-18 | Ver "Correções da revisão independente" |
 | 5 | Concluída em 2026-11-18 | Ver abaixo |
+| 6 | Concluída em 2026-11-18 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -985,3 +986,69 @@ A revisão técnica independente do pacote das etapas 1 a 4 manteve a arquitetur
   | Checagem de escopo removida | Detectada |
   | Transições disponíveis com a fórmula anterior | Detectada pelo teste do serviço. Os testes de pessoas continuaram passando, como esperado |
   | `tasks.approve` no conjunto de permissões possíveis | **Não detectada.** É uma mutação equivalente: nenhum escopo concede `tasks.approve`, então as duas barreiras (tabela de escopos e permissões possíveis) são independentes, e tirar só uma não muda o resultado |
+
+### Etapa 6: ator nos serviços, autoria e versão das tarefas
+
+- **Ator nos serviços:**
+  - `TaskService.CreateAsync` e `TransitionAsync` deixaram de receber a associação de uma pessoa (`ActiveMembership`). O autor vem da concessão (`ProjectAccessGrant.ActorId` e `ActorKind`), que pode ser de uma pessoa ou de um agente;
+  - o histórico de estados grava o ator e o tipo da concessão, e não mais `ActorKind.User` fixo;
+  - `HttpActivityContext` registra `ActorKind.Agent` quando o principal tem `actor_kind=agent`.
+- **Operações só de pessoas:** documentos (criar, editar, arquivar), decisões (propor, aceitar, rejeitar) e responsáveis de tarefa recusam uma concessão de agente com 403 e `ProjectAccessGrant.PeopleOnlyMessage`, sem gravar nada. É defesa em profundidade: nenhuma rota de agente chama esses serviços.
+- **Autoria das tarefas:**
+  - `ProjectTask.CreatedByAgent` para agentes;
+  - `CreatedByUserId` passou a anulável e entrou `CreatedByAgentId`, ambos com setter privado.
+- **Migração `AddTaskAuthorshipAndVersion`:**
+  - `created_by_user_id` anulável;
+  - `created_by_agent_id`, com FK composta para `agents` pela organização;
+  - `CHECK ck_tasks_single_author` (`num_nonnulls(...) = 1`);
+  - gatilho `tasks_author_immutable`, escrito à mão, que recusa trocar o autor com `check_violation`;
+  - `version integer NOT NULL DEFAULT 1`.
+  - No banco de desenvolvimento local, as 10 tarefas existentes ficaram com o autor original e a versão 1.
+- **Versão:**
+  - `ProjectTask.Revision` (coluna `version`) é token de concorrência;
+  - `TaskRevisionRules`, chamado no `SaveChanges`, é o ponto único que a incrementa a cada alteração da linha da tarefa: edição (inclusive só de etiquetas), transição e arquivamento;
+  - responsáveis e comentários não mudam a versão;
+  - `expectedVersion` é opcional no `PATCH` e na transição de pessoas. Uma versão divergente responde 409 sem sobrescrever;
+  - a Web passa a enviar a versão em que a tarefa foi aberta, num campo oculto, como já fazia nos documentos.
+- **Leituras:**
+  - `TaskDetails` ganhou `createdBy { id, kind, name }` e `version`. `createdByUserId` ficou anulável; é mudança de contrato registrada no ADR-016, e a Web foi ajustada;
+  - o histórico e as atividades resolvem nomes de agentes, além dos de pessoas.
+- **Problema encontrado e corrigido (código das Fases 06 e 08):**
+  - **sintoma:** edições simultâneas da mesma tarefa às vezes causavam um deadlock no PostgreSQL (40P01). Ele chegava embrulhado como "falha transitória" e virava 500;
+  - **causa:** o `PATCH` marcava a tarefa inteira como modificada para forçar o `UPDATE` quando só as etiquetas mudavam. Isso reescrevia todas as colunas, inclusive as de chaves e de autoria;
+  - **correção:** agora só a versão é marcada, o que basta para forçar o `UPDATE` e conferir a concorrência;
+  - **verificação:** em 5 execuções dos testes de agentes, nenhum deadlock voltou a aparecer no log;
+  - **proteção extra:** `SaveChangesConflicts` passa a tratar o 40P01 como conflito (409, para nova tentativa), como já fazia com a falha de serialização.
+- **Testes novos:**
+  - `TaskAuthorshipAndVersionTests` (8):
+    - migração com tarefa existente;
+    - autor duplo, ausente ou trocado recusado pelo banco, e agente de outra organização recusado pela FK;
+    - tarefa criada por concessão de agente, com autoria, histórico e nome;
+    - operações só de pessoas recusadas sem gravar;
+    - autor da auditoria numa requisição real de agente (`Agent`, origem `Mcp`);
+    - nomes de agentes nas atividades;
+    - versão em todos os caminhos, com 409 sem sobrescrever na edição e na transição;
+    - 5 edições simultâneas com a mesma versão: exatamente uma vence;
+  - 1 de componente: o formulário leva a versão.
+- **Validação:**
+  - build em Release com `--no-incremental`: 0 avisos e 0 erros;
+  - `dotnet test`: **463/463** (219 unitários, 44 de componentes, 200 de integração);
+  - antes da etapa: 454/454;
+  - os testes de agentes e de tarefas foram repetidos 4 vezes, sem falhas.
+- **Mutações detectadas:**
+
+  | Mutação | Resultado |
+  |---|---|
+  | Gatilho de autoria removido da migração | Detectada |
+  | Autor da auditoria sempre pessoa | Detectada |
+  | Histórico com `ActorKind.User` fixo | Detectada |
+  | Versão sem incremento | Detectada |
+  | Checagem da versão esperada removida do serviço | Detectada pelo teste de versão. O teste de edições simultâneas continuou passando, porque o token no banco recusa sozinho: são duas barreiras independentes |
+- **Execução real** (API local, banco de desenvolvimento):
+  - tarefa criada com a versão 1 e o autor `User`;
+  - edição com a versão certa: 200, versão 2;
+  - com a versão desatualizada: 409, e o título não mudou;
+  - sem versão (cliente antigo): 200, versão 3;
+  - nenhum erro no log;
+  - a tarefa de verificação foi arquivada.
+- **Ainda não testado:** a autoria de agente de ponta a ponta por uma rota de agente. As rotas de escrita de agentes chegam na etapa 8. Por ora, a criação por agente é testada no serviço real com a concessão calculada por `AgentAccessGrant`.

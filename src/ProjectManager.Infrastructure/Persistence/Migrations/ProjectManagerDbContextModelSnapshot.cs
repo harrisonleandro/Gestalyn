@@ -1402,7 +1402,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid>("CreatedByUserId")
+                    b.Property<Guid?>("CreatedByAgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_agent_id");
+
+                    b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_user_id");
 
@@ -1441,6 +1445,13 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version");
+
                     b.Property<Guid>("StateId")
                         .HasColumnType("uuid")
                         .HasColumnName("state_id");
@@ -1470,6 +1481,9 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedByUserId")
                         .HasDatabaseName("ix_tasks_created_by_user_id");
 
+                    b.HasIndex("OrganizationId", "CreatedByAgentId")
+                        .HasDatabaseName("ix_tasks_organization_id_created_by_agent_id");
+
                     b.HasIndex("ProjectId", "DueDate")
                         .HasDatabaseName("ix_tasks_project_id_due_date");
 
@@ -1489,6 +1503,8 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("tasks", null, t =>
                         {
                             t.HasCheckConstraint("ck_tasks_number_positive", "number > 0");
+
+                            t.HasCheckConstraint("ck_tasks_single_author", "num_nonnulls(created_by_user_id, created_by_agent_id) = 1");
                         });
                 });
 
@@ -2661,8 +2677,14 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_tasks_users_created_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CreatedByAgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tasks_agents_organization_id_created_by_agent_id");
 
                     b.HasOne("ProjectManager.Domain.Projects.Project", null)
                         .WithMany()

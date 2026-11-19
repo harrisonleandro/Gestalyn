@@ -8,8 +8,8 @@ namespace ProjectManager.API.Activity;
 
 /// <summary>
 /// Autor e origem a partir da requisição (ADR-014, D3). O autor é sempre o <c>sub</c> do token, nunca um valor
-/// do corpo. A origem vem do cabeçalho <c>X-Gestalyn-Client</c>, declarado pelo cliente e só informativo. Até
-/// existirem credenciais de agente (Fase 10), todo autor é uma pessoa.
+/// do corpo. A origem vem do cabeçalho <c>X-Gestalyn-Client</c>, declarado pelo cliente e só informativo. Um principal
+/// de agente (<c>actor_kind=agent</c>, ADR-016) registra o agente como autor, com <see cref="ActorKind.Agent"/>.
 /// </summary>
 internal sealed class HttpActivityContext(IHttpContextAccessor httpContextAccessor) : IActivityContext
 {
@@ -27,7 +27,8 @@ internal sealed class HttpActivityContext(IHttpContextAccessor httpContextAccess
 
             Guid? actorId = Guid.TryParse(httpContext.User.FindFirstValue(AuthClaimTypes.Subject), out var userId) ? userId : null;
             var origin = ActivityOrigins.FromClientHeader(httpContext.Request.Headers[ClientHeader].ToString());
-            return new ActivityActor(actorId, ActorKind.User, origin, httpContext.TraceIdentifier);
+            var kind = httpContext.User.HasClaim(AuthClaimTypes.ActorKind, AuthClaimTypes.AgentActor) ? ActorKind.Agent : ActorKind.User;
+            return new ActivityActor(actorId, kind, origin, httpContext.TraceIdentifier);
         }
     }
 }

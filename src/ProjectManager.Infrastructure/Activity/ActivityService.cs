@@ -203,14 +203,24 @@ internal sealed class ActivityService(
         return logs;
     }
 
-    private async Task<Dictionary<Guid, string>> FindNamesAsync(IEnumerable<Guid?> userIds, CancellationToken cancellationToken)
+    /// <summary>Nomes dos autores: pessoas e agentes da organização ativa (ADR-016). Os IDs são UUIDs, sem colisão.</summary>
+    private async Task<Dictionary<Guid, string>> FindNamesAsync(IEnumerable<Guid?> actorIds, CancellationToken cancellationToken)
     {
-        var ids = userIds.OfType<Guid>().Distinct().ToList();
-        return ids.Count == 0
-            ? []
-            : await dbContext.Users.AsNoTracking()
-                .Where(user => ids.Contains(user.Id))
-                .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
+        var ids = actorIds.OfType<Guid>().Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var names = await dbContext.Users.AsNoTracking()
+            .Where(user => ids.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
+        var agents = await dbContext.Agents.AsNoTracking()
+            .Where(agent => ids.Contains(agent.Id))
+            .Select(agent => new { agent.Id, agent.Name })
+            .ToListAsync(cancellationToken);
+        agents.ForEach(agent => names.TryAdd(agent.Id, agent.Name));
+        return names;
     }
 
     private static ActivityItem ToItem(ActivityEvent activity, Dictionary<Guid, string> names) =>
