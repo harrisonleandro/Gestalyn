@@ -731,6 +731,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 3 | Concluída em 2026-11-18 | Ver abaixo |
 | 4 | Concluída em 2026-11-18 | Ver abaixo |
 | Revisão | Correções concluídas em 2026-11-18 | Ver "Correções da revisão independente" |
+| 5 | Concluída em 2026-11-18 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -929,3 +930,58 @@ A revisão técnica independente do pacote das etapas 1 a 4 manteve a arquitetur
     - na API, a entrada e todas as rotas de leitura das Fases 03 a 09 responderam 200: organização, membros, papéis, convites, dashboards, atividades, projetos, fases, marcos, workflow, documentos, decisões, progresso, estatísticas, tarefas, histórico, comentários e anexos;
     - na Web, a página inicial e a de entrada responderam 200, e uma página protegida redirecionou para a entrada;
   - **não verificado:** a navegação autenticada pela Web no navegador. O ambiente recusou exibir as credenciais de teste. Os testes de componentes (43) cobrem as telas.
+
+### Etapa 5: `AgentAccessGrant` e regras de transição para agentes
+
+- **`AgentAccessGrant.Compute`** (`Application/Projects/AgentAccessGrant.cs`, ao lado de `ProjectAccessGrant`):
+  - **recebe:** o agente (`ActiveAgent`, com os escopos), o estado do agente, o projeto, o papel na concessão e a exigência da operação (`AgentRequirement`);
+  - **devolve:** `AgentAccessDecision`, com o resultado e a concessão. As recusas possíveis, na ordem:
+    1. `AgentDisabled`;
+    2. `ProjectNotVisible`, quando não há concessão ou o papel é Gerente. A visibilidade vem antes do escopo, para não revelar projetos;
+    3. `ScopeMissing`;
+    4. `PermissionMissing`;
+  - **permissões:** papel do projeto ∩ permissões possíveis para agentes (`project.read`, `tasks.write`, `documents.write`) ∩ permissões dos escopos da credencial.
+- **`AgentRequirement`:** a tabela única de escopos da D4, com o escopo, a permissão e o tipo da operação.
+- **`ProjectAccessGrant`:** ganha `AgentId` e `ActorKind`. Para agentes, o `UserId` fica vazio.
+- **`TransitionRules`:** para um ator agente, uma transição que exige aprovação dá `AgentCannotApprove`, e um destino da categoria Concluída dá `AgentCannotEnterDone`, antes das regras de pessoas e das dependências.
+  - As regras de pessoas não mudaram. A cláusula antiga "agente responsável não aprova" foi substituída pela regra geral.
+  - `IsOffered` é a mesma regra para montar as transições disponíveis.
+- **`TaskService`:**
+  - **transições disponíveis:** calculadas por `TransitionRules.IsOffered`, no lugar da cópia da regra;
+  - **ator da transição:** vem da concessão (`TransitionActorOf`), e agentes nunca contam como responsáveis;
+  - **novas recusas:** `AgentCannotApprove` e `AgentCannotEnterDone` respondem 403 com mensagens próprias.
+- **Mudança de comportamento intencional:** os casos de agente do teste antigo (`WorkflowRulesTests`) esperavam `Allowed` para um agente com permissão de aprovar que não fosse responsável. Pela decisão 10, agora o resultado é `AgentCannotApprove`, e os casos foram atualizados.
+- **Testes novos:**
+  - `AgentTransitionRulesTests` (12):
+    - aprovação recusada em todas as combinações;
+    - atalho personalizado para Concluída recusado, até com dependências abertas;
+    - Cancelada permitida sem aprovação e recusada com aprovação;
+    - revisão permitida;
+    - **equivalência para pessoas:** as transições oferecidas são exatamente as da fórmula anterior, em todas as 80 combinações;
+  - `AgentAccessGrantTests` (8):
+    - a tabela de escopos;
+    - Colaborador e Observador;
+    - escopo ausente;
+    - projeto sem concessão ou com papel Gerente;
+    - agente desativado;
+    - nenhuma permissão de gestão, em todos os papéis e nos 32 conjuntos de escopos;
+    - o agente como ator;
+  - `AgentTransitionServiceTests` (1), no `TaskService` real com um workflow personalizado ("Em andamento → Concluída" sem aprovação e Cancelada):
+    - o Colaborador humano continua vendo o atalho;
+    - o agente vê as mesmas transições, menos Concluída;
+    - sem `tasks:write`, o agente não vê nenhuma;
+    - na revisão, Concluída com aprovação aparece para o Gerente e nunca para o agente.
+- **Ainda não testado:** a execução de uma transição por um agente no serviço. Ela depende do ator nos serviços (etapa 6), porque `TransitionAsync` ainda recebe a associação de uma pessoa, e da rota da etapa 8. A recusa já está garantida pela regra única, que o serviço usa.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet test`: **454/454** (219 unitários, 43 de componentes, 192 de integração), em duas execuções;
+  - antes da etapa: 432/432.
+- **Mutações:**
+
+  | Mutação | Resultado |
+  |---|---|
+  | Regra de Concluída só para agentes que podem aprovar | Detectada |
+  | `tasks.approve` acrescentado à tabela de escopos | Detectada pelo teste da tabela. O teste das permissões de gestão continuou passando, o que mostra que o conjunto de permissões possíveis barra a permissão por conta própria |
+  | Checagem de escopo removida | Detectada |
+  | Transições disponíveis com a fórmula anterior | Detectada pelo teste do serviço. Os testes de pessoas continuaram passando, como esperado |
+  | `tasks.approve` no conjunto de permissões possíveis | **Não detectada.** É uma mutação equivalente: nenhum escopo concede `tasks.approve`, então as duas barreiras (tabela de escopos e permissões possíveis) são independentes, e tirar só uma não muda o resultado |

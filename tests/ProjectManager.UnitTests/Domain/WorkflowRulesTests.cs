@@ -122,14 +122,16 @@ public sealed class WorkflowRulesTests
         { ActorKind.User, true, true, false, TransitionVerdict.Allowed },
         { ActorKind.User, true, true, true, TransitionVerdict.CannotApproveOwnWork },
         { ActorKind.User, true, false, true, TransitionVerdict.Allowed },
-        { ActorKind.Agent, true, true, false, TransitionVerdict.CannotApproveOwnWork },
-        { ActorKind.Agent, true, false, false, TransitionVerdict.Allowed },
-        { ActorKind.Agent, false, true, false, TransitionVerdict.ApprovalPermissionRequired },
+        // Agentes nunca aprovam (ADR-016), nem com a permissão nem sem ser responsáveis.
+        { ActorKind.Agent, true, true, false, TransitionVerdict.AgentCannotApprove },
+        { ActorKind.Agent, true, false, false, TransitionVerdict.AgentCannotApprove },
+        { ActorKind.Agent, false, true, false, TransitionVerdict.AgentCannotApprove },
+        { ActorKind.Agent, false, false, true, TransitionVerdict.AgentCannotApprove },
     };
 
     [Theory]
     [MemberData(nameof(ApprovalCases))]
-    public void ApprovalTransitions_RequireThePermission_AndAgentsNeverApproveTheirOwnWorkByDefault(
+    public void ApprovalTransitions_RequireThePermission_AndAgentsNeverApprove(
         ActorKind kind,
         bool canApprove,
         bool isAssignee,

@@ -1,14 +1,20 @@
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Domain.Organizations;
 using ProjectManager.Domain.Projects;
+using ProjectManager.Domain.Workflows;
 
 namespace ProjectManager.Application.Projects;
 
-/// <summary>Acesso efetivo do usuário a um projeto da organização ativa.</summary>
+/// <summary>Acesso efetivo de uma pessoa ou de um agente a um projeto da organização ativa.</summary>
 public sealed record ProjectAccessGrant(Guid ProjectId, ProjectRole? Role, IReadOnlySet<string> Permissions)
 {
-    /// <summary>Usuário a quem o acesso foi concedido (o do token).</summary>
+    /// <summary>Usuário a quem o acesso foi concedido (o do token). Vazio quando o ator é um agente.</summary>
     public Guid UserId { get; init; }
+
+    /// <summary>Agente a quem o acesso foi concedido (ADR-016), calculado só por <see cref="AgentAccessGrant"/>.</summary>
+    public Guid? AgentId { get; init; }
+
+    public ActorKind ActorKind => AgentId is null ? ActorKind.User : ActorKind.Agent;
 
     public bool HasPermission(string permission) => Permissions.Contains(permission);
 

@@ -743,10 +743,7 @@ internal sealed partial class TaskService(
             .SingleAsync(cancellationToken);
         var openDependencies = await CountOpenDependenciesAsync(task.Id, cancellationToken);
 
-        var transitionActor = new TransitionActor(
-            ActorKind.User,
-            CanApprove: access.HasPermission(ProjectPermissions.TasksApprove),
-            IsAssignee: task.Assignments.Any(assignment => assignment.UserId == actor.UserId));
+        var transitionActor = TransitionActorOf(access, task.Assignments.Select(assignment => assignment.UserId));
 
         var verdict = TransitionRules.Evaluate(transition, target, transitionActor, requireIndependentApproval, openDependencies);
         if (verdict != TransitionVerdict.Allowed)
@@ -759,6 +756,10 @@ internal sealed partial class TaskService(
                     ErrorKind.Forbidden, "Esta transição exige aprovação, e seu acesso não concede a permissão 'tasks.approve'."),
                 TransitionVerdict.CannotApproveOwnWork => Result.Failure<TaskDetails>(
                     ErrorKind.Forbidden, "Quem é responsável pela tarefa não pode aprovar o próprio trabalho neste projeto."),
+                TransitionVerdict.AgentCannotApprove => Result.Failure<TaskDetails>(
+                    ErrorKind.Forbidden, "Agentes não executam transições que exigem aprovação. Uma pessoa precisa aprovar."),
+                TransitionVerdict.AgentCannotEnterDone => Result.Failure<TaskDetails>(
+                    ErrorKind.Forbidden, "Agentes não concluem tarefas. Leve a tarefa à revisão; uma pessoa conclui."),
                 _ => Result.Failure<TaskDetails>(
                     ErrorKind.Conflict, $"A tarefa depende de {openDependencies} tarefa(s) ainda não concluída(s)."),
             };
@@ -824,8 +825,7 @@ internal sealed partial class TaskService(
             .Where(w => w.ProjectId == task.ProjectId)
             .Select(w => w.RequireIndependentApproval)
             .SingleAsync(cancellationToken);
-        var canApprove = access.HasPermission(ProjectPermissions.TasksApprove);
-        var isAssignee = assignees.Any(assignee => assignee.UserId == access.UserId);
+        var actor = TransitionActorOf(access, assignees.Select(assignee => assignee.UserId));
 
         var options = await (
             from transition in dbContext.WorkflowTransitions.AsNoTracking()
@@ -835,10 +835,20 @@ internal sealed partial class TaskService(
             select new { transition.Id, transition.RequiresApproval, TargetId = target.Id, target.Name, target.Category }).ToListAsync(cancellationToken);
 
         return options
-            .Where(option => !option.RequiresApproval || (canApprove && !(isAssignee && requireIndependentApproval)))
+            .Where(option => TransitionRules.IsOffered(option.RequiresApproval, option.Category, actor, requireIndependentApproval))
             .Select(option => new AvailableTransition(option.Id, option.TargetId, option.Name, option.Category, option.RequiresApproval))
             .ToList();
     }
+
+    /// <summary>
+    /// Ator da transição pela concessão: pessoa ou agente (ADR-016). Agentes nunca são responsáveis por tarefas nem têm
+    /// <c>tasks.approve</c>; a regra de agentes fica em <see cref="TransitionRules"/>.
+    /// </summary>
+    private static TransitionActor TransitionActorOf(ProjectAccessGrant access, IEnumerable<Guid> assigneeIds) =>
+        new(
+            access.ActorKind,
+            CanApprove: access.HasPermission(ProjectPermissions.TasksApprove),
+            IsAssignee: access.ActorKind == ActorKind.User && assigneeIds.Contains(access.UserId));
 
     /// <summary>Dependências não resolvidas: tarefas das quais esta depende, fora de estado final e não arquivadas.</summary>
     private Task<int> CountOpenDependenciesAsync(Guid taskId, CancellationToken cancellationToken) =>
