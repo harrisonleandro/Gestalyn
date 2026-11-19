@@ -120,11 +120,12 @@ internal sealed partial class TaskService(
         return Result.Failure<TaskDetails>(ErrorKind.Conflict, ConflictMessage);
     }
 
-    public async Task<PagedResult<TaskSummary>> ListAsync(ActiveMembership actor, Guid projectId, TaskListQuery query, CancellationToken cancellationToken)
+    public async Task<PagedResult<TaskSummary>> ListAsync(ProjectAccessGrant access, TaskListQuery query, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(actor);
+        ArgumentNullException.ThrowIfNull(access);
         ArgumentNullException.ThrowIfNull(query);
 
+        var projectId = access.ProjectId;
         var tasks = dbContext.Tasks.AsNoTracking().Where(task => task.ProjectId == projectId);
 
         if (!query.IncludeArchived)
@@ -149,7 +150,7 @@ internal sealed partial class TaskService(
 
         if (query.AssignedToMe)
         {
-            var userId = actor.UserId;
+            var userId = access.UserId;
             tasks = tasks.Where(task => task.Assignments.Any(assignment => assignment.UserId == userId));
         }
 

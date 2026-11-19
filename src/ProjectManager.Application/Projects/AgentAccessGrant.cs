@@ -32,6 +32,11 @@ public sealed record AgentRequirement(string Scope, string Permission, AgentOper
     public static AgentRequirement ReportsWrite { get; } = new(AgentScopes.ReportsWrite, ProjectPermissions.TasksWrite, AgentOperationKind.Write);
 
     public static IReadOnlyList<AgentRequirement> All { get; } = [ContextRead, TasksRead, TasksWrite, ActivitiesWrite, ReportsWrite];
+
+    /// <summary>A exigência de um escopo (cada escopo tem exatamente uma).</summary>
+    public static AgentRequirement ForScope(string scope) =>
+        All.SingleOrDefault(requirement => requirement.Scope == scope)
+        ?? throw new ArgumentOutOfRangeException(nameof(scope), scope, "Escopo de agente desconhecido.");
 }
 
 public enum AgentAccessOutcome

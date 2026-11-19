@@ -733,6 +733,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | Revisão | Correções concluídas em 2026-11-18 | Ver "Correções da revisão independente" |
 | 5 | Concluída em 2026-11-18 | Ver abaixo |
 | 6 | Concluída em 2026-11-18 | Ver abaixo |
+| 7 | Concluída em 2026-11-19 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -1052,3 +1053,51 @@ A revisão técnica independente do pacote das etapas 1 a 4 manteve a arquitetur
   - nenhum erro no log;
   - a tarefa de verificação foi arquivada.
 - **Ainda não testado:** a autoria de agente de ponta a ponta por uma rota de agente. As rotas de escrita de agentes chegam na etapa 8. Por ora, a criação por agente é testada no serviço real com a concessão calculada por `AgentAccessGrant`.
+
+### Etapa 7: rotas de leitura de agentes
+
+- **Rotas** (`AgentProjectsController`, `[AgentApi]`, tag "Agentes"):
+  - `GET /api/v1/agents/projects`: projetos concedidos, com o papel e se estão arquivados. Exige `context:read`;
+  - `GET /api/v1/agents/projects/{projectId}/context`: `context:read` e `project.read`;
+  - `GET /api/v1/agents/projects/{projectId}/tasks`: `tasks:read`, com os filtros e a paginação da lista de pessoas;
+  - `GET /api/v1/agents/tasks/{taskId}`: `tasks:read`, com a versão, o autor e as transições que este agente pode executar.
+- **Autorização:** `AgentProjectPermission` e `AgentTaskPermission` leem a concessão e o estado do agente (`IAgentProjectAccess`, sempre com o filtro da organização da credencial) e decidem só por `AgentAccessGrant.Compute`.
+  - **Respostas:** projeto sem concessão, de outra organização ou inexistente dá 404; escopo ou permissão ausente dá 403; agente desativado dá 401.
+  - **Ordem:** a visibilidade vem antes do escopo, então um agente sem o escopo não descobre se um projeto sem concessão existe.
+- **Contexto** (`AgentProjectContext`):
+  - **projeto:** dados, papel e permissões do agente;
+  - **workflow:** estados e transições, cada uma com `availableToAgent`, calculado por `TransitionRules.IsOffered`, mais `tasks.write` e projeto não arquivado;
+  - **progresso:** pela regra única (`IDashboardService`);
+  - **decisões:** até 50 aceitas, com o resultado limitado a 500 caracteres;
+  - **documentos:** até 100 não arquivados, só título e versão;
+  - **atividades:** as 20 mais recentes, com o resumo e o tipo e o nome do autor;
+  - **fora do contexto:** e-mails, a lista de membros e o conteúdo dos documentos.
+- **Ajuste no código de pessoas:** `ITaskService.ListAsync` passou a receber a concessão em vez da associação de uma pessoa. O filtro "atribuídas a mim" usa a pessoa da concessão; para agentes, nunca há tarefas atribuídas. A rota de pessoas não mudou.
+- **Testes novos (`AgentReadRoutesTests`, 6):**
+  - projetos concedidos com o papel, e 403 sem `context:read`;
+  - contexto completo, com estas verificações:
+    - nenhuma transição com aprovação ou para Concluída aparece como disponível;
+    - só decisões aceitas, com o resultado truncado;
+    - documento sem o conteúdo;
+    - exatamente 20 atividades;
+    - sem o e-mail do dono nem membros;
+  - Observador lê o contexto sem nenhuma transição disponível;
+  - matriz de 404 e 403 em todas as rotas: projeto sem concessão, de outra organização e inexistente; tarefa de projeto sem concessão e de outra organização; cada escopo ausente;
+  - lista e detalhe de tarefas, com a página acima de 100 recusada (400), a versão, o autor e sem `tasks.approve`;
+  - projeto arquivado continua legível, sem nenhuma transição disponível.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet test`: **469/469** (219 unitários, 44 de componentes, 206 de integração), em duas execuções;
+  - antes da etapa: 463/463.
+- **Mutações detectadas:**
+  - concessão ignorada no resolvedor;
+  - transições sempre disponíveis no contexto;
+  - decisões sem o filtro de aceitas.
+- **Execução real** (API local, banco de desenvolvimento):
+  - um agente com `context:read` e `tasks:read`, concedido como Colaborador, recebeu 200 nas quatro rotas;
+  - o contexto veio com 6 estados, 14 transições e 0 disponíveis (a credencial não tem `tasks:write`), 20 atividades e sem o e-mail do dono;
+  - a tarefa não oferece nenhuma transição para Concluída;
+  - organização divergente no cabeçalho deu 404, e depois da revogação, 401;
+  - nenhum erro no log;
+  - o agente de verificação foi desativado.
+- **Ainda não feito:** `AgentOperation` (etapa 10). As leituras de agentes ainda não ficam registradas na auditoria de operações.

@@ -49,8 +49,8 @@ public sealed class TasksController(ITaskService tasks, IAttachmentService attac
     [ProducesResponseType<PagedResult<TaskSummary>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ListAsync(Guid projectId, [FromQuery] TaskListQuery query, CancellationToken cancellationToken) =>
-        Ok(await tasks.ListAsync(Actor, projectId, query, cancellationToken));
+    public async Task<IActionResult> ListAsync([FromQuery] TaskListQuery query, CancellationToken cancellationToken) =>
+        Ok(await tasks.ListAsync(Access, query, cancellationToken));
 
     [HttpGet("tasks/{taskId:guid}")]
     [TaskPermission(ProjectPermissions.Read)]
