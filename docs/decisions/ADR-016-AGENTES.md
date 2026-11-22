@@ -1,6 +1,6 @@
 # ADR-016: Agentes, credenciais, idempotência e auditoria de operações
 
-- **Status:** Aceito. A documentação corrigida da Fase 10 foi aprovada pelo responsável em 2026-11-18; a implementação não começou.
+- **Status:** Aceito e implementado. A documentação corrigida da Fase 10 foi aprovada pelo responsável em 2026-11-18; as etapas 1 a 12 foram implementadas de 2026-11-18 a 2026-11-22 na branch `feature/fase-10-agentes`. A integração em `develop`, por PR com o CI aprovado, ainda depende de autorização.
 - **Data:** 2026-11-15
 - **Fase:** 10 (API e autenticação de agentes)
 - **Aprovação:**
@@ -247,6 +247,13 @@ A revisão manteve a arquitetura e pediu correções pontuais:
 - **Contrato de tarefa:** `createdByUserId` passou a anulável; `createdBy { id, kind, name }` e `version` foram acrescentados, e `expectedVersion` é opcional no `PATCH` e na transição de pessoas. A Web foi ajustada na mesma etapa, e a CLI ainda não existe.
 - **Versão:** `ProjectTask.Revision`, na coluna `version`, é incrementada num ponto único do `SaveChanges` (`TaskRevisionRules`) e convive com o `xmin`, que continua sendo o token de concorrência de todas as entidades.
 - **Deadlock entre edições simultâneas:** o `PATCH` marcava a tarefa inteira como modificada, e edições simultâneas da mesma tarefa podiam causar um deadlock (40P01), que virava 500. Agora só a versão é marcada, e `SaveChangesConflicts` trata o 40P01 como conflito (409).
+
+## Implementação das etapas 11 e 12 (2026-11-22)
+
+- **Prefixo na Web:** a API guarda e devolve o prefixo sem o marcador (8 caracteres depois de `gsk_`). A Web o exibe como `gsk_xxxxxxxx…`, igual ao começo do token que a pessoa guardou. O contrato da API não mudou.
+- **`no-store` na Web:** além da resposta da criação na API, todas as telas `/o/{org}/agentes/...` da Web respondem `Cache-Control: no-store` (`UseNoStoreForAgentPages`).
+- **Ponta a ponta:** `AgentEndToEndTests` percorre os oito passos da estratégia de testes com um token real e procura o token em todas as tabelas e no log; só o hash aparece, em `agent_credentials`.
+- **Mutações de segurança:** as oito da estratégia de testes, inclusive o `CHECK` de autoria, foram detectadas pela suíte de agentes ([relatório da Fase 10](../reports/FASE-10-RELATORIO.md)).
 
 ## Consequências
 

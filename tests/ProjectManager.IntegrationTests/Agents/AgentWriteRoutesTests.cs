@@ -166,6 +166,37 @@ public sealed class AgentWriteRoutesTests : IAsyncLifetime
         Assert.Equal(("Em revisão", version), (final.State.Name, final.Version));
     }
 
+    /// <summary>Estratégia de testes, item 3: projeto arquivado continua legível pelo agente, mas recusa escritas (409).</summary>
+    [Fact]
+    public async Task ArchivedProject_RefusesAgentWrites_WithConflict()
+    {
+        var project = (await _tasks.CreateSecondProjectAsync(_workspace, "Projeto a arquivar")).Id;
+        await GrantAsync(project, "Contributor");
+        var task = await PersonTaskAsync(project, "Tarefa antes do arquivamento");
+        using (var archive = await _tasks.Projects.SendToProjectAsync(HttpMethod.Delete, project, string.Empty, _workspace.Owner, _workspace.OrganizationId))
+        {
+            Assert.True(archive.IsSuccessStatusCode, $"arquivar: {archive.StatusCode}");
+        }
+
+        using (var create = await PostAsync(_token, "/api/v1/agents/tasks", new { projectId = project, title = "Depois do arquivamento" }))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, create.StatusCode);
+        }
+
+        using (var patch = await _agents.SendAsAgentAsync(_token, HttpMethod.Patch, $"/api/v1/agents/tasks/{task}", new { title = "Alterada", expectedVersion = 1 }))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, patch.StatusCode);
+        }
+
+        using (var activity = await PostAsync(_token, "/api/v1/agents/activities", new { projectId = project, kind = "Note", summary = "x" }))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, activity.StatusCode);
+        }
+
+        var unchanged = await AgentGetTaskAsync(task);
+        Assert.Equal(("Tarefa antes do arquivamento", 1), (unchanged.Title, unchanged.Version));
+    }
+
     [Fact]
     public async Task ActivityLog_IsAuthoredByTheAgent()
     {

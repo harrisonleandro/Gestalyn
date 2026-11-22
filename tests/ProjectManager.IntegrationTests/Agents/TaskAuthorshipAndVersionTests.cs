@@ -111,6 +111,20 @@ public sealed class TaskAuthorshipAndVersionTests(PostgresDatabaseFixture databa
             """,
             ("agent", foreignAgentId), ("task", task.Id)));
         Assert.Null(await ExecuteAsync("UPDATE tasks SET title = 'Só o título' WHERE id = @task", ("task", task.Id)));
+
+        // O gatilho só cobre o UPDATE (e responde com o mesmo código): só a inserção exercita o CHECK de autor único.
+        Assert.Equal(PostgresErrorCodes.CheckViolation, await ExecuteAsync(
+            """
+            INSERT INTO tasks (id, organization_id, project_id, number, title, priority, created_by_user_id, created_by_agent_id, state_id, created_at, updated_at)
+            SELECT gen_random_uuid(), organization_id, project_id, 998, 'Dois autores', 'Medium', created_by_user_id, @agent, state_id, now(), now() FROM tasks WHERE id = @task
+            """,
+            ("agent", agentId), ("task", task.Id)));
+        Assert.Equal(PostgresErrorCodes.CheckViolation, await ExecuteAsync(
+            """
+            INSERT INTO tasks (id, organization_id, project_id, number, title, priority, state_id, created_at, updated_at)
+            SELECT gen_random_uuid(), organization_id, project_id, 997, 'Sem autor', 'Medium', state_id, now(), now() FROM tasks WHERE id = @task
+            """,
+            ("task", task.Id)));
     }
 
     [Fact]

@@ -112,6 +112,11 @@ public sealed class AgentAccessGrantTests
     [Fact]
     public void ManagementPermissions_NeverReachAnAgent_ForAnyRoleOrScopeSet()
     {
+        // Cada camada recusa sozinha: as permissões elegíveis não incluem nenhuma de gestão, mesmo que um escopo novo
+        // um dia apontasse para uma delas.
+        Assert.Empty(AgentAccessGrant.EligiblePermissions.Intersect(ManagementPermissions));
+        Assert.DoesNotContain(AgentRequirement.All, requirement => ManagementPermissions.Contains(requirement.Permission));
+
         var everyScopeSet = Enumerable.Range(0, 1 << AgentScopes.All.Count)
             .Select(mask => AgentScopes.All.Where((_, index) => (mask & (1 << index)) != 0).ToHashSet(StringComparer.Ordinal));
 

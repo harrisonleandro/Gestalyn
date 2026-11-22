@@ -1,10 +1,10 @@
 # Fase 10: API e autenticação de agentes
 
-- **Estado:** In Progress (desde 2026-11-18). As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15:
+- **Estado:** In Review (desde 2026-11-22). As 12 etapas estão implementadas e verificadas localmente; falta o PR para `develop` com o CI aprovado, que depende de autorização. Em andamento de 2026-11-18 a 2026-11-22. As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15:
   - as 24 decisões da revisão;
   - as 4 decisões complementares (exibição do token, rate limiting, retenção e transição para Cancelada).
 
-  A documentação corrigida depois da revisão técnica (esta especificação e o ADR-016, inclusive as escolhas técnicas que detalham as decisões) foi **aprovada pelo responsável em 2026-11-18**. Nada foi implementado.
+  A documentação corrigida depois da revisão técnica (esta especificação e o ADR-016, inclusive as escolhas técnicas que detalham as decisões) foi **aprovada pelo responsável em 2026-11-18**.
 - **ADR:** [ADR-016](../decisions/ADR-016-AGENTES.md)
 - **Referência:** [Especificação mestre](ESPECIFICACAO-MESTRE.md):
   - seção 9 (Fase 10);
@@ -739,6 +739,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 9 | Concluída em 2026-11-22 | Ver abaixo |
 | 10 | Concluída em 2026-11-22 | Ver abaixo |
 | 11 | Concluída em 2026-11-22 | Ver abaixo |
+| 12 | Concluída em 2026-11-22 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -1371,3 +1372,31 @@ Implementa a D13 e a tarefa F09-018, transferida da Fase 09. As telas seguem o A
 - **Correção encontrada na execução real:** a API devolve o prefixo sem o marcador (`Q2GnYhfx`), e a tela o mostrava assim, diferente do começo do token que a pessoa guardou. A tela passou a mostrar `gsk_Q2GnYhfx…`, e os dados dos testes passaram a usar o formato real do prefixo.
 - **Documentação:** `docs/web/TELAS.md` ganhou a seção "Agentes", a aba de relatórios, a tela do relatório e a autoria de agentes.
 - **Ainda não feito:** a etapa 12 (suíte de segurança, ponta a ponta, execução real completa e documentação de encerramento).
+
+### Etapa 12: suíte de segurança, ponta a ponta, mutações, execução real e encerramento
+
+- **Suíte de segurança:** cada critério de aceitação e cada item da estratégia de testes foi conferido contra os testes das etapas 1 a 11 (a matriz está no [relatório da fase](../reports/FASE-10-RELATORIO.md), seção 15). Faltavam:
+  - o teste de ponta a ponta;
+  - a escrita de agente em projeto arquivado (item 3 da estratégia: leitura sim, escrita 409).
+- **Testes novos:**
+  - `AgentEndToEndTests`: os oito passos da estratégia de testes com um token real. No fim, procura o token em todas as tabelas do schema público, como texto, e no log: não aparece. O hash aparece só em `agent_credentials`, o que confirma que a busca funciona;
+  - `ArchivedProject_RefusesAgentWrites_WithConflict` (em `AgentWriteRoutesTests`): criação, alteração e atividade num projeto arquivado recebem 409, e a tarefa fica intacta.
+- **Mutações de segurança** (as da estratégia de testes, contra os testes de agentes):
+  - detectadas na primeira rodada: revogação (5 testes), expiração (3), regra de Concluída (4), organização do cabeçalho (3), replay sem reautorizar (1) e hash do corpo (1);
+  - **não detectadas na primeira rodada, com os testes corrigidos:**
+    - **`tasks.approve` nas permissões elegíveis:** `PermissionsFor` intersecta papel, permissões elegíveis e escopos, e nenhum escopo aponta para `tasks.approve`. A camada das elegíveis não tinha teste próprio. `ManagementPermissions_NeverReachAnAgent_ForAnyRoleOrScopeSet` passou a conferir as elegíveis e a tabela de escopos; a mutação passou a ser detectada. Uma variante mais forte, que concede `tasks.approve` depois de todas as camadas, é detectada por 5 unitários e 3 de integração;
+    - **`CHECK` de autoria:** o teste só fazia `UPDATE`, e o gatilho de autoria imutável (`BEFORE UPDATE`) recusa antes, com o mesmo `check_violation`. `Database_RequiresExactlyOneAuthor_...` ganhou duas inserções (dois autores e nenhum), que só o `CHECK` recusa; a mutação passou a ser detectada.
+- **Validação:**
+  - `dotnet restore`: exit 0;
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet ef migrations has-pending-model-changes`: nenhuma mudança pendente;
+  - `dotnet test`: **565/565** (259 unitários, 65 de componentes, 241 de integração);
+  - antes da etapa: 563/563.
+- **Execução real** (API e Web locais, banco de desenvolvimento):
+  - fluxo de ponta a ponta por HTTP, com um token real: os oito passos com os códigos esperados (inclusive os dois 403 das tentativas de concluir e de aprovar, e 401 depois da revogação), 15 operações com as três recusas e um replay;
+  - `pg_dump` do banco de desenvolvimento inteiro (285 KB), lido em memória: token ausente; só o hash e o prefixo;
+  - leituras posteriores (operações, agente e relatório) sem o token;
+  - o roteiro da Web da etapa 11 repetido, com o relatório agora "Aprovado por…";
+  - nenhum `gsk_` e nenhum erro nos logs da API e da Web; os quatro health checks saudáveis.
+- **Documentação de encerramento:** `docs/security/AGENTES.md` (novo), README, AGENTS.md, `docs/security/AUTENTICACAO.md`, ARCHITECTURE (seção 3.8), ADR-016 (estado e implementação das etapas 11 e 12), `PROJECT_STATUS.md` e o [relatório da Fase 10](../reports/FASE-10-RELATORIO.md).
+- **Ainda não feito:** push, PR para `develop` e CI, que dependem de autorização. A fase fica `In Review` até lá.

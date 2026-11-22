@@ -103,7 +103,8 @@ Worker → Application (abstrações) + Infrastructure (implementações)
   - o que aparece na tela depende só das permissões e transições que a API devolve; não recalcule regras de acesso na Web;
   - use os componentes de `Components/Shared` (estados, `ActionForm` com confirmação para ações destrutivas, `MarkdownView` para todo Markdown);
   - nenhum script inline (a CSP bloqueia); nenhuma tela para funcionalidade sem API;
-  - tela nova ganha teste de componente em `tests/ProjectManager.WebTests` e entrada em `docs/web/TELAS.md`.
+  - tela nova ganha teste de componente em `tests/ProjectManager.WebTests` e entrada em `docs/web/TELAS.md`;
+  - telas de agentes ficam sob `/o/{org}/agentes`, cobertas por `UseNoStoreForAgentPages` (`Cache-Control: no-store`). O token de uma credencial só aparece na resposta do próprio formulário de criação, sem redirecionamento, aviso, URL, cookie ou armazenamento do navegador ([docs/security/AGENTES.md](docs/security/AGENTES.md)).
   - Nunca registre senhas, tokens, links de e-mail ou endereços de e-mail em logs; use IDs.
 - Agentes têm permissões limitadas e explícitas e não podem ultrapassá-las, mesmo instruídos a isso.
 - Não crie credenciais reais, não contrate serviços, não registre domínios, não assuma custos e não publique em produção sem aprovação explícita.
