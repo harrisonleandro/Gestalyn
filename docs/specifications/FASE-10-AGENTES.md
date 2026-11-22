@@ -1,6 +1,6 @@
 # Fase 10: API e autenticação de agentes
 
-- **Estado:** In Review (desde 2026-11-22). As 12 etapas estão implementadas e verificadas localmente; falta o PR para `develop` com o CI aprovado, que depende de autorização. Em andamento de 2026-11-18 a 2026-11-22. As decisões arquiteturais foram aprovadas pelo responsável em 2026-11-15:
+- **Estado:** Completed em 2026-11-22. Validada localmente e no CI e integrada em `develop` pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19) (merge `b9e8daa`). Em andamento de 2026-11-18 a 2026-11-22.
   - as 24 decisões da revisão;
   - as 4 decisões complementares (exibição do token, rate limiting, retenção e transição para Cancelada).
 
@@ -740,6 +740,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 10 | Concluída em 2026-11-22 | Ver abaixo |
 | 11 | Concluída em 2026-11-22 | Ver abaixo |
 | 12 | Concluída em 2026-11-22 | Ver abaixo |
+| Integração | Concluída em 2026-11-22 | [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19), merge `b9e8daa`; [run 45039861969](https://github.com/harrisonleandro/Gestalyn/actions/runs/45039861969) e [run 45040388503](https://github.com/harrisonleandro/Gestalyn/actions/runs/45040388503) |
 
 ### Etapa 1: políticas explícitas
 
@@ -1399,4 +1400,4 @@ Implementa a D13 e a tarefa F09-018, transferida da Fase 09. As telas seguem o A
   - o roteiro da Web da etapa 11 repetido, com o relatório agora "Aprovado por…";
   - nenhum `gsk_` e nenhum erro nos logs da API e da Web; os quatro health checks saudáveis.
 - **Documentação de encerramento:** `docs/security/AGENTES.md` (novo), README, AGENTS.md, `docs/security/AUTENTICACAO.md`, ARCHITECTURE (seção 3.8), ADR-016 (estado e implementação das etapas 11 e 12), `PROJECT_STATUS.md` e o [relatório da Fase 10](../reports/FASE-10-RELATORIO.md).
-- **Ainda não feito:** push, PR para `develop` e CI, que dependem de autorização. A fase fica `In Review` até lá.
+- **Integração:** [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19), com o CI aprovado ([run 45039861969](https://github.com/harrisonleandro/Gestalyn/actions/runs/45039861969)); merge `b9e8daa` em `develop`, com o CI de `develop` aprovado ([run 45040388503](https://github.com/harrisonleandro/Gestalyn/actions/runs/45040388503)).

@@ -12,7 +12,7 @@
 | [FASE-07-WORKFLOW.md](FASE-07-WORKFLOW.md) | Especificação da Fase 07: workflow configurável e histórico (Completed). |
 | [FASE-08-AUDITORIA.md](FASE-08-AUDITORIA.md) | Especificação da Fase 08: auditoria, documentação e dashboards (Completed). |
 | [FASE-09-WEB.md](FASE-09-WEB.md) | Especificação da Fase 09: interface web completa (Completed). |
-| [FASE-10-AGENTES.md](FASE-10-AGENTES.md) | Especificação da Fase 10: API e autenticação de agentes (Planned). |
+| [FASE-10-AGENTES.md](FASE-10-AGENTES.md) | Especificação da Fase 10: API e autenticação de agentes (Completed). |
 
 Cada fase recebe um documento próprio (`FASE-NN-<TEMA>.md`) antes da implementação, com objetivo, escopo, fora de escopo, dependências, tarefas, arquivos previstos, critérios de aceitação, estratégia de testes, riscos e definição de conclusão (seção 12, etapa B, da especificação mestre).
 

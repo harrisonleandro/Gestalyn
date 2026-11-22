@@ -1,6 +1,6 @@
 # ADR-016: Agentes, credenciais, idempotência e auditoria de operações
 
-- **Status:** Aceito e implementado. A documentação corrigida da Fase 10 foi aprovada pelo responsável em 2026-11-18; as etapas 1 a 12 foram implementadas de 2026-11-18 a 2026-11-22 na branch `feature/fase-10-agentes`. A integração em `develop`, por PR com o CI aprovado, ainda depende de autorização.
+- **Status:** Aceito e implementado. A documentação corrigida da Fase 10 foi aprovada pelo responsável em 2026-11-18; as etapas 1 a 12 foram implementadas de 2026-11-18 a 2026-11-22 e integradas em `develop` pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19) (merge `b9e8daa`), com o CI aprovado.
 - **Data:** 2026-11-15
 - **Fase:** 10 (API e autenticação de agentes)
 - **Aprovação:**
