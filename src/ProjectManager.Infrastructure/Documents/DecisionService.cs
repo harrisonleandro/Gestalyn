@@ -37,6 +37,12 @@ internal sealed class DecisionService(ProjectManagerDbContext dbContext, TimePro
     public async Task<Result<DecisionDetails>> CreateAsync(ProjectAccessGrant access, CreateDecisionRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(access);
+
+        // Documentos e decisões gravam autoria com FK para pessoas: agentes não chegam aqui (ADR-016).
+        if (!access.IsPerson)
+        {
+            return Result.Failure<DecisionDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage);
+        }
         ArgumentNullException.ThrowIfNull(request);
 
         var project = await dbContext.Projects.SingleOrDefaultAsync(p => p.Id == access.ProjectId, cancellationToken);
@@ -142,6 +148,12 @@ internal sealed class DecisionService(ProjectManagerDbContext dbContext, TimePro
     public Task<Result<DecisionDetails>> AcceptAsync(ProjectAccessGrant access, Guid decisionId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(access);
+
+        // Documentos e decisões gravam autoria com FK para pessoas: agentes não chegam aqui (ADR-016).
+        if (!access.IsPerson)
+        {
+            return Task.FromResult(Result.Failure<DecisionDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage));
+        }
         return DecideAsync(
             decisionId,
             decision => decision.Accept(access.UserId, timeProvider.GetUtcNow()),
@@ -153,6 +165,12 @@ internal sealed class DecisionService(ProjectManagerDbContext dbContext, TimePro
     public Task<Result<DecisionDetails>> RejectAsync(ProjectAccessGrant access, Guid decisionId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(access);
+
+        // Documentos e decisões gravam autoria com FK para pessoas: agentes não chegam aqui (ADR-016).
+        if (!access.IsPerson)
+        {
+            return Task.FromResult(Result.Failure<DecisionDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage));
+        }
         return DecideAsync(
             decisionId,
             decision => decision.Reject(access.UserId, timeProvider.GetUtcNow()),

@@ -129,6 +129,23 @@ public sealed class PagePermissionTests : IDisposable
         Assert.Contains("Editar tarefa", cut.Markup, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// ADR-016, D6: o formulário de edição leva a versão em que a tarefa foi aberta, e a API recusa (409) a edição se
+    /// outra pessoa ou um agente tiver alterado a tarefa nesse meio-tempo.
+    /// </summary>
+    [Fact]
+    public void TaskDetails_EditForm_CarriesTheVersionTheTaskWasOpenedIn()
+    {
+        _context.Membership();
+        _context.Project(Permissions.TasksWrite);
+        StubTask(permissions: ["project.read", Permissions.TasksWrite], transitions: [], version: 7);
+
+        var cut = RenderTask();
+
+        cut.WaitForAssertion(() => Assert.Contains("Editar tarefa", cut.Markup, StringComparison.Ordinal));
+        Assert.Equal("7", cut.Find("input[name='Edit.ExpectedVersion']").GetAttribute("value"));
+    }
+
     public void Dispose() => _context.Dispose();
 
     private IRenderedComponent<TaskDetailsPage> RenderTask() =>
@@ -145,12 +162,13 @@ public sealed class PagePermissionTests : IDisposable
             new[] { new MemberDetails(Guid.NewGuid(), "Outra Pessoa", "outra@teste", Guid.NewGuid(), "Membro", DateTimeOffset.UnixEpoch) });
     }
 
-    private void StubTask(IReadOnlyList<string> permissions, IReadOnlyList<AvailableTransition> transitions)
+    private void StubTask(IReadOnlyList<string> permissions, IReadOnlyList<AvailableTransition> transitions, int version = 1)
     {
         var task = new TaskDetails(
             TaskId, WebTestContext.ProjectId, 7, "Tela de login", "Descrição", Priority.High, null, null, null, [], [], [], [],
             new TaskState(Review, "Em revisão", StateCategory.InProgress, false), transitions, WebTestContext.UserId,
-            null, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, permissions);
+            null, null, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch, permissions,
+            new ActorReference(WebTestContext.UserId, ActorKind.User, "Pessoa de Teste"), version);
         _context.Api.Json(HttpMethod.Get, $"tasks/{TaskId}", task);
         _context.Api.Json(HttpMethod.Get, $"tasks/{TaskId}/comments", Array.Empty<CommentDetails>());
         _context.Api.Json(HttpMethod.Get, $"tasks/{TaskId}/attachments", Array.Empty<AttachmentDetails>());

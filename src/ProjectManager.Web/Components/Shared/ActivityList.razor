@@ -22,7 +22,7 @@ else
                     <time class="pm-muted small" datetime="@item.OccurredAt.ToString("O")">@Display.DateTime(item.OccurredAt)</time>
                 </div>
                 <div class="pm-muted small">
-                    @(item.ActorName ?? (item.ActorId is null ? "Sistema" : "Usuário removido"))
+                    @ProjectManager.Web.Display.Actor(item.ActorName, item.ActorKind, item.ActorId is not null)
                     @if (!Compact)
                     {
                         <span> · via @ProjectManager.Web.Display.Name(item.Origin)</span>

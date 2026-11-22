@@ -1,0 +1,29 @@
+@page "/o/{OrganizationId:guid}/projetos/{ProjectId:guid}/relatorios"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject WorkReportsApi Reports
+
+<PageTitle>Relatórios de agentes · @(Project?.Name) · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Relatórios de agentes" Trail="@([("Relatórios de agentes", (string?)null)])">
+    <p class="pm-muted">
+        O que um agente relata é declaração dele. A API confere o formato e guarda o relatório sem alterações; o estado da
+        tarefa não muda até uma pessoa movê-la.
+    </p>
+    @if (_reports is not null)
+    {
+        <div class="pm-card">
+            <WorkReportList Items="_reports.Items" OrganizationId="OrganizationId" />
+            <Pager Page="_reports.Page" PageCount="_reports.PageCount" TotalCount="_reports.TotalCount" />
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [SupplyParameterFromQuery(Name = "pagina")] private int? Page { get; set; }
+
+    private Paged<WorkReportSummary>? _reports;
+
+    protected override async Task LoadProjectAsync() =>
+        _reports = Take(await Reports.ListByProjectAsync(OrganizationId, ProjectId, Math.Max(Page ?? 1, 1)));
+}

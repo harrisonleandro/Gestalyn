@@ -1,0 +1,47 @@
+@* Relatórios de trabalho na lista: o resumo é declaração do agente; os níveis vêm ao lado. *@
+@inject Display Display
+
+@if (Items.Count == 0)
+{
+    <p class="pm-muted mb-0">@EmptyText</p>
+}
+else
+{
+    <ul class="pm-timeline">
+        @foreach (var report in Items)
+        {
+            <li>
+                <div class="d-flex justify-content-between gap-2 flex-wrap">
+                    <a href="@($"o/{OrganizationId}/relatorios/{report.Id}")">@report.Summary</a>
+                    <time class="pm-muted small" datetime="@report.ReceivedAt.ToString("O")">@Display.DateTime(report.ReceivedAt)</time>
+                </div>
+                <div class="pm-muted small mb-1">
+                    @ProjectManager.Web.Display.Actor(report.Agent)
+                    @if (report.SuggestedState is { } suggested)
+                    {
+                        <span> · sugere @suggested.Name</span>
+                    }
+                    @if (ShowTask && report.TaskId is { } taskId)
+                    {
+                        <span> · <a href="@($"o/{OrganizationId}/tarefas/{taskId}")">abrir tarefa</a></span>
+                    }
+                </div>
+                <WorkReportEvidenceList Evidence="report.Evidence" />
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<WorkReportSummary> Items { get; set; } = [];
+
+    [Parameter]
+    public Guid OrganizationId { get; set; }
+
+    [Parameter]
+    public bool ShowTask { get; set; } = true;
+
+    [Parameter]
+    public string EmptyText { get; set; } = "Nenhum relatório de agente.";
+}

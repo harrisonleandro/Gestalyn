@@ -15,7 +15,18 @@ internal static class ApiAuthentication
 {
     public static IServiceCollection AddApiAuthentication(this IServiceCollection services)
     {
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        // Auditoria e limite de falhas por IP das requisições de agentes (ADR-016, D10 e D11).
+        services.AddScoped<Agents.AgentOperationContext>();
+        services.AddSingleton<Agents.AgentAuthFailureLimiter>();
+        services.AddOptions<Agents.AgentAuthFailureOptions>()
+            .BindConfiguration(Agents.AgentAuthFailureOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{Agents.AgentAuthFailureOptions.SectionName}'.")
+            .ValidateOnStart();
+
+        // O JWT é o esquema padrão; o de agentes é adicional e só vale nas rotas com a política Agent (ADR-016).
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer()
+            .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, AgentTokenAuthenticationHandler>(AgentTokenAuthenticationHandler.SchemeName, configureOptions: null);
 
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IOptions<JwtOptions>>((bearer, jwtOptions) =>
@@ -35,7 +46,7 @@ internal static class ApiAuthentication
                 bearer.Events = new JwtBearerEvents { OnTokenValidated = EnsureSessionIsActiveAsync };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorizationBuilder().AddApiPolicies();
 
         return services;
     }

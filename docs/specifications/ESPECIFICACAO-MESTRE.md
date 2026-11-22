@@ -4,6 +4,10 @@
 > Alterações neste documento exigem aprovação do responsável. Desvios aprovados devem ser registrados em ADRs em `docs/decisions/`.
 >
 > **Alteração aprovada em 2026-11-11** ([ADR-005](../decisions/ADR-005-NOME-COMERCIAL-GESTALYN.md)): nome comercial definido como **Gestalyn** e CLI renomeada de `projectctl` para `gestalyn`. "ProjectManager" permanece como nome de trabalho no código (solution, projetos e namespaces).
+>
+> **Alteração aprovada em 2026-11-15** ([ADR-016](../decisions/ADR-016-AGENTES.md)), Fase 10:
+> - **Seção 5.8:** os contratos de agentes ganham `GET /agents/tasks/{id}` e `POST /agents/tasks/{id}/transitions`.
+> - **Seção 7:** a regra "nunca enviar credenciais completas para a interface web" tem uma única exceção. O token de uma credencial de agente recém-criada é exibido uma vez, na resposta da criação, sem ser guardado nem registrado. Os tokens de sessão dos usuários continuam sem chegar ao navegador.
 
 ---
 
@@ -551,6 +555,8 @@ Adicionar endpoints de aceitação, revogação e gerenciamento de membros confo
 
 Ajustar os contratos quando necessário, documentando alterações.
 
+> Ajuste aprovado em 2026-11-15 ([ADR-016](../decisions/ADR-016-AGENTES.md)): `GET /agents/tasks/{id}` e `POST /agents/tasks/{id}/transitions`.
+
 Não implementar todos os endpoints antecipadamente.
 
 Cada endpoint deverá ser criado na fase correspondente.
@@ -695,6 +701,8 @@ Requisitos:
 Nunca registrar tokens, senhas ou segredos nos logs.
 
 Nunca enviar credenciais completas para a interface web.
+
+> Exceção aprovada em 2026-11-15 ([ADR-016](../decisions/ADR-016-AGENTES.md)): o token de uma credencial de agente recém-criada, exibido uma única vez na resposta da criação.
 
 Agentes não podem ultrapassar suas permissões mesmo quando recebem instruções para isso.
 

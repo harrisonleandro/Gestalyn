@@ -1,0 +1,36 @@
+@* Operações de um agente (ADR-016, D10): o modelo da rota, nunca a URL; nada de token, cabeçalhos ou corpos. *@
+@inject Display Display
+
+<table class="table pm-table align-middle small">
+    <thead><tr><th scope="col">Quando</th><th scope="col">Operação</th><th scope="col">Credencial</th><th scope="col">Status</th><th scope="col">Autorização</th><th scope="col">Duração</th></tr></thead>
+    <tbody>
+        @foreach (var operation in Items)
+        {
+            <tr>
+                <td data-label="Quando">@Display.DateTime(operation.OccurredAt)</td>
+                <td data-label="Operação">
+                    <code>@operation.HttpMethod @operation.RouteTemplate</code>
+                    @if (operation.IdempotentReplay)
+                    {
+                        <span class="pm-label ms-1">repetição</span>
+                    }
+                </td>
+                <td data-label="Credencial">@(operation.CredentialName ?? "—")</td>
+                <td data-label="Status">@operation.StatusCode</td>
+                <td data-label="Autorização">
+                    <span class="@(operation.AuthorizationResult == AgentAuthorizationResult.Allowed ? null : "text-danger")">@Display.Name(operation.AuthorizationResult)</span>
+                    @if (operation.DenialCode is not null)
+                    {
+                        <span class="pm-muted d-block"><code>@operation.DenialCode</code></span>
+                    }
+                </td>
+                <td data-label="Duração">@operation.DurationMs ms</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<AgentOperationItem> Items { get; set; } = [];
+}

@@ -1,0 +1,75 @@
+@page "/o/{OrganizationId:guid}/agentes/{AgentId:guid}/operacoes"
+@attribute [Authorize]
+@inherits OrganizationPage
+@inject AgentsApi Agents
+
+<PageTitle>Operações · @(_agent?.Name) · Gestalyn</PageTitle>
+
+<OrgFrame Membership="Membership" Error="LoadError" Ready="_operations is not null">
+    <PageHeader Title="Operações" Subtitle="@($"Requisições de {_agent!.Name}, inclusive as recusadas, guardadas por 180 dias.")"
+                Breadcrumbs="@([("Agentes", $"{OrgPath}/agentes"), (_agent.Name, $"{OrgPath}/agentes/{AgentId}"), ("Operações", (string?)null)])" />
+
+    <form method="get" class="pm-card pm-form-grid mb-3" role="search" aria-label="Filtrar operações">
+        <div>
+            <label for="o-result" class="form-label">Autorização</label>
+            <select id="o-result" name="resultado" class="form-select">
+                <option value="">Todas</option>
+                @foreach (var result in Enum.GetValues<AgentAuthorizationResult>())
+                {
+                    <option value="@result" selected="@(Result == result)">@Display.Name(result)</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label for="o-from" class="form-label">De</label>
+            <input id="o-from" type="date" name="de" class="form-control" value="@From?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div>
+            <label for="o-to" class="form-label">Até</label>
+            <input id="o-to" type="date" name="ate" class="form-control" value="@To?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="d-flex align-items-end"><button type="submit" class="btn btn-outline-secondary">Filtrar</button></div>
+    </form>
+
+    <div class="pm-card">
+        @if (_operations!.Items.Count == 0)
+        {
+            <p class="pm-muted mb-0">Nenhuma operação no período.</p>
+        }
+        else
+        {
+            <AgentOperationTable Items="_operations.Items" />
+            <Pager Page="_operations.Page" PageCount="_operations.PageCount" TotalCount="_operations.TotalCount" />
+        }
+    </div>
+</OrgFrame>
+
+@code {
+    [Parameter]
+    public Guid AgentId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "resultado")] private string? ResultText { get; set; }
+    [SupplyParameterFromQuery(Name = "de")] private DateOnly? From { get; set; }
+    [SupplyParameterFromQuery(Name = "ate")] private DateOnly? To { get; set; }
+    [SupplyParameterFromQuery(Name = "pagina")] private int? Page { get; set; }
+
+    private AgentAuthorizationResult? Result => Enum.TryParse<AgentAuthorizationResult>(ResultText, out var result) ? result : null;
+
+    private AgentDetails? _agent;
+    private Paged<AgentOperationItem>? _operations;
+
+    protected override async Task LoadAsync()
+    {
+        if (!Membership!.Can(Permissions.AgentsManage))
+        {
+            Fail(ApiResult.Failure(System.Net.HttpStatusCode.Forbidden, "Gerenciar agentes exige a permissão agents.manage."));
+            return;
+        }
+
+        _agent = Take(await Agents.GetAsync(OrganizationId, AgentId));
+        if (_agent is not null)
+        {
+            _operations = Take(await Agents.OperationsAsync(OrganizationId, AgentId, Result, From, To, Math.Max(Page ?? 1, 1)));
+        }
+    }
+}

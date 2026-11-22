@@ -78,6 +78,57 @@ public sealed class Display(IOptions<DisplayOptions> options)
         _ => "API",
     };
 
+    public static string Name(AgentStatus value) => value == AgentStatus.Active ? "Ativo" : "Desativado";
+
+    public static string Name(AgentCredentialState value) => value switch
+    {
+        AgentCredentialState.Active => "Ativa",
+        AgentCredentialState.Expired => "Expirada",
+        _ => "Revogada",
+    };
+
+    public static string Name(AgentAuthorizationResult value) => value switch
+    {
+        AgentAuthorizationResult.Allowed => "Permitida",
+        AgentAuthorizationResult.CredentialRevoked => "Credencial revogada",
+        AgentAuthorizationResult.CredentialExpired => "Credencial expirada",
+        AgentAuthorizationResult.AgentDisabled => "Agente desativado",
+        AgentAuthorizationResult.OrganizationMismatch => "Organização divergente",
+        AgentAuthorizationResult.ProjectNotVisible => "Projeto sem acesso",
+        AgentAuthorizationResult.ScopeMissing => "Escopo ausente",
+        AgentAuthorizationResult.PermissionMissing => "Permissão ausente",
+        AgentAuthorizationResult.BusinessRuleDenied => "Recusada por regra",
+        _ => "Limite de requisições",
+    };
+
+    public static string Scope(string code) => AgentScopes.All.FirstOrDefault(scope => scope.Code == code).Label ?? code;
+
+    /// <summary>Autor de algo: o nome da pessoa, ou "Agente: nome" (ADR-016, D13).</summary>
+    public static string Actor(ActorReference? actor) => actor switch
+    {
+        null => "—",
+        { Kind: ActorKind.Agent } => $"Agente: {actor.Name ?? "removido"}",
+        _ => actor.Name ?? "Usuário removido",
+    };
+
+    public static string Actor(string? name, ActorKind kind, bool hasActor) => kind == ActorKind.Agent
+        ? $"Agente: {name ?? "removido"}"
+        : name ?? (hasActor ? "Usuário removido" : "Sistema");
+
+    /// <summary>Teste e CI: nesta fase, a API nunca os verifica (D8).</summary>
+    public static string TestsLevel(string level) => level == WorkReportLevels.NotVerified ? "Testes não verificados" : "Testes verificados";
+
+    public static string CiLevel(string level) => level == WorkReportLevels.NotVerified ? "CI não verificado" : "CI confirmado";
+
+    public string ApprovalLevel(WorkReportEvidence evidence, WorkReportApproval? approval) => evidence.HumanApproval switch
+    {
+        WorkReportLevels.Pending => "Aprovação humana pendente",
+        WorkReportLevels.Approved when approval is not null =>
+            $"Aprovado por {approval.ApprovedByName ?? "usuário removido"} em {DateTime(approval.ApprovedAt)}",
+        WorkReportLevels.Approved => "Aprovado por uma pessoa",
+        _ => "Aprovação humana não se aplica (relatório sem tarefa)",
+    };
+
     public static string InvitationStatus(string status) => status switch
     {
         "Pending" => "Pendente",

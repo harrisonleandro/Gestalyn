@@ -1,0 +1,343 @@
+@page "/o/{OrganizationId:guid}/agentes/{AgentId:guid}"
+@attribute [Authorize]
+@inherits OrganizationPage
+@inject AgentsApi Agents
+
+<PageTitle>@(_agent?.Name ?? "Agente") · Gestalyn</PageTitle>
+
+<OrgFrame Membership="Membership" Error="LoadError" Ready="_agent is not null">
+    <PageHeader Title="@_agent!.Name" Subtitle="@($"Agente · {Display.Name(_agent.Status)}")"
+                Breadcrumbs="@([("Agentes", $"{OrgPath}/agentes"), (_agent.Name, (string?)null)])" />
+    <ApiErrors Result="ActionResult" />
+
+    @if (_created is not null)
+    {
+        @* D13: o token aparece só aqui, na resposta do próprio formulário, sem redirecionamento e sem cache. *@
+        <section class="pm-card pm-token-card" aria-labelledby="token-criado" role="status">
+            <h2 id="token-criado">Token da credencial “@_created.Credential.Name”</h2>
+            <p class="mb-2">Copie o token agora. <strong>Ele não aparece de novo</strong>: o Gestalyn guarda só um resumo (hash) dele.</p>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                <label for="agent-token" class="visually-hidden">Token</label>
+                <input id="agent-token" class="form-control font-monospace pm-token" readonly value="@_created.Token"
+                       autocomplete="off" spellcheck="false" />
+                <button type="button" class="btn btn-outline-secondary" data-copy-target="agent-token">Copiar</button>
+            </div>
+            <p class="pm-muted small mt-2 mb-0">
+                Ao sair desta tela, o token não pode ser recuperado. Se ele se perder, crie uma credencial nova e revogue esta.
+                Guarde-o num cofre de segredos; nunca o coloque no repositório.
+            </p>
+        </section>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <section class="pm-card" aria-labelledby="credenciais">
+                <h2 id="credenciais">Credenciais</h2>
+                @if (_agent.Credentials.Count == 0)
+                {
+                    <p class="pm-muted">Nenhuma credencial. Sem uma credencial ativa, o agente não consegue se conectar.</p>
+                }
+                else
+                {
+                    <table class="table pm-table align-middle">
+                        <thead><tr><th scope="col">Nome</th><th scope="col">Prefixo</th><th scope="col">Escopos</th><th scope="col">Situação</th><th scope="col">Expira em</th><th scope="col">Último uso</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var credential in _agent.Credentials)
+                            {
+                                <tr>
+                                    <td data-label="Nome">@credential.Name</td>
+                                    <td data-label="Prefixo"><code>gsk_@(credential.Prefix)…</code></td>
+                                    <td data-label="Escopos">
+                                        @foreach (var scope in credential.Scopes)
+                                        {
+                                            <span class="pm-label me-1" title="@Display.Scope(scope)">@scope</span>
+                                        }
+                                    </td>
+                                    <td data-label="Situação">@Display.Name(credential.State)@(credential.RevokedAt is { } revoked ? $" em {Display.Date(revoked)}" : null)</td>
+                                    <td data-label="Expira em">@Display.Date(credential.ExpiresAt)</td>
+                                    <td data-label="Último uso">@(credential.LastUsedAt is { } used ? Display.DateTime(used) : "Nunca")</td>
+                                    <td>
+                                        @if (credential.State == AgentCredentialState.Active)
+                                        {
+                                            <ActionForm Name="@($"revoke-{credential.Id}")" Label="Revogar" ButtonClass="btn btn-outline-danger btn-sm"
+                                                        Confirm="@($"Revogar a credencial {credential.Name}? Ela deixa de valer na próxima requisição e não pode ser reativada.")" ConfirmLabel="Revogar"
+                                                        OnSubmit="() => RevokeAsync(credential)" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+                @if (_agent.Status == AgentStatus.Active)
+                {
+                    <details class="pm-disclosure" open="@(_created is null && CredentialSubmitted)">
+                        <summary>Nova credencial</summary>
+                        @* Sem navegação aprimorada: a resposta é uma página inteira, com Cache-Control: no-store. *@
+                        <EditForm Model="Credential" FormName="create-credential" OnValidSubmit="CreateCredentialAsync">
+                            <DataAnnotationsValidator />
+                            <div class="pm-form-grid">
+                                <div>
+                                    <label for="credential-name" class="form-label">Nome</label>
+                                    <InputText id="credential-name" class="form-control" @bind-Value="Credential.Name" maxlength="100" placeholder="ex.: CI do repositório" />
+                                    <ValidationMessage For="() => Credential.Name" />
+                                </div>
+                                <div>
+                                    <label for="credential-days" class="form-label">Validade (dias, de 1 a 365)</label>
+                                    <InputNumber id="credential-days" class="form-control" @bind-Value="Credential.ExpiresInDays" min="1" max="365" />
+                                    <ValidationMessage For="() => Credential.ExpiresInDays" />
+                                </div>
+                            </div>
+                            <fieldset class="mt-3">
+                                <legend class="form-label">Escopos</legend>
+                                <div class="form-check"><InputCheckbox id="scope-context" class="form-check-input" @bind-Value="Credential.ContextRead" /><label class="form-check-label" for="scope-context"><code>context:read</code> · @Display.Scope("context:read")</label></div>
+                                <div class="form-check"><InputCheckbox id="scope-tasks-read" class="form-check-input" @bind-Value="Credential.TasksRead" /><label class="form-check-label" for="scope-tasks-read"><code>tasks:read</code> · @Display.Scope("tasks:read")</label></div>
+                                <div class="form-check"><InputCheckbox id="scope-tasks-write" class="form-check-input" @bind-Value="Credential.TasksWrite" /><label class="form-check-label" for="scope-tasks-write"><code>tasks:write</code> · @Display.Scope("tasks:write")</label></div>
+                                <div class="form-check"><InputCheckbox id="scope-activities" class="form-check-input" @bind-Value="Credential.ActivitiesWrite" /><label class="form-check-label" for="scope-activities"><code>activities:write</code> · @Display.Scope("activities:write")</label></div>
+                                <div class="form-check"><InputCheckbox id="scope-reports" class="form-check-input" @bind-Value="Credential.ReportsWrite" /><label class="form-check-label" for="scope-reports"><code>reports:write</code> · @Display.Scope("reports:write")</label></div>
+                            </fieldset>
+                            <p class="pm-muted small mt-2">Um agente tem até 3 credenciais ativas. O que ele pode fazer em cada projeto depende também do papel concedido no projeto.</p>
+                            <button type="submit" class="btn btn-primary">Criar credencial</button>
+                        </EditForm>
+                    </details>
+                }
+            </section>
+
+            <section class="pm-card" aria-labelledby="projetos">
+                <h2 id="projetos">Projetos</h2>
+                @if (_agent.Projects.Count == 0)
+                {
+                    <p class="pm-muted">Nenhum projeto. O agente só enxerga os projetos concedidos aqui.</p>
+                }
+                else
+                {
+                    <table class="table pm-table align-middle">
+                        <thead><tr><th scope="col">Projeto</th><th scope="col">Papel</th><th scope="col">Desde</th><th scope="col"><span class="visually-hidden">Ações</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var access in _agent.Projects)
+                            {
+                                <tr>
+                                    <td data-label="Projeto"><a href="@($"{OrgPath}/projetos/{access.ProjectId}")">@access.ProjectName</a></td>
+                                    <td data-label="Papel">
+                                        <form method="post" @formname="@($"role-{access.ProjectId}")" @onsubmit="() => ChangeRoleAsync(access.ProjectId)" data-enhance class="d-flex gap-2">
+                                            <AntiforgeryToken />
+                                            <label class="visually-hidden" for="@($"role-{access.ProjectId}")">Papel em @access.ProjectName</label>
+                                            <select id="@($"role-{access.ProjectId}")" name="F.Value" class="form-select form-select-sm">
+                                                @foreach (var role in AgentRoles)
+                                                {
+                                                    <option value="@role" selected="@(role == access.Role)">@Display.Name(role)</option>
+                                                }
+                                            </select>
+                                            <button type="submit" class="btn btn-outline-secondary btn-sm">Alterar</button>
+                                        </form>
+                                    </td>
+                                    <td data-label="Desde">@Display.Date(access.GrantedAt)</td>
+                                    <td>
+                                        <ActionForm Name="@($"remove-project-{access.ProjectId}")" Label="Remover" ButtonClass="btn btn-outline-danger btn-sm"
+                                                    Confirm="@($"Remover o acesso de {_agent.Name} ao projeto {access.ProjectName}? O agente deixa de enxergá-lo na próxima requisição.")" ConfirmLabel="Remover"
+                                                    OnSubmit="() => RemoveProjectAsync(access.ProjectId)" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+                @if (GrantCandidates.Count > 0)
+                {
+                    <form method="post" @formname="grant-project" @onsubmit="GrantAsync" data-enhance class="pm-form-grid">
+                        <AntiforgeryToken />
+                        <div>
+                            <label for="grant-project" class="form-label">Projeto</label>
+                            <select id="grant-project" name="F.Value" class="form-select">
+                                @foreach (var project in GrantCandidates)
+                                {
+                                    <option value="@project.Id">@project.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label for="grant-role" class="form-label">Papel</label>
+                            <select id="grant-role" name="F.Text" class="form-select">
+                                @foreach (var role in AgentRoles)
+                                {
+                                    <option value="@role">@Display.Name(role)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-end"><button type="submit" class="btn btn-outline-secondary">Conceder acesso</button></div>
+                    </form>
+                    <p class="pm-muted small mt-2 mb-0">Conceder ou alterar o acesso exige também gerenciar a equipe do projeto. Agentes nunca recebem o papel Gerente.</p>
+                }
+            </section>
+
+            <section class="pm-card" aria-labelledby="operacoes">
+                <div class="d-flex justify-content-between align-items-baseline gap-2 flex-wrap">
+                    <h2 id="operacoes">Operações recentes</h2>
+                    <a href="@($"{OrgPath}/agentes/{AgentId}/operacoes")">Ver todas</a>
+                </div>
+                @if (_operations is null || _operations.Items.Count == 0)
+                {
+                    <p class="pm-muted mb-0">Nenhuma operação registrada.</p>
+                }
+                else
+                {
+                    <AgentOperationTable Items="_operations.Items" />
+                }
+            </section>
+        </div>
+
+        <div class="col-lg-4">
+            <section class="pm-card" aria-labelledby="dados">
+                <h2 id="dados">Dados</h2>
+                <EditForm Model="Edit" FormName="edit-agent" OnValidSubmit="SaveAsync" Enhance>
+                    <DataAnnotationsValidator />
+                    <label for="edit-name" class="form-label">Nome</label>
+                    <InputText id="edit-name" class="form-control" @bind-Value="Edit.Name" maxlength="100" />
+                    <ValidationMessage For="() => Edit.Name" />
+                    <label for="edit-description" class="form-label mt-2">Descrição</label>
+                    <InputTextArea id="edit-description" class="form-control" rows="3" @bind-Value="Edit.Description" maxlength="500" />
+                    <ValidationMessage For="() => Edit.Description" />
+                    <button type="submit" class="btn btn-primary btn-sm mt-2">Salvar</button>
+                </EditForm>
+                <dl class="row small mt-3 mb-0">
+                    <dt class="col-5 pm-muted fw-normal">Criado em</dt><dd class="col-7">@Display.DateTime(_agent.CreatedAt)</dd>
+                    @if (_agent.DisabledAt is { } disabledAt)
+                    {
+                        <dt class="col-5 pm-muted fw-normal">Desativado em</dt><dd class="col-7">@Display.DateTime(disabledAt)</dd>
+                    }
+                </dl>
+            </section>
+
+            <section class="pm-card" aria-labelledby="situacao">
+                <h2 id="situacao">Situação</h2>
+                @if (_agent.Status == AgentStatus.Active)
+                {
+                    <p class="small">Desativar bloqueia todas as credenciais do agente a partir da próxima requisição.</p>
+                    <ActionForm Name="disable-agent" Label="Desativar agente" ButtonClass="btn btn-outline-danger btn-sm"
+                                Confirm="@($"Desativar {_agent.Name}? Nenhuma credencial dele vale mais até a reativação.")" ConfirmLabel="Desativar"
+                                OnSubmit="DisableAsync" />
+                }
+                else
+                {
+                    <p class="small">Reativar não devolve a validade de credenciais revogadas ou expiradas.</p>
+                    <ActionForm Name="enable-agent" Label="Reativar agente" OnSubmit="EnableAsync" />
+                }
+            </section>
+        </div>
+    </div>
+</OrgFrame>
+
+@code {
+    private static readonly ProjectRole[] AgentRoles = [ProjectRole.Contributor, ProjectRole.Viewer];
+
+    [Parameter]
+    public Guid AgentId { get; set; }
+
+    [SupplyParameterFromForm(FormName = "edit-agent")]
+    private AgentForm Edit { get; set; } = default!;
+
+    [SupplyParameterFromForm(FormName = "create-credential")]
+    private CredentialForm Credential { get; set; } = default!;
+
+    [SupplyParameterFromForm(Name = RowForm.Prefix)]
+    private RowForm Row { get; set; } = default!;
+
+    private AgentDetails? _agent;
+    private Paged<AgentOperationItem>? _operations;
+    private List<ProjectSummary>? _projects;
+
+    /// <summary>Só existe na resposta do formulário de criação; nunca é guardado (D13).</summary>
+    private CreatedAgentCredential? _created;
+
+    private bool CredentialSubmitted { get; set; }
+
+    private List<ProjectSummary> GrantCandidates =>
+        (_projects ?? []).Where(project => _agent!.Projects.All(access => access.ProjectId != project.Id)).ToList();
+
+    protected override void OnInitialized()
+    {
+        Edit ??= new AgentForm();
+        Row ??= new RowForm();
+        if (Credential is null)
+        {
+            // Primeira abertura: leitura de contexto e de tarefas marcadas. Num envio, valem só as caixas enviadas.
+            Credential = new CredentialForm { ContextRead = true, TasksRead = true };
+        }
+        else
+        {
+            CredentialSubmitted = true;
+        }
+    }
+
+    protected override async Task LoadAsync()
+    {
+        if (!Membership!.Can(Permissions.AgentsManage))
+        {
+            Fail(ApiResult.Failure(System.Net.HttpStatusCode.Forbidden, "Gerenciar agentes exige a permissão agents.manage."));
+            return;
+        }
+
+        _agent = Take(await Agents.GetAsync(OrganizationId, AgentId));
+        if (_agent is null)
+        {
+            return;
+        }
+
+        _operations = (await Agents.OperationsAsync(OrganizationId, AgentId, result: null, from: null, to: null, page: 1, pageSize: 10)).Value;
+        _projects = (await Projects.ListAsync(OrganizationId, includeArchived: false, tag: null, priority: null, page: 1, pageSize: 100)).Value?.Items.ToList();
+        if (string.IsNullOrEmpty(Edit.Name))
+        {
+            Edit.Name = _agent.Name;
+            Edit.Description = _agent.Description;
+        }
+    }
+
+    [Inject]
+    private ProjectsApi Projects { get; set; } = default!;
+
+    private async Task CreateCredentialAsync()
+    {
+        var response = await Agents.CreateCredentialAsync(OrganizationId, AgentId, Credential.Name, Credential.Scopes, Credential.ExpiresInDays);
+        if (!response.Result.Succeeded || response.Value is null)
+        {
+            ActionResult = response.Result;
+            return;
+        }
+
+        // Sem post-redirect-get: o token só existe nesta resposta. A lista é recarregada para mostrar a credencial nova.
+        _created = response.Value;
+        _agent = (await Agents.GetAsync(OrganizationId, AgentId)).Value ?? _agent;
+        Credential = new CredentialForm { ContextRead = true, TasksRead = true };
+    }
+
+    private async Task RevokeAsync(AgentCredentialDetails credential) =>
+        Complete(await Agents.RevokeCredentialAsync(OrganizationId, AgentId, credential.Id), "credencial-revogada");
+
+    private async Task SaveAsync() =>
+        Complete(await Agents.UpdateAsync(OrganizationId, AgentId, Edit.Name, string.IsNullOrWhiteSpace(Edit.Description) ? null : Edit.Description), "salvo");
+
+    private async Task DisableAsync() => Complete(await Agents.DisableAsync(OrganizationId, AgentId), "desativado");
+
+    private async Task EnableAsync() => Complete(await Agents.EnableAsync(OrganizationId, AgentId), "reativado");
+
+    private async Task GrantAsync()
+    {
+        if (Guid.TryParse(Row.Value, out var projectId) && Enum.TryParse<ProjectRole>(Row.Text, out var role))
+        {
+            Complete(await Agents.SetProjectAccessAsync(OrganizationId, AgentId, projectId, role), "acesso-salvo");
+        }
+    }
+
+    private async Task ChangeRoleAsync(Guid projectId)
+    {
+        if (Enum.TryParse<ProjectRole>(Row.Value, out var role))
+        {
+            Complete(await Agents.SetProjectAccessAsync(OrganizationId, AgentId, projectId, role), "acesso-salvo");
+        }
+    }
+
+    private async Task RemoveProjectAsync(Guid projectId) =>
+        Complete(await Agents.RemoveProjectAccessAsync(OrganizationId, AgentId, projectId), "removido");
+}

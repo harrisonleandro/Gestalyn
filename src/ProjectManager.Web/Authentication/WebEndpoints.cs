@@ -34,6 +34,29 @@ internal static class WebEndpoints
         });
 
     /// <summary>
+    /// Telas de agentes (ADR-016, D13): a resposta da criação de credencial traz o token, então nenhuma delas pode ser
+    /// guardada em cache, nem pelo navegador nem por um proxy.
+    /// </summary>
+    public static IApplicationBuilder UseNoStoreForAgentPages(this IApplicationBuilder app) =>
+        app.Use(async (context, next) =>
+        {
+            if (IsAgentPage(context.Request.Path))
+            {
+                context.Response.OnStarting(() =>
+                {
+                    context.Response.Headers.CacheControl = "no-store";
+                    context.Response.Headers.Pragma = "no-cache";
+                    return Task.CompletedTask;
+                });
+            }
+
+            await next();
+        });
+
+    internal static bool IsAgentPage(PathString path) =>
+        path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries) is ["o", var id, "agentes", ..] && Guid.TryParse(id, out _);
+
+    /// <summary>
     /// Guarda a última organização aberta (só o ID, sem dado sensível) para o redirecionamento depois de entrar (D3).
     /// </summary>
     public static IApplicationBuilder UseLastOrganizationCookie(this IApplicationBuilder app) =>

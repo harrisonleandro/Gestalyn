@@ -12,6 +12,10 @@
         {
             <NavLink class="nav-link" href="@($"{Base}/atividades")"><Icon Name="activity" /> Atividades</NavLink>
         }
+        @if (Membership.Can(Permissions.AgentsManage))
+        {
+            <NavLink class="nav-link" href="@($"{Base}/agentes")"><Icon Name="agent" /> Agentes</NavLink>
+        }
         <NavLink class="nav-link" href="@($"{Base}/configuracoes")"><Icon Name="settings" /> Organização</NavLink>
     </nav>
 </div>

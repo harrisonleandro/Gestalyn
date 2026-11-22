@@ -186,3 +186,18 @@ public sealed class DecisionPermissionAttribute(string permission)
         CancellationToken cancellationToken) =>
         projectAccess.FindByDecisionAsync(membership, resourceId, cancellationToken);
 }
+
+/// <summary>Permissão de projeto na rota <c>{reportId}</c>: o acesso é o do projeto do relatório (ADR-016, D8).</summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class ReportPermissionAttribute(string permission)
+    : ProjectResourcePermissionAttribute(permission, RouteValueName, "Relatório não encontrado.")
+{
+    public const string RouteValueName = "reportId";
+
+    protected override Task<ProjectAccessGrant?> FindAccessAsync(
+        IProjectAccess projectAccess,
+        ActiveMembership membership,
+        Guid resourceId,
+        CancellationToken cancellationToken) =>
+        projectAccess.FindByWorkReportAsync(membership, resourceId, cancellationToken);
+}

@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using ProjectManager.Web;
 using ProjectManager.Web.Api;
@@ -27,7 +26,7 @@ public sealed class WebTestContext : BunitContext
         Services.AddSingleton(sp => new GestalynApi(
             new HttpClient(Api) { BaseAddress = new Uri("http://api.test/") },
             sp.GetRequiredService<IApiRequestContext>(),
-            NullLogger<GestalynApi>.Instance));
+            Logs));
         Services.AddScoped<OrganizationsApi>();
         Services.AddScoped<MembershipCache>();
         Services.AddScoped<ProjectsApi>();
@@ -35,6 +34,8 @@ public sealed class WebTestContext : BunitContext
         Services.AddScoped<TasksApi>();
         Services.AddScoped<WorkflowApi>();
         Services.AddScoped<DocumentsApi>();
+        Services.AddScoped<AgentsApi>();
+        Services.AddScoped<WorkReportsApi>();
         Services.AddSingleton<MarkdownRenderer>();
         Services.AddSingleton<Microsoft.AspNetCore.Http.IHttpContextAccessor>(new Microsoft.AspNetCore.Http.HttpContextAccessor());
         Services.AddSingleton(new Display(Options.Create(new DisplayOptions { TimeZone = "UTC" })));
@@ -45,6 +46,9 @@ public sealed class WebTestContext : BunitContext
     }
 
     public StubApiHandler Api { get; } = new();
+
+    /// <summary>Tudo o que o cliente da API registrou em log durante o teste.</summary>
+    public CapturingLogger<GestalynApi> Logs { get; } = new();
 
     /// <summary>Organização em que o usuário tem as permissões informadas.</summary>
     public void Membership(params string[] permissions) =>
@@ -80,6 +84,9 @@ public sealed class StubApiHandler : HttpMessageHandler
 
     public List<string> Calls { get; } = [];
 
+    /// <summary>Corpo da última requisição de cada método e caminho.</summary>
+    public Dictionary<string, string> Bodies { get; } = new(StringComparer.Ordinal);
+
     public void Json(HttpMethod method, string path, object body, HttpStatusCode status = HttpStatusCode.OK) =>
         _responses[Key(method, path)] = (status, JsonSerializer.Serialize(body, JsonOptions), "application/json");
 
@@ -92,6 +99,10 @@ public sealed class StubApiHandler : HttpMessageHandler
         path = path.StartsWith("api/v1/", StringComparison.Ordinal) ? path["api/v1/".Length..] : path;
         var key = Key(request.Method, path);
         Calls.Add(key + request.RequestUri.Query);
+        if (request.Content is not null)
+        {
+            Bodies[key] = request.Content.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult();
+        }
 
         var (status, body, contentType) = _responses.TryGetValue(key, out var response)
             ? response
@@ -99,5 +110,27 @@ public sealed class StubApiHandler : HttpMessageHandler
         return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, contentType) });
     }
 
-    private static string Key(HttpMethod method, string path) => $"{method.Method} {path}";
+    public static string Key(HttpMethod method, string path) => $"{method.Method} {path}";
+}
+
+/// <summary>Logger que guarda as mensagens formatadas, para conferir que nenhum segredo vai para o log.</summary>
+public sealed class CapturingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
+{
+    public List<string> Messages { get; } = [];
+
+    public IDisposable? BeginScope<TState>(TState state)
+        where TState : notnull => null;
+
+    public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+    public void Log<TState>(
+        Microsoft.Extensions.Logging.LogLevel logLevel,
+        Microsoft.Extensions.Logging.EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        ArgumentNullException.ThrowIfNull(formatter);
+        Messages.Add(formatter(state, exception) + exception);
+    }
 }

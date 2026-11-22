@@ -749,3 +749,13 @@ details.pm-disclosure > summary {
     right: 0.75rem;
     top: 0.5rem;
 }
+
+/* Token de credencial de agente, exibido uma única vez (ADR-016, D13). */
+.pm-token-card {
+    border-color: var(--bs-warning-border-subtle);
+}
+
+.pm-token {
+    flex: 1 1 20rem;
+    min-width: 0;
+}

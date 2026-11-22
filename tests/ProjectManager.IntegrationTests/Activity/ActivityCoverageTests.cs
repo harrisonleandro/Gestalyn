@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using ProjectManager.Application.Agents;
 using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
 using ProjectManager.Application.Planning;
 using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
 using ProjectManager.Application.Workflows;
+using ProjectManager.Domain.Agents;
+using ProjectManager.IntegrationTests.Agents;
 using ProjectManager.IntegrationTests.Infrastructure;
 using ProjectManager.IntegrationTests.Organizations;
 using ProjectManager.IntegrationTests.Projects;
@@ -30,12 +33,18 @@ public sealed class ActivityCoverageTests : IDisposable
         ["POST /api/v1/auth/forgot-password"] = "autenticação",
         ["POST /api/v1/auth/reset-password"] = "autenticação",
         ["POST /api/v1/projects/{projectId:guid}/activities"] = "o próprio registro manual é a atividade",
+        ["POST /api/v1/agents/activities"] = "o próprio registro manual é a atividade (agentes)",
     };
 
     private static readonly string[] WebLabel = ["web"];
 
+    private static readonly string[] ReadScope = ["tasks:read"];
+
+    private static readonly string[] AllAgentScopes = [.. AgentScopes.All];
+
     private readonly ApiFactory _factory;
     private readonly ActivityTestKit _kit;
+    private readonly AgentTestKit _agentKit;
     private readonly HashSet<string> _covered = new(StringComparer.Ordinal);
 
     private TestUser _owner = null!;
@@ -45,6 +54,7 @@ public sealed class ActivityCoverageTests : IDisposable
     {
         _factory = new ApiFactory(database.ConnectionString, mailpit);
         _kit = new ActivityTestKit(_factory.CreateClient(), mailpit);
+        _agentKit = new AgentTestKit(_factory.CreateClient(), mailpit);
     }
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -179,6 +189,35 @@ public sealed class ActivityCoverageTests : IDisposable
         await ExpectAsync("POST /api/v1/decisions/{decisionId:guid}/supersede", "decision.superseded",
             HttpMethod.Post, $"{c}/supersede", new { supersededById = replacement.Id });
 
+        // Agentes (ADR-016).
+        var agents = $"{org}/agents";
+        var agent = await ReadAfterExpectAsync<AgentDetails>("POST /api/v1/organizations/{organizationId:guid}/agents", "agent.created",
+            HttpMethod.Post, agents, new { name = "Revisor" });
+        var a = $"{agents}/{agent.Id}";
+        await ExpectAsync("PATCH /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}", "agent.updated", HttpMethod.Patch, a, new { description = "Revisa PRs" });
+        var credential = await ReadAfterExpectAsync<CreatedAgentCredential>("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/credentials", "agent.credential_created",
+            HttpMethod.Post, $"{a}/credentials", new { name = "CI", scopes = ReadScope });
+        await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/credentials/{credentialId:guid}/revoke", "agent.credential_revoked",
+            HttpMethod.Post, $"{a}/credentials/{credential.Credential.Id}/revoke");
+        await ExpectAsync("PUT /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/projects/{projectId:guid}", "agent.project_access_granted",
+            HttpMethod.Put, $"{a}/projects/{project.Id}", new { role = "Contributor" });
+        await ExpectAsync("DELETE /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/projects/{projectId:guid}", "agent.project_access_removed",
+            HttpMethod.Delete, $"{a}/projects/{project.Id}");
+        await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/disable", "agent.disabled", HttpMethod.Post, $"{a}/disable");
+        await ExpectAsync("POST /api/v1/organizations/{organizationId:guid}/agents/{agentId:guid}/enable", "agent.enabled", HttpMethod.Post, $"{a}/enable");
+
+        // Escritas de agentes (ADR-016, D7): os mesmos eventos das pessoas, pelos mesmos serviços.
+        await ReadAsync<AgentProjectAccessDetails>(HttpMethod.Put, $"{a}/projects/{project.Id}", new { role = "Contributor" });
+        var agentToken = (await ReadAsync<CreatedAgentCredential>(HttpMethod.Post, $"{a}/credentials", new { name = "Escritas", scopes = AllAgentScopes })).Token;
+        var agentTask = await ReadAfterExpectAsync<TaskDetails>("POST /api/v1/agents/tasks", "task.created",
+            () => AsAgentAsync(agentToken, HttpMethod.Post, "/api/v1/agents/tasks", new { projectId = project.Id, title = "Criada pelo agente" }));
+        await ExpectAsync("PATCH /api/v1/agents/tasks/{taskId:guid}", "task.updated",
+            () => AsAgentAsync(agentToken, HttpMethod.Patch, $"/api/v1/agents/tasks/{agentTask.Id}", new { title = "Ajustada pelo agente", expectedVersion = 1 }));
+        await ExpectAsync("POST /api/v1/agents/tasks/{taskId:guid}/transitions", "task.transitioned",
+            () => AsAgentAsync(agentToken, HttpMethod.Post, $"/api/v1/agents/tasks/{agentTask.Id}/transitions", new { toStateId = todo.Id, expectedVersion = 2 }));
+        await ExpectAsync("POST /api/v1/agents/reports", "work_report.received",
+            () => AsAgentAsync(agentToken, HttpMethod.Post, "/api/v1/agents/reports", new { projectId = project.Id, taskId = agentTask.Id, summary = "Relatório do agente" }));
+
         // Saídas: da equipe, do projeto (arquivamento) e da organização.
         await ExpectAsync("DELETE /api/v1/projects/{projectId:guid}/members/{userId:guid}", "project.member_removed", HttpMethod.Delete, $"{p}/members/{member.Id}");
         await ExpectAsync("DELETE /api/v1/projects/{projectId:guid}", "project.archived", HttpMethod.Delete, p);
@@ -204,6 +243,9 @@ public sealed class ActivityCoverageTests : IDisposable
                 .Select(method => $"{method} /{endpoint.RoutePattern.RawText!.TrimStart('/')}"))
             .ToHashSet(StringComparer.Ordinal);
     }
+
+    private Task<HttpResponseMessage> AsAgentAsync(string token, HttpMethod method, string path, object body) =>
+        _agentKit.SendAsAgentAsync(token, method, path, body, new Dictionary<string, string> { [IdempotencyRecord.HeaderName] = Guid.NewGuid().ToString() });
 
     private Task ExpectAsync(string route, string action, HttpMethod method, string path, object? body = null) =>
         ExpectAsync(route, action, () => Projects.SendAsync(method, path, _owner, body, _organizationId.ToString()));

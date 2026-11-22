@@ -70,3 +70,14 @@ O login só é permitido com e-mail confirmado. Os links de confirmação e de r
 ## Revisão de 2026-11-14
 
 A regra de reuso foi substituída pelo [ADR-012](ADR-012-ROTACAO-IDEMPOTENTE-DE-REFRESH-TOKEN.md), depois que a auditoria técnica mostrou que a janela de 30 s com 401 sem revogar permitia que um invasor que usasse o token primeiro mantivesse a sessão, enquanto a vítima era desconectada. As demais decisões deste ADR continuam válidas.
+
+## Revisão de 2026-11-15 (Fase 10)
+
+O [ADR-016](ADR-016-AGENTES.md) acrescenta a autenticação de agentes, sem mudar a de usuários. Três pontos tocam este ADR:
+
+- **Esquemas e políticas:**
+  - o JWT continua sendo o esquema padrão;
+  - o esquema `AgentToken` é adicional;
+  - o `AuthorizeFilter` global sem política dá lugar às políticas explícitas `User` (JWT com `sid`) e `Agent`. Um token de agente não é aceito em rotas de usuário.
+- **Credenciais completas na Web:** este ADR repete a regra da seção 7 da especificação mestre. O responsável aprovou uma única exceção: o token de uma credencial de agente recém-criada aparece uma vez, na resposta da criação, com `Cache-Control: no-store`, sem ser guardado nem registrado. Os access e refresh tokens dos usuários continuam sem chegar ao navegador.
+- **Hash rápido:** as credenciais de agentes usam o mesmo critério dos refresh tokens. São 256 bits aleatórios, e no banco fica só o SHA-256.

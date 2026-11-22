@@ -4,6 +4,7 @@
 @inherits ProjectPage
 @inject TasksApi Tasks
 @inject PlanningApi Planning
+@inject WorkReportsApi Reports
 @using System.Security.Claims
 
 <PageTitle>@(_task is null ? "Tarefa" : $"#{_task.Number} {_task.Title}") · Gestalyn</PageTitle>
@@ -64,6 +65,7 @@
                             <summary>Editar tarefa</summary>
                             <EditForm Model="Edit" FormName="edit-task" OnValidSubmit="SaveAsync" Enhance>
                                 <DataAnnotationsValidator />
+                                <input type="hidden" name="Edit.ExpectedVersion" value="@Edit.ExpectedVersion" />
                                 <TaskFields Model="Edit" Prefix="Edit" Phases="_phases" Milestones="_milestones" />
                                 <button type="submit" class="btn btn-primary mt-3">Salvar</button>
                             </EditForm>
@@ -118,6 +120,12 @@
                     }
                 </section>
 
+                <section class="pm-card" aria-labelledby="relatorios">
+                    <h2 id="relatorios">Relatórios de agentes</h2>
+                    <ProjectManager.Web.Components.Pages.Reports.WorkReportList Items="@(_reports ?? [])" OrganizationId="OrganizationId" ShowTask="false"
+                                                                               EmptyText="Nenhum agente enviou relatório desta tarefa." />
+                </section>
+
                 <section class="pm-card" aria-labelledby="historico">
                     <h2 id="historico">Histórico de estados</h2>
                     @if (_history is { Count: > 0 })
@@ -128,7 +136,7 @@
                                 <li>
                                     <span>@(entry.FromStateName is null ? $"Criada em {entry.ToStateName}" : $"{entry.FromStateName} → {entry.ToStateName}")</span>
                                     <span class="pm-muted small d-block">
-                                        @(entry.ChangedByName ?? (entry.ActorKind == ActorKind.Agent ? "Agente" : "Usuário removido")) · @Display.DateTime(entry.ChangedAt)
+                                        @ProjectManager.Web.Display.Actor(entry.ChangedByName, entry.ActorKind, hasActor: true) · @Display.DateTime(entry.ChangedAt)
                                         @if (entry.Comment is not null) { <span> · “@entry.Comment”</span> }
                                     </span>
                                 </li>
@@ -147,6 +155,7 @@
                         <dt class="col-5 pm-muted fw-normal">Fase</dt><dd class="col-7">@(_phases?.FirstOrDefault(p => p.Id == _task.PhaseId)?.Name ?? "—")</dd>
                         <dt class="col-5 pm-muted fw-normal">Marco</dt><dd class="col-7">@(_milestones?.FirstOrDefault(m => m.Id == _task.MilestoneId)?.Name ?? "—")</dd>
                         <dt class="col-5 pm-muted fw-normal">Etiquetas</dt><dd class="col-7">@foreach (var label in _task.Labels) { <span class="pm-label me-1">@label</span> }</dd>
+                        <dt class="col-5 pm-muted fw-normal">Criada por</dt><dd class="col-7">@ProjectManager.Web.Display.Actor(_task.CreatedBy)</dd>
                         <dt class="col-5 pm-muted fw-normal">Criada em</dt><dd class="col-7">@Display.DateTime(_task.CreatedAt)</dd>
                     </dl>
                 </section>
@@ -301,6 +310,7 @@
     private List<CommentDetails>? _comments;
     private List<AttachmentDetails>? _attachments;
     private List<TaskHistoryEntry>? _history;
+    private IReadOnlyList<WorkReportSummary>? _reports;
     private List<PhaseDetails>? _phases;
     private List<MilestoneDetails>? _milestones;
     private List<ProjectMemberDetails>? _members;
@@ -339,6 +349,7 @@
         _comments = (await Tasks.ListCommentsAsync(OrganizationId, TaskId)).Value;
         _attachments = (await Tasks.ListAttachmentsAsync(OrganizationId, TaskId)).Value;
         _history = (await Tasks.HistoryAsync(OrganizationId, TaskId)).Value;
+        _reports = (await Reports.ListByTaskAsync(OrganizationId, TaskId)).Value?.Items;
         _phases = (await Planning.ListPhasesAsync(OrganizationId, _task!.ProjectId)).Value;
         _milestones = (await Planning.ListMilestonesAsync(OrganizationId, _task.ProjectId)).Value;
         if (CanEdit)
@@ -356,6 +367,7 @@
             Edit.PhaseId = _task.PhaseId;
             Edit.MilestoneId = _task.MilestoneId;
             Edit.Labels = string.Join(", ", _task.Labels);
+            Edit.ExpectedVersion = _task.Version > 0 ? _task.Version : null;
         }
     }
 
@@ -376,6 +388,7 @@
         phaseId = Edit.PhaseId,
         milestoneId = Edit.MilestoneId,
         labels = Edit.LabelList,
+        expectedVersion = Edit.ExpectedVersion,
     }), "salvo");
 
     private async Task AssignAsync()

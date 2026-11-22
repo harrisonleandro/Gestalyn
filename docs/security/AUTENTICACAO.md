@@ -1,6 +1,6 @@
 # Segurança: autenticação e sessões
 
-Modelo de segurança da Fase 03. As decisões e alternativas estão no [ADR-006](../decisions/ADR-006-AUTENTICACAO-E-SESSAO.md) e no [ADR-007](../decisions/ADR-007-ENVIO-DE-EMAIL.md).
+Modelo de segurança da Fase 03. As decisões e alternativas estão no [ADR-006](../decisions/ADR-006-AUTENTICACAO-E-SESSAO.md) e no [ADR-007](../decisions/ADR-007-ENVIO-DE-EMAIL.md). A autenticação de agentes (Fase 10) está no [ADR-016](../decisions/ADR-016-AGENTES.md) e em [AGENTES.md](AGENTES.md).
 
 ## Visão geral
 
@@ -52,4 +52,11 @@ Trocar a `SigningKey` invalida todos os access tokens emitidos. As sessões cont
 
 - **Fase 14:** repositório compartilhado de chaves do Data Protection (cookies da Web e links de e-mail) e forwarded headers para o rate limiting atrás de proxy.
 - **Fase 13:** cache da validação de sessão (desempenho), testes de carga do rate limiting e reavaliação de 2FA e passkeys.
-- **Fase 10:** credenciais de agentes, separadas das de usuários.
+
+## Agentes (Fase 10)
+
+Implementado ([ADR-016](../decisions/ADR-016-AGENTES.md)); o modelo completo está em [AGENTES.md](AGENTES.md). O que muda para a autenticação de pessoas:
+- **separação dos esquemas:** credenciais de agentes com esquema próprio (`AgentToken`) e políticas explícitas por esquema (`User` e `Agent`), sem esquema padrão. Um token de agente não é aceito nas rotas de usuário, e um JWT não é aceito nas de agentes;
+- **guarda e validade:** token opaco `gsk_` de 256 bits, com só o SHA-256 e o prefixo no banco, expiração obrigatória e revogação conferida a cada requisição;
+- **limites:** rate limiting por credencial no PostgreSQL e limite de falhas por IP, antes de qualquer consulta ao banco;
+- **exceção à regra dos tokens no navegador:** o token de uma credencial de agente recém-criada aparece na Web uma única vez, na resposta do formulário de criação, com `no-store`, sem ser guardado nem registrado.

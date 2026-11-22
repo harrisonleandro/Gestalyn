@@ -32,6 +32,8 @@ builder.Services.AddScoped<PlanningApi>();
 builder.Services.AddScoped<TasksApi>();
 builder.Services.AddScoped<WorkflowApi>();
 builder.Services.AddScoped<DocumentsApi>();
+builder.Services.AddScoped<AgentsApi>();
+builder.Services.AddScoped<WorkReportsApi>();
 builder.Services.AddSingleton<MarkdownRenderer>();
 builder.Services.AddOptions<DisplayOptions>()
     .Bind(builder.Configuration.GetSection(DisplayOptions.SectionName))
@@ -71,6 +73,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseWebSecurityHeaders();
+app.UseNoStoreForAgentPages();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseLastOrganizationCookie();

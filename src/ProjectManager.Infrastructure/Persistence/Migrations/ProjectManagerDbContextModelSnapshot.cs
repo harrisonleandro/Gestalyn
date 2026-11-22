@@ -281,6 +281,621 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("activity_logs", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Agents.Agent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset?>("DisabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("disabled_at");
+
+                    b.Property<Guid?>("DisabledByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("disabled_by_user_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("normalized_name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agents");
+
+                    b.HasAlternateKey("OrganizationId", "Id")
+                        .HasName("ak_agents_organization_id_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_agents_created_by_user_id");
+
+                    b.HasIndex("DisabledByUserId")
+                        .HasDatabaseName("ix_agents_disabled_by_user_id");
+
+                    b.HasIndex("OrganizationId", "NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_agents_organization_id_normalized_name");
+
+                    b.ToTable("agents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agents_status", "status IN ('Active', 'Disabled')");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character(8)")
+                        .HasColumnName("prefix")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid?>("RevokedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revoked_by_user_id");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("token_hash")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.PrimitiveCollection<string[]>("_scopes")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("scopes");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agent_credentials");
+
+                    b.HasAlternateKey("OrganizationId", "Id")
+                        .HasName("ak_agent_credentials_organization_id_id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_agent_credentials_created_by_user_id");
+
+                    b.HasIndex("RevokedByUserId")
+                        .HasDatabaseName("ix_agent_credentials_revoked_by_user_id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_agent_credentials_token_hash");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_agent_credentials_organization_id_agent_id");
+
+                    b.ToTable("agent_credentials", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_credentials_expires_after_creation", "expires_at > created_at");
+
+                            t.HasCheckConstraint("ck_agent_credentials_scopes_known", "scopes <@ ARRAY['context:read', 'tasks:read', 'tasks:write', 'activities:write', 'reports:write']::text[] AND array_position(scopes, NULL) IS NULL");
+
+                            t.HasCheckConstraint("ck_agent_credentials_scopes_not_empty", "cardinality(scopes) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<string>("AuthorizationResult")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("authorization_result");
+
+                    b.Property<string>("ClientOrigin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("client_origin");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<string>("DenialCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("denial_code");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_ms");
+
+                    b.Property<string>("HttpMethod")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("http_method");
+
+                    b.Property<bool>("IdempotentReplay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("idempotent_replay");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("RouteTemplate")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("route_template");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agent_operations");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_agent_operations_occurred_at");
+
+                    b.HasIndex("AgentId", "OccurredAt")
+                        .HasDatabaseName("ix_agent_operations_agent_id_occurred_at");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_agent_operations_organization_id_agent_id");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_agent_operations_organization_id_credential_id");
+
+                    b.HasIndex("OrganizationId", "OccurredAt")
+                        .HasDatabaseName("ix_agent_operations_organization_id_occurred_at");
+
+                    b.ToTable("agent_operations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_operations_duration", "duration_ms >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentProjectAccess", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("GrantedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by_user_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("role");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agent_project_access");
+
+                    b.HasIndex("GrantedByUserId")
+                        .HasDatabaseName("ix_agent_project_access_granted_by_user_id");
+
+                    b.HasIndex("AgentId", "ProjectId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_agent_project_access_agent_id_project_id");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_agent_project_access_organization_id_agent_id");
+
+                    b.HasIndex("OrganizationId", "ProjectId")
+                        .HasDatabaseName("ix_agent_project_access_organization_id_project_id");
+
+                    b.ToTable("agent_project_access", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_project_access_role", "role IN ('Contributor', 'Viewer')");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentRateLimitCounter", b =>
+                {
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<DateTimeOffset>("WindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_start");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("RequestCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("request_count");
+
+                    b.HasKey("CredentialId", "WindowStart")
+                        .HasName("pk_agent_rate_limit_counters");
+
+                    b.HasIndex("WindowStart")
+                        .HasDatabaseName("ix_agent_rate_limit_counters_window_start");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_agent_rate_limit_counters_organization_id_credential_id");
+
+                    b.ToTable("agent_rate_limit_counters", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_rate_limit_counters_count", "request_count > 0");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("method");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("request_hash")
+                        .IsFixedLength();
+
+                    b.Property<string>("ResponseBody")
+                        .IsRequired()
+                        .HasMaxLength(262144)
+                        .HasColumnType("character varying(262144)")
+                        .HasColumnName("response_body");
+
+                    b.Property<int>("ResponseStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status");
+
+                    b.Property<string>("RouteTemplate")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("route_template");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_idempotency_records");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_idempotency_records_created_at");
+
+                    b.HasIndex("CredentialId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_idempotency_records_credential_id_key");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_idempotency_records_organization_id_agent_id");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_idempotency_records_organization_id_credential_id");
+
+                    b.ToTable("idempotency_records", (string)null);
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.WorkReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<string>("Changes")
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("changes");
+
+                    b.Property<string>("CommitRepository")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("commit_repository");
+
+                    b.Property<string>("CommitSha")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("commit_sha");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_id");
+
+                    b.Property<Guid?>("SuggestedStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("suggested_state_id");
+
+                    b.Property<string>("SuggestedStateName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("suggested_state_name");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid?>("TaskStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_state_id");
+
+                    b.Property<string>("TaskStateName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("task_state_name");
+
+                    b.Property<string>("TestsCommand")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tests_command");
+
+                    b.Property<int?>("TestsFailed")
+                        .HasColumnType("integer")
+                        .HasColumnName("tests_failed");
+
+                    b.Property<int?>("TestsPassed")
+                        .HasColumnType("integer")
+                        .HasColumnName("tests_passed");
+
+                    b.Property<int?>("TestsSkipped")
+                        .HasColumnType("integer")
+                        .HasColumnName("tests_skipped");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.PrimitiveCollection<string[]>("_files")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("files");
+
+                    b.HasKey("Id")
+                        .HasName("pk_work_reports");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_work_reports_organization_id_agent_id");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_work_reports_organization_id_credential_id");
+
+                    b.HasIndex("ProjectId", "ReceivedAt")
+                        .HasDatabaseName("ix_work_reports_project_id_received_at");
+
+                    b.HasIndex("TaskId", "ReceivedAt")
+                        .HasDatabaseName("ix_work_reports_task_id_received_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_work_reports_organization_id_project_id_task_id");
+
+                    b.ToTable("work_reports", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_work_reports_commit_sha", "commit_sha IS NULL OR commit_sha ~ '^[0-9a-f]{40}([0-9a-f]{24})?$'");
+
+                            t.HasCheckConstraint("ck_work_reports_files", "cardinality(files) <= 200 AND array_position(files, NULL) IS NULL");
+
+                            t.HasCheckConstraint("ck_work_reports_suggested_state", "(suggested_state_id IS NULL) = (suggested_state_name IS NULL)");
+
+                            t.HasCheckConstraint("ck_work_reports_task_state", "(task_id IS NULL) = (task_state_id IS NULL) AND (task_state_id IS NULL) = (task_state_name IS NULL)");
+
+                            t.HasCheckConstraint("ck_work_reports_tests_non_negative", "coalesce(tests_passed, 0) >= 0 AND coalesce(tests_failed, 0) >= 0 AND coalesce(tests_skipped, 0) >= 0");
+                        });
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1155,7 +1770,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid>("CreatedByUserId")
+                    b.Property<Guid?>("CreatedByAgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_agent_id");
+
+                    b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_user_id");
 
@@ -1194,6 +1813,13 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version");
+
                     b.Property<Guid>("StateId")
                         .HasColumnType("uuid")
                         .HasColumnName("state_id");
@@ -1223,6 +1849,9 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedByUserId")
                         .HasDatabaseName("ix_tasks_created_by_user_id");
 
+                    b.HasIndex("OrganizationId", "CreatedByAgentId")
+                        .HasDatabaseName("ix_tasks_organization_id_created_by_agent_id");
+
                     b.HasIndex("ProjectId", "DueDate")
                         .HasDatabaseName("ix_tasks_project_id_due_date");
 
@@ -1242,6 +1871,8 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("tasks", null, t =>
                         {
                             t.HasCheckConstraint("ck_tasks_number_positive", "number > 0");
+
+                            t.HasCheckConstraint("ck_tasks_single_author", "num_nonnulls(created_by_user_id, created_by_agent_id) = 1");
                         });
                 });
 
@@ -2037,6 +2668,11 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         {
                             Code = "activity.read_all",
                             Description = "Consultar as atividades de toda a organização"
+                        },
+                        new
+                        {
+                            Code = "agents.manage",
+                            Description = "Administrar agentes de IA, credenciais e acessos a projetos"
                         });
                 });
 
@@ -2110,6 +2746,162 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_activity_logs_tasks_organization_id_project_id_task_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.Agent", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agents_asp_net_users_created_by_user_id");
+
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("DisabledByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_agents_asp_net_users_disabled_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Organizations.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agents_organizations_organization_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentCredential", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_credentials_asp_net_users_created_by_user_id");
+
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RevokedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_agent_credentials_asp_net_users_revoked_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_credentials_agents_organization_id_agent_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentOperation", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_operations_agents_organization_id_agent_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_operations_agent_credentials_organization_id_credenti");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentProjectAccess", b =>
+                {
+                    b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("GrantedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_project_access_asp_net_users_granted_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_project_access_agents_organization_id_agent_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_project_access_projects_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentRateLimitCounter", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_rate_limit_counters_agent_credentials_organization_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.IdempotencyRecord", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_idempotency_records_agents_organization_id_agent_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_idempotency_records_agent_credentials_organization_id_crede");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.WorkReport", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_reports_agents_organization_id_agent_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_reports_agent_credentials_organization_id_credential_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_reports_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_work_reports_tasks_organization_id_project_id_task_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>
@@ -2336,8 +3128,14 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_tasks_users_created_by_user_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CreatedByAgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_tasks_agents_organization_id_created_by_agent_id");
 
                     b.HasOne("ProjectManager.Domain.Projects.Project", null)
                         .WithMany()

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Domain.Activity;
+using ProjectManager.Domain.Agents;
 using ProjectManager.Domain.Common;
 using ProjectManager.Domain.Documents;
 using ProjectManager.Domain.Organizations;
@@ -65,6 +66,20 @@ public sealed class ProjectManagerDbContext(
     public DbSet<ProjectDocumentVersion> ProjectDocumentVersions => Set<ProjectDocumentVersion>();
 
     public DbSet<Decision> Decisions => Set<Decision>();
+
+    public DbSet<Agent> Agents => Set<Agent>();
+
+    public DbSet<AgentCredential> AgentCredentials => Set<AgentCredential>();
+
+    public DbSet<AgentProjectAccess> AgentProjectAccess => Set<AgentProjectAccess>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
+    public DbSet<WorkReport> WorkReports => Set<WorkReport>();
+
+    public DbSet<AgentOperation> AgentOperations => Set<AgentOperation>();
+
+    public DbSet<AgentRateLimitCounter> AgentRateLimitCounters => Set<AgentRateLimitCounter>();
 
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
@@ -129,6 +144,7 @@ public sealed class ProjectManagerDbContext(
     {
         ChangeTracker.DetectChanges();
         TenantIsolationRules.Enforce(ChangeTracker, CurrentOrganizationId);
+        TaskRevisionRules.Apply(ChangeTracker);
         AuditingRules.Apply(ChangeTracker, timeProvider.GetUtcNow());
     }
 }

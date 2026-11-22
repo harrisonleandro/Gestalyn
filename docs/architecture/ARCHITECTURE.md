@@ -210,6 +210,29 @@ erDiagram
 - **Decisões:** proposta, aceita ou rejeitada, e substituída por outra aceita do mesmo projeto.
 - **Dashboards:** consultas agregadas na hora. O progresso segue a regra única `ProgressRule`; as estatísticas usam a categoria registrada no histórico de estados (`task_status_history.to_category`). Detalhes em [ADR-014](../decisions/ADR-014-AUDITORIA-DOCUMENTOS-E-DASHBOARDS.md).
 
+### 3.8 Agentes (Fase 10)
+
+```mermaid
+erDiagram
+    organizations ||--o{ agents : "organization_id"
+    agents ||--o{ agent_credentials : "(organization_id, agent_id)"
+    agents ||--o{ agent_project_access : "(organization_id, agent_id)"
+    projects ||--o{ agent_project_access : "(organization_id, project_id)"
+    agent_credentials ||--o{ agent_operations : "(organization_id, credential_id)"
+    agent_credentials ||--o{ agent_rate_limit_counters : "(organization_id, credential_id)"
+    agent_credentials ||--o{ idempotency_records : "(organization_id, credential_id)"
+    projects ||--o{ work_reports : "(organization_id, project_id)"
+    agents ||--o{ tasks : "(organization_id, created_by_agent_id)"
+    tasks ||--o{ work_reports : "(organization_id, project_id, task_id)"
+```
+
+- **Autenticação:** esquema `AgentToken` e política `Agent` só em `/api/v1/agents/*`, marcadas por `[AgentApi]`. O `AgentRequestMiddleware` aplica o limite por IP, autentica, aplica o rate limiting da credencial e grava a `AgentOperation` no fim, num escopo próprio.
+- **Organização:** a do agente vem só da credencial; cabeçalho ou rota divergente responde 404.
+- **Acesso:** `AgentAccessGrant.Compute` (escopos × papel em `agent_project_access` × exigência da operação) é a única regra; as transições passam por `TransitionRules`, que recusa aprovação e entrada em Concluída para agentes.
+- **Escrita:** os mesmos serviços das pessoas, com o ator agente; `Idempotency-Key` em todo `POST`, na mesma transação da operação; `expectedVersion` nas alterações de tarefa.
+- **Imutabilidade:** gatilhos em `work_reports` (sem `UPDATE`, `DELETE` e `TRUNCATE`) e em `agent_operations` (`DELETE` só depois de 180 dias, pela limpeza de retenção).
+- **Segurança:** [docs/security/AGENTES.md](../security/AGENTES.md).
+
 ## 4. Módulos (evolução prevista)
 
 A modularização será **vertical por contexto de negócio** dentro de cada camada (por exemplo `Application/Projects`, `Application/Tasks`, `Infrastructure/Persistence/Projects`). Cada módulo expõe seus casos de uso pela camada `Application` e não acessa diretamente os dados de outro módulo. A comunicação entre módulos ocorre por interfaces de aplicação ou eventos de domínio.
@@ -284,7 +307,7 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | ~~Workflow configurável, aprovação e histórico de estados~~ (ADR-013) | 07 (concluída) |
 | Armazenamento de anexos em object storage compatível com S3 | 14 |
 | Cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso; papéis de projeto | 05 |
-| Credenciais de agentes, escopos e idempotência | 10 |
+| Credenciais de agentes, escopos, idempotência, auditoria de operações e rate limiting ([ADR-016](../decisions/ADR-016-AGENTES.md), implementada; integração pendente) | 10 |
 | Armazenamento seguro de credenciais na CLI | 11 |
 | Servidor MCP | 12 |
 | SignalR, quando houver necessidade real | 09 |

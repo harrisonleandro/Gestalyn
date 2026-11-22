@@ -67,6 +67,9 @@ public sealed class TaskForm
     /// <summary>Etiquetas separadas por vírgula.</summary>
     public string? Labels { get; set; }
 
+    /// <summary>Versão em que a tarefa foi aberta: uma edição de outra pessoa ou agente nesse meio-tempo dá conflito (409).</summary>
+    public int? ExpectedVersion { get; set; }
+
     public IReadOnlyList<string> LabelList => (Labels ?? string.Empty)
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .ToList();
@@ -113,4 +116,48 @@ public sealed class DecisionForm
 
     [StringLength(20_000)]
     public string? Consequences { get; set; }
+}
+
+public sealed class AgentForm
+{
+    [Required(ErrorMessage = "Informe o nome do agente.")]
+    [StringLength(100, ErrorMessage = "O nome deve ter no máximo {1} caracteres.")]
+    public string Name { get; set; } = string.Empty;
+
+    [StringLength(500, ErrorMessage = "A descrição deve ter no máximo {1} caracteres.")]
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Nova credencial de agente. Os escopos são marcados um a um; a API valida a combinação. Os padrões ficam em
+/// <c>false</c>: uma caixa desmarcada não é enviada, e um padrão <c>true</c> não poderia ser desmarcado.
+/// </summary>
+public sealed class CredentialForm
+{
+    [Required(ErrorMessage = "Informe o nome da credencial.")]
+    [StringLength(100, ErrorMessage = "O nome deve ter no máximo {1} caracteres.")]
+    public string Name { get; set; } = string.Empty;
+
+    public bool ContextRead { get; set; }
+
+    public bool TasksRead { get; set; }
+
+    public bool TasksWrite { get; set; }
+
+    public bool ActivitiesWrite { get; set; }
+
+    public bool ReportsWrite { get; set; }
+
+    [Range(1, 365, ErrorMessage = "A validade deve ser de {1} a {2} dias.")]
+    public int? ExpiresInDays { get; set; } = 90;
+
+    public IReadOnlyList<string> Scopes =>
+        new (bool Selected, string Code)[]
+        {
+            (ContextRead, "context:read"),
+            (TasksRead, "tasks:read"),
+            (TasksWrite, "tasks:write"),
+            (ActivitiesWrite, "activities:write"),
+            (ReportsWrite, "reports:write"),
+        }.Where(scope => scope.Selected).Select(scope => scope.Code).ToList();
 }

@@ -10,6 +10,7 @@ using ProjectManager.Application.Abstractions.Email;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Abstractions.Storage;
 using ProjectManager.Application.Activity;
+using ProjectManager.Application.Agents;
 using ProjectManager.Application.Dashboards;
 using ProjectManager.Application.Documents;
 using ProjectManager.Application.Organizations;
@@ -18,6 +19,7 @@ using ProjectManager.Application.Projects;
 using ProjectManager.Application.Tasks;
 using ProjectManager.Application.Workflows;
 using ProjectManager.Infrastructure.Activity;
+using ProjectManager.Infrastructure.Agents;
 using ProjectManager.Infrastructure.Dashboards;
 using ProjectManager.Infrastructure.Documents;
 using ProjectManager.Infrastructure.Email;
@@ -53,6 +55,7 @@ public static class DependencyInjection
         services.AddIdentityServices();
         services.AddEmail();
         services.AddOrganizations();
+        services.AddAgents();
 
         return services;
     }
@@ -81,6 +84,42 @@ public static class DependencyInjection
             .Validate(options => !string.IsNullOrWhiteSpace(options.RootPath), $"Configure o diretório dos anexos em '{StorageOptions.SectionName}:RootPath'.")
             .ValidateOnStart();
         services.AddSingleton<IFileStorage, LocalFileStorage>();
+    }
+
+    private static void AddAgents(this IServiceCollection services)
+    {
+        services.AddOptions<AgentCredentialOptions>()
+            .BindConfiguration(AgentCredentialOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{AgentCredentialOptions.SectionName}': a validade padrão deve ficar entre 1 dia e o máximo, que vai até 365 dias.")
+            .ValidateOnStart();
+
+        services.AddScoped<IAgentService, AgentService>();
+        services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
+        services.AddScoped<IAgentWorkService, AgentWorkService>();
+        services.AddScoped<IAgentProjectAccess, AgentProjectAccessResolver>();
+        services.AddScoped<IAgentIdempotencyStore, AgentIdempotencyStore>();
+        services.AddScoped<IWorkReportService, WorkReportService>();
+
+        // Auditoria, rate limiting e retenção (ADR-016, D10 a D12).
+        services.AddOptions<AgentRateLimitOptions>()
+            .BindConfiguration(AgentRateLimitOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{AgentRateLimitOptions.SectionName}': o limite deve ser positivo e a janela, de 1 a 3600 segundos.")
+            .ValidateOnStart();
+        services.AddOptions<AgentRetentionOptions>()
+            .BindConfiguration(AgentRetentionOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{AgentRetentionOptions.SectionName}': a retenção das operações não pode ser menor que {Domain.Agents.AgentOperation.MinRetentionDays} dias, o prazo do gatilho do banco.")
+            .ValidateOnStart();
+
+        services.AddSingleton<AgentAuditHealth>();
+        services.AddSingleton<AgentRetentionHealth>();
+        services.AddSingleton<IAgentOperationWriter, AgentOperationWriter>();
+        services.AddScoped<IAgentRateLimiter, AgentRateLimiter>();
+        services.AddScoped<IAgentOperationService, AgentOperationService>();
+        services.AddScoped<AgentRetentionCleaner>();
+        services.AddHostedService<AgentRetentionService>();
+        services.AddHealthChecks()
+            .AddCheck<AgentAuditHealthCheck>(AgentAuditHealthCheck.Name)
+            .AddCheck<AgentRetentionHealthCheck>(AgentRetentionHealthCheck.Name);
     }
 
     private static void AddIdentityServices(this IServiceCollection services)

@@ -46,7 +46,7 @@ public sealed class HealthEndpointTests(PostgresDatabaseFixture database)
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["database", "self"], checkNames);
+        Assert.Equal(["agents-audit", "agents-retention", "database", "self"], checkNames);
     }
 
     [Fact]

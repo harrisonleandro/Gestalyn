@@ -1,0 +1,129 @@
+@page "/o/{OrganizationId:guid}/relatorios/{ReportId:guid}"
+@attribute [Authorize]
+@inherits ProjectPage
+@inject WorkReportsApi Reports
+
+<PageTitle>Relatório de trabalho · Gestalyn</PageTitle>
+
+<ProjectFrame Membership="Membership" Project="Project" Error="LoadError" PageTitle="Relatório de trabalho"
+              Trail="@([("Relatórios de agentes", $"{ProjectPath}/relatorios"), ("Relatório", (string?)null)])">
+    @if (_report is not null)
+    {
+        <section class="pm-card" aria-labelledby="niveis">
+            <h2 id="niveis" class="visually-hidden">Níveis de evidência</h2>
+            <WorkReportEvidenceList Evidence="_report.Evidence" Approval="_report.Approval" />
+            <p class="pm-muted small mt-2 mb-0">
+                Enviado por <strong>@ProjectManager.Web.Display.Actor(_report.Agent)</strong> em @Display.DateTime(_report.ReceivedAt).
+                O conteúdo abaixo é declaração do agente: a API não executou os testes nem confirmou o CI.
+            </p>
+        </section>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <section class="pm-card" aria-labelledby="resumo">
+                    <h2 id="resumo">Resumo (declarado pelo agente)</h2>
+                    <p class="mb-0">@_report.Summary</p>
+                </section>
+
+                <section class="pm-card" aria-labelledby="alteracoes">
+                    <h2 id="alteracoes">Alterações (declaradas pelo agente)</h2>
+                    <MarkdownView Source="@_report.Changes" EmptyText="O agente não descreveu as alterações." />
+                </section>
+
+                <section class="pm-card" aria-labelledby="arquivos">
+                    <h2 id="arquivos">Arquivos (@_report.Files.Count)</h2>
+                    @if (_report.Files.Count == 0)
+                    {
+                        <p class="pm-muted mb-0">Nenhum arquivo informado.</p>
+                    }
+                    else
+                    {
+                        <ul class="mb-0 small">
+                            @foreach (var file in _report.Files)
+                            {
+                                <li><code>@file</code></li>
+                            }
+                        </ul>
+                    }
+                </section>
+            </div>
+
+            <div class="col-lg-4">
+                <section class="pm-card" aria-labelledby="tarefa">
+                    <h2 id="tarefa">Tarefa</h2>
+                    <dl class="row small mb-0">
+                        <dt class="col-5 pm-muted fw-normal">Tarefa</dt>
+                        <dd class="col-7">
+                            @if (_report.TaskId is { } taskId)
+                            {
+                                <a href="@($"{OrgPath}/tarefas/{taskId}")">abrir tarefa</a>
+                            }
+                            else
+                            {
+                                <span>Sem tarefa</span>
+                            }
+                        </dd>
+                        <dt class="col-5 pm-muted fw-normal">Estado ao receber</dt><dd class="col-7">@(_report.TaskStateAtReceipt?.Name ?? "—")</dd>
+                        <dt class="col-5 pm-muted fw-normal">Estado sugerido</dt><dd class="col-7">@(_report.SuggestedState?.Name ?? "—")</dd>
+                    </dl>
+                    <p class="pm-muted small mt-2 mb-0">A sugestão não muda o estado: só uma pessoa conclui ou aprova a tarefa.</p>
+                </section>
+
+                <section class="pm-card" aria-labelledby="testes">
+                    <h2 id="testes">Testes (declarados)</h2>
+                    @if (_report.Tests is { } tests)
+                    {
+                        <dl class="row small mb-0">
+                            @if (tests.Command is not null)
+                            {
+                                <dt class="col-5 pm-muted fw-normal">Comando</dt><dd class="col-7"><code>@tests.Command</code></dd>
+                            }
+                            <dt class="col-5 pm-muted fw-normal">Passaram</dt><dd class="col-7">@Count(tests.Passed)</dd>
+                            <dt class="col-5 pm-muted fw-normal">Falharam</dt><dd class="col-7">@Count(tests.Failed)</dd>
+                            <dt class="col-5 pm-muted fw-normal">Ignorados</dt><dd class="col-7">@Count(tests.Skipped)</dd>
+                        </dl>
+                    }
+                    else
+                    {
+                        <p class="pm-muted small mb-0">O agente não informou testes.</p>
+                    }
+                </section>
+
+                <section class="pm-card" aria-labelledby="commit">
+                    <h2 id="commit">Commit (declarado)</h2>
+                    @if (_report.Commit is { } commit)
+                    {
+                        <p class="small mb-1"><code class="text-break">@commit.Sha</code></p>
+                        @if (commit.Repository is not null)
+                        {
+                            <p class="pm-muted small mb-0">@commit.Repository</p>
+                        }
+                    }
+                    else
+                    {
+                        <p class="pm-muted small mb-0">Nenhum commit informado.</p>
+                    }
+                    @if (_report.RequestId is not null)
+                    {
+                        <p class="pm-muted small mt-2 mb-0">Requisição: <code>@_report.RequestId</code></p>
+                    }
+                </section>
+            </div>
+        </div>
+    }
+</ProjectFrame>
+
+@code {
+    [Parameter]
+    public Guid ReportId { get; set; }
+
+    private WorkReportDetails? _report;
+
+    private static string Count(int? value) => value?.ToString(ProjectManager.Web.Display.Culture) ?? "—";
+
+    protected override async Task<Guid?> ResolveProjectIdAsync()
+    {
+        _report = Take(await Reports.GetAsync(OrganizationId, ReportId));
+        return _report?.ProjectId;
+    }
+}

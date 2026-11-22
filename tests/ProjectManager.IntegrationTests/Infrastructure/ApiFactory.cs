@@ -45,6 +45,10 @@ public sealed class ApiFactory(
             ["Email:FromAddress"] = "nao-responda@gestalyn.test",
             // Limite alto: apenas o teste de rate limiting usa um limite baixo.
             ["RateLimiting:Auth:PermitLimit"] = "100000",
+            // Idem para os agentes; a limpeza em segundo plano fica desligada e os testes executam o ciclo diretamente.
+            ["RateLimiting:Agents:PermitLimit"] = "100000",
+            ["RateLimiting:AgentAuthFailures:PermitLimit"] = "100000",
+            ["Agents:Retention:Enabled"] = "false",
             ["Storage:Attachments:RootPath"] = AttachmentsRoot,
         };
 

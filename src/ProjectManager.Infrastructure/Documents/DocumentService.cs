@@ -36,6 +36,12 @@ internal sealed class DocumentService(ProjectManagerDbContext dbContext, TimePro
     public async Task<Result<DocumentDetails>> CreateAsync(ProjectAccessGrant access, CreateDocumentRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(access);
+
+        // Documentos e decisões gravam autoria com FK para pessoas: agentes não chegam aqui (ADR-016).
+        if (!access.IsPerson)
+        {
+            return Result.Failure<DocumentDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage);
+        }
         ArgumentNullException.ThrowIfNull(request);
 
         var project = await dbContext.Projects.SingleOrDefaultAsync(p => p.Id == access.ProjectId, cancellationToken);
@@ -74,6 +80,12 @@ internal sealed class DocumentService(ProjectManagerDbContext dbContext, TimePro
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(access);
+
+        // Documentos e decisões gravam autoria com FK para pessoas: agentes não chegam aqui (ADR-016).
+        if (!access.IsPerson)
+        {
+            return Result.Failure<DocumentDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage);
+        }
         ArgumentNullException.ThrowIfNull(request);
 
         var found = await FindWritableAsync(documentId, cancellationToken);
@@ -142,6 +154,12 @@ internal sealed class DocumentService(ProjectManagerDbContext dbContext, TimePro
     public async Task<Result<DocumentDetails>> ArchiveAsync(ProjectAccessGrant access, Guid documentId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(access);
+
+        // Documentos e decisões gravam autoria com FK para pessoas: agentes não chegam aqui (ADR-016).
+        if (!access.IsPerson)
+        {
+            return Result.Failure<DocumentDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage);
+        }
 
         var found = await FindWritableAsync(documentId, cancellationToken);
         if (found.Error is not null)
