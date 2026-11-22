@@ -25,6 +25,11 @@ public static class Flash
         ["removido"] = "Removido.",
         ["registrado"] = "Atividade registrada.",
         ["decidido"] = "Decisão registrada.",
+        ["agente-criado"] = "Agente criado. Crie uma credencial para ele se conectar.",
+        ["desativado"] = "Agente desativado. Nenhuma credencial dele vale mais.",
+        ["reativado"] = "Agente reativado. Credenciais revogadas ou expiradas continuam sem valer.",
+        ["credencial-revogada"] = "Credencial revogada. Ela deixa de valer na próxima requisição.",
+        ["acesso-salvo"] = "Acesso ao projeto salvo.",
     };
 
     public static string With(string uri, string key)

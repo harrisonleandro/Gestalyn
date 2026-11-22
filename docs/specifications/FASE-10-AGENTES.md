@@ -738,6 +738,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 8 | Concluída em 2026-11-19 | Ver abaixo |
 | 9 | Concluída em 2026-11-22 | Ver abaixo |
 | 10 | Concluída em 2026-11-22 | Ver abaixo |
+| 11 | Concluída em 2026-11-22 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -1303,3 +1304,70 @@ Etapa obrigatória. Sem ela, a autenticação de agentes não estava pronta para
   - o primeiro ciclo de limpeza rodou um minuto depois da inicialização, sem nada vencido;
   - nenhum erro e nenhum token no log.
 - **Ainda não feito:** as telas (etapa 11) e a suíte de segurança, a ponta a ponta e o encerramento (etapa 12). A latência adicional por requisição de agente (busca do hash, upsert do contador e gravação da operação) fica para a medição da Fase 13, como prevê o ADR-016.
+
+### Etapa 11: telas Web de agentes, credenciais, acesso, operações e relatórios
+
+Implementa a D13 e a tarefa F09-018, transferida da Fase 09. As telas seguem o ADR-015: SSR com formulários e antiforgery, sem script embutido, e o que aparece depende só das permissões e dos dados que a API devolve.
+
+- **Clientes da Web:** `AgentsApi` (agentes, credenciais, projetos e operações) e `WorkReportsApi` (relatórios por projeto, por tarefa e por ID), com os contratos espelhados em `ApiAgentModels.cs`. A Web continua sem referenciar `Domain` ou `Application`.
+- **Telas novas** (`Components/Pages/Agents` e `Components/Pages/Reports`):
+  - `/o/{org}/agentes`: lista e criação. A criação redireciona para o agente com um aviso;
+  - `/o/{org}/agentes/{id}`:
+    - credenciais com nome, prefixo, escopos, situação, expiração e último uso;
+    - criação de credencial (escopos marcados um a um, validade de 1 a 365 dias) e revogação com confirmação;
+    - projetos concedidos, com concessão, troca de papel e remoção com confirmação. Só os papéis Colaborador e Observador são oferecidos, e só os projetos ainda não concedidos. Quem não gerencia a equipe do projeto recebe a recusa da API;
+    - as 10 operações mais recentes, com o resultado da autorização;
+    - dados, e desativação (com confirmação) ou reativação;
+  - `/o/{org}/agentes/{id}/operacoes`: operações com filtros de resultado e período e paginação;
+  - `/o/{org}/projetos/{id}/relatorios` (aba nova do projeto) e `/o/{org}/relatorios/{id}`: relatórios com os níveis da D8.
+- **Permissão:** o menu mostra "Agentes" só com `agents.manage`. Sem ela, as telas de agentes respondem "Sem permissão" sem chamar a API de agentes; a API recusaria do mesmo jeito.
+- **Token exibido uma vez** (D13):
+  1. o token aparece na resposta do próprio formulário de criação, sem post-redirect-get e sem navegação aprimorada; a lista de credenciais é recarregada na mesma resposta;
+  2. `UseNoStoreForAgentPages` põe `Cache-Control: no-store` e `Pragma: no-cache` em toda resposta de `/o/{org}/agentes/...`; a API já respondia `no-store` na criação;
+  3. o token não vai para URL, aviso, sessão, cookie nem armazenamento do navegador. `CreatedAgentCredential.ToString()` não mostra o token;
+  4. o cliente da API só registra falhas de rede, nunca corpos; um teste confere o log do cliente na criação;
+  5. o botão "Copiar" usa a Clipboard API num tratador de `wwwroot/js/app.js`, sem guardar nada;
+  6. a tela avisa que o token não volta e orienta criar uma credencial nova e revogar a antiga.
+- **Escopos no formulário:** caixas desmarcadas não são enviadas, então o modelo começa com tudo desmarcado e a tela marca `context:read` e `tasks:read` só na primeira abertura. Um padrão `true` no modelo não poderia ser desmarcado.
+- **Autoria "Agente: nome"** (`Display.Actor`): na tarefa ("Criada por", campo novo), no histórico de estados e nas atividades. Agente sem nome aparece como "Agente: removido".
+- **Relatórios na tarefa:** a tarefa ganhou a seção "Relatórios de agentes".
+- **Níveis de evidência** (`WorkReportEvidenceList`), sempre separados: "Declarado pelo agente", "Recebido e validado pela API", "Testes não verificados", "CI não verificado" e "Aprovação humana pendente" ou "Aprovado por {pessoa} em {data}". Sem tarefa, "não se aplica". Na tela do relatório, cada bloco é rotulado como declarado, e o Markdown das alterações passa pelo `MarkdownView`.
+- **Testes novos** (bUnit, `tests/ProjectManager.WebTests`):
+  - `AgentPagesTests` (14):
+    - menu e lista conforme `agents.manage`;
+    - credenciais pelo prefixo e sem token, revogação e desativação com confirmação;
+    - só Colaborador e Observador, e só projetos não concedidos;
+    - operações com o modelo da rota, o resultado e a repetição;
+    - token uma vez: na resposta do formulário, sem navegar, fora da URL e do log, com os escopos marcados no corpo enviado, e ausente ao reabrir a tela;
+    - recusa da API sem token;
+    - agente desativado; agente de outra organização (404);
+    - filtros da tela de operações; rotas cobertas pelo `no-store`; `ToString()` sem o token;
+  - `WorkReportPagesTests` (7): os cinco níveis, a aprovação com nome e data, "não se aplica", a tela do relatório, a aba do projeto, a autoria e os relatórios na tarefa, e "Agente: nome" nas atividades.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet test`: **563/563** (259 unitários, 65 de componentes, 239 de integração);
+  - antes da etapa: 542/542.
+- **Mutações:** 10 de 10 detectadas, cada uma pelo teste esperado. Duas não compilavam na primeira versão (campo nunca atribuído e código inalcançável, por causa dos avisos tratados como erros) e foram refeitas:
+  - redirecionar depois de criar a credencial (post-redirect-get);
+  - menu mostrando "Agentes" sem a permissão;
+  - lista de agentes consultando a API sem a permissão;
+  - autoria de agente sem o rótulo "Agente:", na tarefa e nas atividades (duas mutações);
+  - `no-store` só na lista, sem as telas de cada agente;
+  - aprovação pendente exibida como aprovada;
+  - `ToString()` com o token;
+  - projetos já concedidos oferecidos de novo;
+  - escopos sem a marcação da primeira abertura.
+- **Execução real** (API e Web locais, banco de desenvolvimento): roteiro por HTTP com o cookie de sessão e os formulários reais, imprimindo só códigos e booleanos:
+  - login na Web e lista de agentes com `Cache-Control: no-store` e o item "Agentes" no menu;
+  - criar agente (302 para o agente, com aviso) e conceder um projeto;
+  - criar credencial: 200, sem redirecionamento, `no-store`, o token **uma única vez** na página e o aviso de que ele não volta. O token exibido funcionou na API (`GET /agents/me`: 200);
+  - reabrir a tela: token ausente, credencial listada pelo prefixo e último uso preenchido;
+  - revogar pela Web: 302 com aviso; o token passou a receber 401;
+  - operações com "Permitida" e "Credencial revogada", o modelo da rota e nenhum token; o filtro de revogadas mostra só as revogadas;
+  - desativar: a tela passa a oferecer só a reativação;
+  - relatório real da etapa 9: aba do projeto, tela do relatório e tarefa com os quatro níveis, "Aprovação humana pendente" e "Agente: nome";
+  - colaboradora sem `agents.manage`: "Sem permissão" e menu sem "Agentes";
+  - nenhum `gsk_` e nenhum erro nos logs da API e da Web.
+- **Correção encontrada na execução real:** a API devolve o prefixo sem o marcador (`Q2GnYhfx`), e a tela o mostrava assim, diferente do começo do token que a pessoa guardou. A tela passou a mostrar `gsk_Q2GnYhfx…`, e os dados dos testes passaram a usar o formato real do prefixo.
+- **Documentação:** `docs/web/TELAS.md` ganhou a seção "Agentes", a aba de relatórios, a tela do relatório e a autoria de agentes.
+- **Ainda não feito:** a etapa 12 (suíte de segurança, ponta a ponta, execução real completa e documentação de encerramento).

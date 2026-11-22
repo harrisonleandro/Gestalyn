@@ -284,6 +284,7 @@ public static class Permissions
     public const string MembersRemove = "members.remove";
     public const string ProjectsCreate = "projects.create";
     public const string ActivityReadAll = "activity.read_all";
+    public const string AgentsManage = "agents.manage";
 
     public const string ProjectUpdate = "project.update";
     public const string ProjectArchive = "project.archive";

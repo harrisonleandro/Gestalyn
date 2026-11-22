@@ -66,9 +66,9 @@ public sealed class OrganizationsApi(GestalynApi api)
 /// <summary>Projetos, equipe, repositórios, dashboards e atividades do projeto.</summary>
 public sealed class ProjectsApi(GestalynApi api)
 {
-    public Task<ApiResult<Paged<ProjectSummary>>> ListAsync(Guid organizationId, bool includeArchived, string? tag, Priority? priority, int page) =>
+    public Task<ApiResult<Paged<ProjectSummary>>> ListAsync(Guid organizationId, bool includeArchived, string? tag, Priority? priority, int page, int pageSize = 25) =>
         api.GetAsync<Paged<ProjectSummary>>(
-            $"organizations/{organizationId}/projects{Query.Of(("includeArchived", includeArchived), ("tag", tag), ("priority", priority), ("page", page), ("pageSize", 25))}");
+            $"organizations/{organizationId}/projects{Query.Of(("includeArchived", includeArchived), ("tag", tag), ("priority", priority), ("page", page), ("pageSize", pageSize))}");
 
     public Task<ApiResult<ProjectDetails>> CreateAsync(Guid organizationId, object body) =>
         api.SendAsync<ProjectDetails>(HttpMethod.Post, $"organizations/{organizationId}/projects", body);

@@ -2,6 +2,28 @@
 // Roda na fase de captura, antes da navegação aprimorada do Blazor, e reenvia o formulário depois da confirmação.
 const dialog = () => document.getElementById("pm-confirm");
 
+// Copiar o token de uma credencial recém-criada (ADR-016, D13): só a Clipboard API, sem guardar nada no navegador.
+document.addEventListener("click", async (event) => {
+    const button = event.target instanceof Element ? event.target.closest("[data-copy-target]") : null;
+    if (!button) {
+        return;
+    }
+
+    const field = document.getElementById(button.dataset.copyTarget);
+    if (!field || !navigator.clipboard) {
+        button.textContent = "Copie manualmente";
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(field.value);
+        button.textContent = "Copiado";
+    } catch {
+        field.select();
+        button.textContent = "Copie manualmente";
+    }
+});
+
 document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !form.dataset.confirm || form.dataset.confirmed === "true") {

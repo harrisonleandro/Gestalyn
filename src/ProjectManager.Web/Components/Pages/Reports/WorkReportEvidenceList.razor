@@ -1,0 +1,27 @@
+@*
+    Os cinco níveis de evidência de um relatório (ADR-016, D8), sempre separados e rotulados: o conteúdo é declaração
+    do agente; "recebido" não é aprovação; testes e CI não são verificados nesta fase.
+*@
+@inject Display Display
+
+<ul class="pm-evidence list-unstyled d-flex flex-wrap gap-2 mb-0" aria-label="Níveis de evidência">
+    @if (Evidence.Declared)
+    {
+        <li class="pm-label">Declarado pelo agente</li>
+    }
+    @if (Evidence.Accepted)
+    {
+        <li class="pm-label">Recebido e validado pela API</li>
+    }
+    <li class="pm-label">@ProjectManager.Web.Display.TestsLevel(Evidence.TestsExecuted)</li>
+    <li class="pm-label">@ProjectManager.Web.Display.CiLevel(Evidence.CiConfirmed)</li>
+    <li class="pm-label">@Display.ApprovalLevel(Evidence, Approval)</li>
+</ul>
+
+@code {
+    [Parameter, EditorRequired]
+    public WorkReportEvidence Evidence { get; set; } = default!;
+
+    [Parameter]
+    public WorkReportApproval? Approval { get; set; }
+}
