@@ -307,7 +307,7 @@ Os temas abaixo foram decididos em linhas gerais pela especificação mestre. O 
 | ~~Workflow configurável, aprovação e histórico de estados~~ (ADR-013) | 07 (concluída) |
 | Armazenamento de anexos em object storage compatível com S3 | 14 |
 | Cabeçalho `X-Gestalyn-Organization` para rotas por ID de recurso; papéis de projeto | 05 |
-| Credenciais de agentes, escopos, idempotência, auditoria de operações e rate limiting ([ADR-016](../decisions/ADR-016-AGENTES.md), implementada; integração pendente) | 10 |
+| ~~Credenciais de agentes, escopos, idempotência, auditoria de operações e rate limiting~~ ([ADR-016](../decisions/ADR-016-AGENTES.md)) | 10 (concluída) |
 | Armazenamento seguro de credenciais na CLI | 11 |
 | Servidor MCP | 12 |
 | SignalR, quando houver necessidade real | 09 |

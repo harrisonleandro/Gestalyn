@@ -2,8 +2,8 @@
 
 - **Data:** 2026-11-22
 - **Ambiente:** Windows 11 Pro · .NET SDK 10.0.404 · Docker 29.8.2 · PostgreSQL 18 · Mailpit v1.29
-- **Branch:** `feature/fase-10-agentes` (rebaseada em `develop` `d6c34fc`, com as Fases 01 a 09 integradas). Só commits locais: nada foi enviado ao repositório remoto.
-- **Estado:** **In Review.** As 12 etapas estão implementadas e verificadas localmente. A fase só fica `Completed` depois do PR para `develop` com o check "Build e testes" aprovado (definição de conclusão), o que depende de autorização do responsável.
+- **Branch:** `feature/fase-10-agentes` (rebaseada em `develop` `d6c34fc`, com as Fases 01 a 09 integradas), integrada pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19).
+- **Estado:** **Completed.** Critérios verificados localmente e no CI; integrada em `develop` pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19) (merge `b9e8daa`).
 - **Formato:** seção 17 da [especificação mestre](../specifications/ESPECIFICACAO-MESTRE.md)
 
 ## 1. Nome e número da fase
@@ -105,6 +105,8 @@ O teste de ponta a ponta (`AgentEndToEndTests`) segue os oito passos da estraté
 | WebTests (bUnit) | **65/65** |
 | IntegrationTests (PostgreSQL 18 e Mailpit via Testcontainers) | **241/241** |
 | Total | **565/565** (antes da fase: 372/372) |
+| CI do PR #19 | [run 45039861969](https://github.com/harrisonleandro/Gestalyn/actions/runs/45039861969): success, 0 avisos, os mesmos 565 testes |
+| CI de `develop` depois do merge | [run 45040388503](https://github.com/harrisonleandro/Gestalyn/actions/runs/45040388503): success, 0 avisos |
 
 ## 11. Evidências
 
@@ -168,7 +170,6 @@ O teste de ponta a ponta (`AgentEndToEndTests`) segue os oito passos da estraté
 
 ## 14. Pendências
 
-- **Integração:** push da branch, PR para `develop` e CI, que dependem de autorização do responsável. Só depois disso a fase fica `Completed`.
 - **Fase 12:** verificação de testes e CI dos relatórios (`work_report_verifications`) e o servidor MCP.
 - **Fase 13:** latência adicional por requisição de agente e testes de carga do rate limiting.
 - **Fase 14:** forwarded headers para o limite por IP atrás de proxy; limite por IP compartilhado entre instâncias, se houver mais de uma.
@@ -199,8 +200,7 @@ O teste de ponta a ponta (`AgentEndToEndTests`) segue os oito passos da estraté
 
 ## 16. Critérios não atendidos
 
-- **"Todos os critérios verificados local e no CI" e "integradas por PR, com o check aprovado"** (definição de conclusão): a verificação local está completa; o CI e o PR dependem de autorização para o push.
-- Nenhum critério de aceitação funcional ficou sem verificação.
+Nenhum. A verificação no CI e a integração por PR, que dependiam de autorização, foram feitas: [run 45039861969](https://github.com/harrisonleandro/Gestalyn/actions/runs/45039861969) e [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19).
 
 ## 17. Riscos identificados
 
@@ -215,12 +215,11 @@ O teste de ponta a ponta (`AgentEndToEndTests`) segue os oito passos da estraté
 
 ## 18. Estado do Git
 
-- **Branch:** `feature/fase-10-agentes`, com 21 commits locais sobre `develop` `d6c34fc`: a documentação aprovada, uma etapa por commit (1 a 12), as correções da revisão independente em commits próprios e este encerramento. O último commit é o da etapa 12.
-- **Remoto:** nada enviado. A branch não existe no GitHub; não há PR.
-- **`main` e `develop`:** inalteradas (`c6bd32a` e `d6c34fc`).
-- **Working tree:** limpa depois do commit da etapa 12.
+- **Branch:** `feature/fase-10-agentes`, 21 commits sobre `develop` `d6c34fc`, enviada e integrada pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19) (merge `b9e8daa`). A branch não foi apagada.
+- **`develop`:** `b9e8daa`, com o CI aprovado ([run 45040388503](https://github.com/harrisonleandro/Gestalyn/actions/runs/45040388503)).
+- **`main`:** inalterada (`c6bd32a`).
 - **Banco de desenvolvimento local:** as seis migrações da fase aplicadas (não é um ambiente compartilhado).
 
 ## 19. Próxima fase recomendada
 
-Fase 11 (CLI `gestalyn`), depois da integração desta fase em `develop`. A CLI usa a API por HTTP e pode reaproveitar as rotas de agentes para o modo de automação, com a credencial guardada no cofre do sistema operacional. Antes, recomenda-se revisar o PR da Fase 10 com atenção às exceções de isolamento do ADR-016 e à exibição do token na Web.
+Fase 11 (CLI `gestalyn`). A CLI usa a API por HTTP e pode reaproveitar as rotas de agentes para o modo de automação, com a credencial guardada no cofre do sistema operacional.

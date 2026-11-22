@@ -8,7 +8,7 @@
 
 ## Fase atual
 
-**Fase 10, API e autenticação de agentes: In Review.** As 12 etapas da [especificação](specifications/FASE-10-AGENTES.md) (aprovada em 2026-11-18) estão implementadas e verificadas localmente na branch `feature/fase-10-agentes`, em commits locais, sem envio ao remoto: 565/565 testes (259 unitários, 65 de componentes, 241 de integração), teste de ponta a ponta com um token real, mutações de segurança detectadas e execução real da API e da Web (o token não aparece no banco, nas leituras posteriores nem nos logs). Agentes têm credenciais próprias com expiração, escopos e revogação, acesso concedido por projeto, idempotência, auditoria de cada operação, rate limiting, retenção e relatórios de trabalho; nunca aprovam nem concluem tarefas. A interface de agentes transferida da Fase 09 (F09-018) está incluída. **Falta:** push, PR para `develop` e o check "Build e testes", que dependem de autorização do responsável. Relatório: [FASE-10-RELATORIO.md](reports/FASE-10-RELATORIO.md); segurança: [security/AGENTES.md](security/AGENTES.md). O tempo real continua fora, sem necessidade comprovada.
+**Fase 10, API e autenticação de agentes: Completed.** As 12 etapas da [especificação](specifications/FASE-10-AGENTES.md) foram validadas localmente (565/565 testes, teste de ponta a ponta com um token real, mutações de segurança detectadas e execução real da API e da Web, sem o token no banco, nas leituras posteriores nem nos logs) e no CI ([run 45039861969](https://github.com/harrisonleandro/Gestalyn/actions/runs/45039861969) no PR: 0 avisos, 259/259, 65/65 e 241/241). Integrada em `develop` pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19) (merge `b9e8daa`), com o CI de `develop` aprovado ([run 45040388503](https://github.com/harrisonleandro/Gestalyn/actions/runs/45040388503)). Agentes têm credenciais próprias com expiração, escopos e revogação, acesso concedido por projeto, idempotência, auditoria de cada operação, rate limiting, retenção e relatórios de trabalho; nunca aprovam nem concluem tarefas. A interface de agentes transferida da Fase 09 (F09-018) está incluída. Relatório: [FASE-10-RELATORIO.md](reports/FASE-10-RELATORIO.md); segurança: [security/AGENTES.md](security/AGENTES.md). A próxima é a Fase 11, que depende de autorização.
 
 **Fase 09, Interface web completa: Completed.** Validada localmente (372/372 testes, quatro mutações da interface detectadas e execução real no navegador com Gerente, Colaboradora e Observador, em 375 px e 1440 px). A interface de agentes (F09-018) foi transferida para a Fase 10 e o tempo real (F09-021) não foi implementado, por falta de necessidade comprovada (ADR-015). Validada também no CI ([run 43716683611](https://github.com/harrisonleandro/Gestalyn/actions/runs/43716683611): 0 avisos, 178/178, 43/43 e 151/151) e integrada em `develop` pelo [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) (merge `5960bde`). A próxima é a Fase 10, que depende de autorização.
 
@@ -37,8 +37,7 @@
 | Branch | Commit | Conteúdo |
 |---|---|---|
 | `main` | `c6bd32a` | Fase 01. Recebe `develop` só por PR de release, num marco definido pelo responsável. |
-| `develop` | `d6c34fc` | Fases 01 a 09, correções da auditoria e registro da Fase 09 como concluída |
-| `feature/fase-10-agentes` (só local) | último commit: etapa 12 | Fase 10 completa, 21 commits sobre `develop` `d6c34fc`; ainda não enviada ao remoto |
+| `develop` | `b9e8daa` | Fases 01 a 10 (Fase 10 pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19)) |
 
 **Proteção** (rulesets ativos desde 2026-11-14, sem exceções de bloqueio), nas duas branches:
 - não podem ser excluídas nem receber force push;
@@ -61,7 +60,7 @@ Não há aprovação de revisor obrigatória enquanto houver um único mantenedo
 | 07 | Workflow configurável e histórico | Completed | [FASE-07-WORKFLOW.md](specifications/FASE-07-WORKFLOW.md) | [FASE-07-RELATORIO.md](reports/FASE-07-RELATORIO.md) |
 | 08 | Auditoria, documentação e dashboards | Completed | [FASE-08-AUDITORIA.md](specifications/FASE-08-AUDITORIA.md) | [FASE-08-RELATORIO.md](reports/FASE-08-RELATORIO.md) |
 | 09 | Interface web completa | Completed | [FASE-09-WEB.md](specifications/FASE-09-WEB.md) | [FASE-09-RELATORIO.md](reports/FASE-09-RELATORIO.md) |
-| 10 | API e autenticação de agentes | In Review | [FASE-10-AGENTES.md](specifications/FASE-10-AGENTES.md) | [FASE-10-RELATORIO.md](reports/FASE-10-RELATORIO.md) |
+| 10 | API e autenticação de agentes | Completed | [FASE-10-AGENTES.md](specifications/FASE-10-AGENTES.md) | [FASE-10-RELATORIO.md](reports/FASE-10-RELATORIO.md) |
 | 11 | CLI gestalyn | Not Started | — | — |
 | 12 | MCP e integrações com agentes | Not Started | — | — |
 | 13 | Testes integrados e hardening | Not Started | — | — |
@@ -254,30 +253,29 @@ Evidências na [especificação da Fase 09](specifications/FASE-09-WEB.md#execu�
 
 | ID | Tarefa | Estado |
 |---|---|---|
-| F10-001 | Implementar entidade Agent | Completed (critérios verificados localmente) |
-| F10-002 | Implementar provisionamento | Completed (critérios verificados localmente) |
-| F10-003 | Implementar credenciais | Completed (critérios verificados localmente) |
-| F10-004 | Implementar hash e armazenamento seguro de tokens | Completed (critérios verificados localmente) |
-| F10-005 | Implementar expiração | Completed (critérios verificados localmente) |
-| F10-006 | Implementar revogação | Completed (critérios verificados localmente) |
-| F10-007 | Implementar escopos de acesso | Completed (critérios verificados localmente) |
-| F10-008 | Implementar AgentProjectAccess | Completed (critérios verificados localmente) |
-| F10-009 | Implementar autenticação de agentes | Completed (critérios verificados localmente) |
-| F10-010 | Implementar endpoints de contexto | Completed (critérios verificados localmente) |
-| F10-011 | Implementar listagem de tarefas | Completed (critérios verificados localmente) |
-| F10-012 | Implementar criação e atualização de tarefas | Completed (critérios verificados localmente) |
-| F10-013 | Implementar registro de atividades | Completed (critérios verificados localmente) |
-| F10-014 | Implementar relatórios de trabalho | Completed (critérios verificados localmente) |
-| F10-015 | Implementar idempotência | Completed (critérios verificados localmente) |
-| F10-016 | Implementar auditoria de operações | Completed (critérios verificados localmente) |
-| F10-017 | Criar testes de segurança | Completed (critérios verificados localmente) |
-| F09-018 | Implementar interface de agentes (transferida) | Completed (critérios verificados localmente) |
+| F10-001 | Implementar entidade Agent | Completed |
+| F10-002 | Implementar provisionamento | Completed |
+| F10-003 | Implementar credenciais | Completed |
+| F10-004 | Implementar hash e armazenamento seguro de tokens | Completed |
+| F10-005 | Implementar expiração | Completed |
+| F10-006 | Implementar revogação | Completed |
+| F10-007 | Implementar escopos de acesso | Completed |
+| F10-008 | Implementar AgentProjectAccess | Completed |
+| F10-009 | Implementar autenticação de agentes | Completed |
+| F10-010 | Implementar endpoints de contexto | Completed |
+| F10-011 | Implementar listagem de tarefas | Completed |
+| F10-012 | Implementar criação e atualização de tarefas | Completed |
+| F10-013 | Implementar registro de atividades | Completed |
+| F10-014 | Implementar relatórios de trabalho | Completed |
+| F10-015 | Implementar idempotência | Completed |
+| F10-016 | Implementar auditoria de operações | Completed |
+| F10-017 | Criar testes de segurança | Completed |
+| F09-018 | Implementar interface de agentes (transferida) | Completed |
 
-A fase fica `In Review` até o PR e o CI. Evidências na [especificação da Fase 10](specifications/FASE-10-AGENTES.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-10-RELATORIO.md).
+Validadas localmente e no CI, e integradas pelo [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19). Evidências na [especificação da Fase 10](specifications/FASE-10-AGENTES.md#execução-e-ajustes-em-relação-ao-plano) e no [relatório](reports/FASE-10-RELATORIO.md).
 
 ## Tarefas pendentes
 
-- Fase 10: push da branch `feature/fase-10-agentes`, PR para `develop` e o check "Build e testes" (dependem de autorização). Só depois a fase fica `Completed`.
 - Fases seguintes, registradas no [relatório da Fase 10](reports/FASE-10-RELATORIO.md#14-pendências): verificação de testes e CI dos relatórios (Fase 12), latência do pipeline de agentes e carga do rate limiting (Fase 13), forwarded headers e limite por IP entre instâncias (Fase 14).
 
 - Configurações recomendadas pela auditoria e ainda não aplicadas (dependem de decisão):
@@ -329,6 +327,8 @@ Incidentes já resolvidos, mantidos como referência:
 | GitHub Actions (`ubuntu-latest`), PR #13 | 2026-11-15 | `f3d000a` | [run 43666361156](https://github.com/harrisonleandro/Gestalyn/actions/runs/43666361156): success, 0 avisos, 148/148 e 132/132 (PostgreSQL e Mailpit via Testcontainers) |
 | GitHub Actions (`ubuntu-latest`), PR #15 | 2026-11-15 | `558c1d8` | [run 43672967965](https://github.com/harrisonleandro/Gestalyn/actions/runs/43672967965): success, 0 avisos, 178/178 e 150/150 (PostgreSQL e Mailpit via Testcontainers) |
 | GitHub Actions (`ubuntu-latest`), PR #17 | 2026-11-15 | `4407ff4` | [run 43716683611](https://github.com/harrisonleandro/Gestalyn/actions/runs/43716683611): success, 0 avisos, 178/178, 43/43 e 151/151 |
+| GitHub Actions (`ubuntu-latest`), `develop` | 2026-11-22 | `b9e8daa` (merge do PR #19) | [run 45040388503](https://github.com/harrisonleandro/Gestalyn/actions/runs/45040388503): success, 0 avisos, 259/259, 65/65 e 241/241 |
+| GitHub Actions (`ubuntu-latest`), PR #19 | 2026-11-22 | `910272c` | [run 45039861969](https://github.com/harrisonleandro/Gestalyn/actions/runs/45039861969): success, 0 avisos, 259/259, 65/65 e 241/241 (PostgreSQL e Mailpit via Testcontainers) |
 | Local, `feature/fase-10-agentes` | 2026-11-22 | commit da etapa 12 | restore exit 0 · build Release 0 avisos e 0 erros · sem mudanças pendentes no modelo · testes 565/565 (259 unitários, 65 de componentes, 241 de integração) · mutações de segurança detectadas · API e Web executadas com o fluxo de ponta a ponta; token ausente do banco e dos logs |
 | Local, `feature/fase-09-web` | 2026-11-15 | `409d642` | restore exit 0 · build Release 0 avisos e 0 erros · testes 372/372 (178 unitários, 43 de componentes, 151 de integração) · 4 mutações da interface detectadas · Web e API executadas no navegador com três papéis, em 375 px e 1440 px |
 | Local, `feature/fase-08-auditoria` | 2026-11-15 | `2d20219` | restore exit 0 · build Release 0 avisos e 0 erros · testes 328/328 (178 unitários, 150 de integração) · 4 mutações detectadas · migrations aplicadas no banco local · API executada com atividades, documentos, decisões e dashboards |
@@ -366,7 +366,8 @@ Incidentes já resolvidos, mantidos como referência:
 | 2026-11-14 | Proteção de `main` e `develop` por rulesets: PR obrigatório, CI "Build e testes" obrigatório, sem force push nem exclusão | Rulesets 27277722 e 27277724 |
 | 2026-11-15 | Fase 07 integrada em `develop` (PR #13, merge `a6f87f9`) | [PR #13](https://github.com/harrisonleandro/Gestalyn/pull/13) |
 | 2026-11-15 | Fase 08 integrada em `develop` (PR #15, merge `0e9dbdd`) | [PR #15](https://github.com/harrisonleandro/Gestalyn/pull/15) |
-| 2026-11-22 | Fase 10 implementada (etapas 1 a 12) e em revisão: prefixo exibido como `gsk_xxxxxxxx…` na Web; `no-store` em todas as telas de agentes; testes reforçados para a camada de permissões elegíveis e para o `CHECK` de autoria | [ADR-016](decisions/ADR-016-AGENTES.md#implementação-das-etapas-11-e-12-2026-11-22), [relatório](reports/FASE-10-RELATORIO.md) |
+| 2026-11-22 | Fase 10 integrada em `develop` ([PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19), merge `b9e8daa`) | [PR #19](https://github.com/harrisonleandro/Gestalyn/pull/19) |
+| 2026-11-22 | Fase 10 implementada (etapas 1 a 12): prefixo exibido como `gsk_xxxxxxxx…` na Web; `no-store` em todas as telas de agentes; testes reforçados para a camada de permissões elegíveis e para o `CHECK` de autoria | [ADR-016](decisions/ADR-016-AGENTES.md#implementação-das-etapas-11-e-12-2026-11-22), [relatório](reports/FASE-10-RELATORIO.md) |
 | 2026-11-18 | Fase 10, correções da revisão independente: política de agentes pela marca `[AgentApi]` conferida na inicialização; trava otimista no limite de credenciais no lugar da transação serializável; `CHECK` de escopos conhecidos; testes de isolamento e de recusas indistinguíveis | [ADR-016, revisão](decisions/ADR-016-AGENTES.md#revisão-de-2026-11-18-revisão-técnica-independente-das-etapas-1-a-4) |
 | 2026-11-18 | Fase 09 registrada como Completed em `develop` (PR #18, merge `d6c34fc`) | [PR #18](https://github.com/harrisonleandro/Gestalyn/pull/18) |
 | 2026-11-15 | Fase 09 integrada em `develop` (PR #17, merge `5960bde`) | [PR #17](https://github.com/harrisonleandro/Gestalyn/pull/17) |
@@ -378,5 +379,4 @@ Incidentes já resolvidos, mantidos como referência:
 
 ## Próxima atividade
 
-1. Revisão da Fase 10 pelo responsável e, com autorização, push da branch `feature/fase-10-agentes`, PR para `develop` e CI.
-2. Depois da integração, a Fase 11 (CLI `gestalyn`), que depende de autorização.
+1. Fase 11 (CLI `gestalyn`): especificação e aprovação antes de qualquer implementação, conforme o processo obrigatório.
