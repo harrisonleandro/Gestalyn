@@ -158,6 +158,7 @@ As transições disponíveis passam a ser calculadas por `TransitionRules`, para
   - **Instâncias:** funciona com várias.
 - **Limite inicial:** 120 por minuto. Acima dele, 429 com `Retry-After`.
 - **Janela fixa:** admite até o dobro do limite na virada, o que é aceito e documentado.
+- **Autenticação explícita na entrada das rotas de agentes** (etapa 10): com as políticas explícitas, o `UseAuthentication` só executa o JWT, o esquema padrão. O `AgentRequestMiddleware` autentica pelo `AgentToken` logo depois dele, aplica o limite por IP e o da credencial e envolve a requisição na auditoria; a política `Agent` da rota reaproveita o resultado guardado pelo ASP.NET Core, sem nova consulta. A ordem do pipeline da D3 fica preservada.
 - **Complemento:** um limite em memória de falhas de autenticação por IP, só para proteger a consulta do hash. Não é a cota dos agentes.
 
 ### Retenção

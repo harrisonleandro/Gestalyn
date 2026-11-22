@@ -77,6 +77,10 @@ public sealed class ProjectManagerDbContext(
 
     public DbSet<WorkReport> WorkReports => Set<WorkReport>();
 
+    public DbSet<AgentOperation> AgentOperations => Set<AgentOperation>();
+
+    public DbSet<AgentRateLimitCounter> AgentRateLimitCounters => Set<AgentRateLimitCounter>();
+
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
 
     public DbSet<ProjectTag> ProjectTags => Set<ProjectTag>();

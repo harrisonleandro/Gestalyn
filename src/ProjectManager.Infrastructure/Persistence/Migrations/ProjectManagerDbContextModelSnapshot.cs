@@ -464,6 +464,112 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<string>("AuthorizationResult")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("authorization_result");
+
+                    b.Property<string>("ClientOrigin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("client_origin");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<string>("DenialCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("denial_code");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_ms");
+
+                    b.Property<string>("HttpMethod")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("http_method");
+
+                    b.Property<bool>("IdempotentReplay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("idempotent_replay");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("RouteTemplate")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("route_template");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agent_operations");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_agent_operations_occurred_at");
+
+                    b.HasIndex("AgentId", "OccurredAt")
+                        .HasDatabaseName("ix_agent_operations_agent_id_occurred_at");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_agent_operations_organization_id_agent_id");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_agent_operations_organization_id_credential_id");
+
+                    b.HasIndex("OrganizationId", "OccurredAt")
+                        .HasDatabaseName("ix_agent_operations_organization_id_occurred_at");
+
+                    b.ToTable("agent_operations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_operations_duration", "duration_ms >= 0");
+                        });
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Agents.AgentProjectAccess", b =>
                 {
                     b.Property<Guid>("Id")
@@ -525,6 +631,39 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("agent_project_access", null, t =>
                         {
                             t.HasCheckConstraint("ck_agent_project_access_role", "role IN ('Contributor', 'Viewer')");
+                        });
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentRateLimitCounter", b =>
+                {
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<DateTimeOffset>("WindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_start");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("RequestCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("request_count");
+
+                    b.HasKey("CredentialId", "WindowStart")
+                        .HasName("pk_agent_rate_limit_counters");
+
+                    b.HasIndex("WindowStart")
+                        .HasDatabaseName("ix_agent_rate_limit_counters_window_start");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_agent_rate_limit_counters_organization_id_credential_id");
+
+                    b.ToTable("agent_rate_limit_counters", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_agent_rate_limit_counters_count", "request_count > 0");
                         });
                 });
 
@@ -2656,6 +2795,25 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_agent_credentials_agents_organization_id_agent_id");
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentOperation", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_operations_agents_organization_id_agent_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_operations_agent_credentials_organization_id_credenti");
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Agents.AgentProjectAccess", b =>
                 {
                     b.HasOne("ProjectManager.Infrastructure.Identity.ApplicationUser", null)
@@ -2680,6 +2838,17 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_agent_project_access_projects_organization_id_project_id");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.AgentRateLimitCounter", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agent_rate_limit_counters_agent_credentials_organization_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Agents.IdempotencyRecord", b =>

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using ProjectManager.API.Agents;
 using ProjectManager.Application.Abstractions.Authentication;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Domain.Agents;
@@ -20,6 +21,8 @@ internal sealed partial class AgentTokenAuthenticationHandler(
     UrlEncoder encoder,
     IAgentCredentialDirectory directory,
     TenantContext tenantContext,
+    AgentOperationContext operation,
+    AgentAuthFailureLimiter failureLimiter,
     TimeProvider timeProvider) : AuthenticationHandler<AuthenticationSchemeOptions>(options, loggerFactory, encoder)
 {
     public const string SchemeName = "AgentToken";
@@ -41,9 +44,11 @@ internal sealed partial class AgentTokenAuthenticationHandler(
             return AuthenticateResult.NoResult();
         }
 
+        // Inexistente ou malformado: sem agente nem organização, fica só no log e conta para o limite por IP (D11).
         if (!AgentTokens.IsWellFormed(token))
         {
             LogMalformedToken(Logger);
+            failureLimiter.RecordFailure(Context.Connection.RemoteIpAddress);
             return AuthenticateResult.Fail(FailureMessage);
         }
 
@@ -51,13 +56,30 @@ internal sealed partial class AgentTokenAuthenticationHandler(
         if (match is null)
         {
             LogUnknownToken(Logger);
+            failureLimiter.RecordFailure(Context.Connection.RemoteIpAddress);
             return AuthenticateResult.Fail(FailureMessage);
         }
+
+        // Credencial conhecida: a requisição vai para a auditoria, inclusive quando recusada (D10).
+        operation.Identify(match.OrganizationId, match.AgentId, match.CredentialId);
 
         var verdict = match.Evaluate(timeProvider.GetUtcNow());
         if (verdict != AgentCredentialVerdict.Valid)
         {
             LogRejectedCredential(Logger, match.CredentialId, match.AgentId, verdict);
+            operation.Deny(
+                verdict switch
+                {
+                    AgentCredentialVerdict.Revoked => AgentAuthorizationResult.CredentialRevoked,
+                    AgentCredentialVerdict.Expired => AgentAuthorizationResult.CredentialExpired,
+                    _ => AgentAuthorizationResult.AgentDisabled,
+                },
+                verdict switch
+                {
+                    AgentCredentialVerdict.Revoked => "credential_revoked",
+                    AgentCredentialVerdict.Expired => "credential_expired",
+                    _ => "agent_disabled",
+                });
             return AuthenticateResult.Fail(FailureMessage);
         }
 

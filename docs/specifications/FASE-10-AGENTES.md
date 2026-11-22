@@ -737,6 +737,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 7 | Concluída em 2026-11-19 | Ver abaixo |
 | 8 | Concluída em 2026-11-19 | Ver abaixo |
 | 9 | Concluída em 2026-11-22 | Ver abaixo |
+| 10 | Concluída em 2026-11-22 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -1216,3 +1217,89 @@ A revisão técnica independente do pacote das etapas 1 a 4 manteve a arquitetur
   - leitura pela pessoa: 200, autor `Agent`, aprovação humana pendente; as duas listas trazem o relatório; sem o cabeçalho de organização, 400;
   - depois de revogar a credencial, 401; nenhum erro e nenhum token no log.
 - **Ainda não feito:** a tabela `work_report_verifications` (Fase 12) e as telas de relatórios (etapa 11). Continuam obrigatórios na etapa 10: `AgentOperation`, rate limiting, `last_used_at`, limite por IP e retenção.
+
+### Etapa 10: auditoria de operações, rate limiting, último uso, limite por IP e retenção
+
+Etapa obrigatória. Sem ela, a autenticação de agentes não estava pronta para produção.
+
+- **Entrada das rotas de agentes** (`AgentRequestMiddleware`, logo depois de `UseAuthentication`, só para `/api/v1/agents`):
+  1. token `gsk_` de um IP acima do limite de falhas: 429 com `Retry-After`, **antes de qualquer consulta ao banco**;
+  2. autenticação explícita pelo esquema `AgentToken`. O ASP.NET Core guarda o resultado por requisição, e a política `Agent` da rota reaproveita, sem nova consulta. Com as políticas explícitas da etapa 1, o `UseAuthentication` só roda o JWT, o esquema padrão; sem esta chamada, a autenticação do agente aconteceria só na autorização, depois da organização ativa;
+  3. rate limiting da credencial (D11);
+  4. o resto do pipeline (organização ativa, autorização por escopo e projeto, idempotência e ação);
+  5. no fim, com a credencial identificada, a linha de `AgentOperation`.
+- **`AgentOperation`** (tabela `agent_operations`, migração `AddAgentOperationsAndRateLimits`):
+  - **campos da D10:** agente, credencial, data, duração, método, modelo da rota (com as restrições, por exemplo `/api/v1/agents/projects/{projectId:guid}/context`), projeto e tarefa, status, resultado da autorização, código da recusa, `correlation_id` (o `TraceIdentifier`), repetição de idempotência e origem (`X-Gestalyn-Client`);
+  - **projeto e tarefa** só entram quando o acesso foi concedido. IDs enviados pelo cliente numa requisição recusada nunca são gravados;
+  - **quem preenche o motivo:**
+    - o handler: `CredentialRevoked`, `CredentialExpired` e `AgentDisabled`;
+    - a guarda de organização: `OrganizationMismatch`;
+    - `ToResult`, o ponto único das decisões de `AgentAccessGrant`: `ProjectNotVisible`, `ScopeMissing`, `PermissionMissing` e `AgentDisabled`;
+    - o rate limiting: `RateLimited`;
+    - as regras de negócio: `BusinessRuleDenied`. `ResultError` ganhou um `Code` opcional (`agent_cannot_approve`, `agent_cannot_enter_done`, `people_only`), que `ToProblem` repassa. Um 403 sem código vira `business_rule`;
+  - **gravação:** num escopo de DI e num `DbContext` próprios, fora da transação da operação, sem o token de cancelamento da requisição. A organização do escopo é a da credencial, e o isolamento confere a gravação. Uma falha vira log de erro e deixa `agents-audit` em `Degraded` até a próxima gravação bem-sucedida. A requisição nunca falha por causa disso;
+  - **tokens inexistentes ou malformados:** só log e o limite por IP;
+  - **no banco:** gatilho que recusa `UPDATE` e `TRUNCATE` sempre, e `DELETE` de linha com até 180 dias;
+  - **leitura:** `GET /api/v1/organizations/{organizationId}/agents/{agentId}/operations` (`agents.manage`), paginada, com filtros `result`, `from` e `to` (início depois do fim: 400). Agente de outra organização dá 404.
+- **Rate limiting por credencial** (`AgentRateLimiter`, tabela `agent_rate_limit_counters`):
+  - o upsert da D11, com o relógio do banco, e `RateLimiting:Agents` (120 por 60 segundos), validado na inicialização;
+  - acima do limite: 429 em Problem Details com `Retry-After`. Só a primeira rejeição da janela vai para a auditoria;
+  - a primeira requisição da janela grava `last_used_at`: no máximo uma gravação por janela;
+  - banco indisponível no contador: 503.
+- **Limite de falhas por IP** (`AgentAuthFailureLimiter`, `RateLimiting:AgentAuthFailures`, 30 por minuto):
+  - em memória, por instância, num `MemoryCache` limitado a 100.000 IPs (`MaxTrackedAddresses`), para não crescer sem fim sob um ataque distribuído;
+  - conta só tokens `gsk_` inexistentes ou malformados. Atrás de um proxy, depende dos forwarded headers (Fase 14).
+- **Retenção** (`AgentRetentionCleaner` e `AgentRetentionService`, `Agents:Retention`):
+  - `PeriodicTimer` com atraso inicial, trava `pg_try_advisory_lock` (com outra instância limpando, o ciclo é pulado), lotes de até 1.000 linhas, cada lote numa transação com `statement_timeout` de 30 segundos;
+  - operações com mais de 180 dias, registros de idempotência com mais de 7 e contadores com mais de 1;
+  - a API recusa iniciar com a retenção das operações abaixo de 180 dias;
+  - `Enabled` existe só para os testes, que executam o ciclo diretamente.
+- **Health checks:**
+  - `agents-audit`: `Degraded` enquanto a última gravação falhou;
+  - `agents-retention`: `Degraded` sem ciclo, concluído ou pulado pela trava, há mais de 3 intervalos.
+- **Testes novos:**
+  - `AgentOperationsTests` (9):
+    - todas as recusas classificadas, com o modelo da rota, projeto e tarefa só com acesso, repetição, origem, `correlation_id` e nenhuma coluna com o token, o prefixo ou o corpo;
+    - credenciais revogada, expirada e de agente desativado registradas; tokens inexistentes e malformados, não;
+    - a operação fica mesmo com o rollback da requisição;
+    - 429 com `Retry-After`, só a primeira rejeição gravada, cota separada por credencial;
+    - 12 requisições simultâneas com limite 5: exatamente 5 passam, e o contador chega a 12;
+    - último uso só na primeira requisição da janela;
+    - tokens inexistentes barrados por IP antes da consulta: nem uma credencial válida do mesmo IP é procurada, e nada vai para a auditoria. Rotas de pessoas não passam por esse limite;
+    - falha da gravação sem afetar a requisição, com `agents-audit` degradado e depois recuperado;
+    - filtros, paginação, período invertido (400), isolamento (404) e permissão (403) da rota de operações;
+  - `AgentRetentionTests` (4, em sequência entre si):
+    - o ciclo apaga só o vencido em duas organizações, mantém os relatórios e não apaga nada ao repetir;
+    - `DELETE` de operação recente, `UPDATE` e `TRUNCATE` recusados pelo banco, numa transação sempre desfeita;
+    - ciclo pulado com a trava de outra instância;
+    - a API não inicia com retenção de 179 dias;
+  - `AgentOperationRulesTests` (unitários, 16): contagem, `Retry-After`, saúde, opções e limites dos campos;
+  - `HealthEndpointTests`: passa a esperar os dois health checks novos.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet ef migrations has-pending-model-changes`: nenhuma mudança pendente;
+  - `dotnet test`: **542/542** (259 unitários, 44 de componentes, 239 de integração);
+  - antes da etapa: 513/513.
+- **Mutações:**
+  11 de 11 detectadas, cada uma pelo teste esperado:
+  - limite com `>=` no lugar de `>`;
+  - toda rejeição gravada, não só a primeira da janela;
+  - último uso gravado em toda requisição;
+  - credencial recusada sem identificação (fora da auditoria);
+  - token inexistente sem contar para o limite por IP;
+  - limite por IP nunca bloqueando;
+  - "projeto não visível" classificado como "escopo ausente". A primeira versão desta mutação não compilava e foi refeita;
+  - gatilho aceitando o `DELETE` de qualquer operação;
+  - retenção das operações com o prazo dos registros de idempotência;
+  - trava consultiva ignorada;
+  - código da regra de negócio descartado.
+- **Execução real** (API local com a configuração padrão, banco de desenvolvimento com a migração aplicada):
+  - requisição comum 200 e organização divergente 404; último uso gravado;
+  - rajada de 125 requisições: 118 com 200, completando as 120 da janela, e 7 com 429; a seguinte, 429 com `Retry-After: 5`;
+  - 121 operações gravadas: as 120 permitidas, inclusive a organização divergente, e só uma `RateLimited`; origem `Cli`;
+  - credencial revogada: 401, com uma operação `CredentialRevoked`;
+  - 31 tokens desconhecidos do mesmo IP: 30 com 401 e o seguinte com 429;
+  - `/health`: `database`, `agents-audit`, `agents-retention` e `self` saudáveis;
+  - o primeiro ciclo de limpeza rodou um minuto depois da inicialização, sem nada vencido;
+  - nenhum erro e nenhum token no log.
+- **Ainda não feito:** as telas (etapa 11) e a suíte de segurança, a ponta a ponta e o encerramento (etapa 12). A latência adicional por requisição de agente (busca do hash, upsert do contador e gravação da operação) fica para a medição da Fase 13, como prevê o ADR-016.

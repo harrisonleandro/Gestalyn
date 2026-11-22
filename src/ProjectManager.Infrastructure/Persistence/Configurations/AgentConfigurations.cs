@@ -222,3 +222,58 @@ internal sealed class WorkReportConfiguration : IEntityTypeConfiguration<WorkRep
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+/// <summary>
+/// Auditoria das requisições de agentes (ADR-016, D10). O gatilho da migração recusa <c>UPDATE</c> e
+/// <c>TRUNCATE</c> sempre e só aceita o <c>DELETE</c> de linhas com mais de 180 dias (D12).
+/// </summary>
+internal sealed class AgentOperationConfiguration : IEntityTypeConfiguration<AgentOperation>
+{
+    public void Configure(EntityTypeBuilder<AgentOperation> builder)
+    {
+        builder.ToTable("agent_operations", table =>
+            table.HasCheckConstraint("ck_agent_operations_duration", "duration_ms >= 0"));
+        builder.ConfigureEntityBase();
+
+        builder.Property(operation => operation.HttpMethod).HasMaxLength(AgentOperation.MethodMaxLength).IsRequired();
+        builder.Property(operation => operation.RouteTemplate).HasMaxLength(AgentOperation.RouteTemplateMaxLength).IsRequired();
+        builder.Property(operation => operation.AuthorizationResult).HasConversion<string>().HasMaxLength(32);
+        builder.Property(operation => operation.DenialCode).HasMaxLength(AgentOperation.DenialCodeMaxLength);
+        builder.Property(operation => operation.CorrelationId).HasMaxLength(AgentOperation.CorrelationIdMaxLength);
+        builder.Property(operation => operation.ClientOrigin).HasConversion<string>().HasMaxLength(16);
+
+        builder.HasIndex(operation => new { operation.AgentId, operation.OccurredAt });
+        builder.HasIndex(operation => new { operation.OrganizationId, operation.OccurredAt });
+        builder.HasIndex(operation => operation.OccurredAt);
+
+        builder.HasOne<Agent>()
+            .WithMany()
+            .HasForeignKey(operation => new { operation.OrganizationId, operation.AgentId })
+            .HasPrincipalKey(agent => new { agent.OrganizationId, agent.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<AgentCredential>()
+            .WithMany()
+            .HasForeignKey(operation => new { operation.OrganizationId, operation.CredentialId })
+            .HasPrincipalKey(credential => new { credential.OrganizationId, credential.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+/// <summary>Contadores do rate limiting (D11): gravados só pelo upsert atômico; apagados depois de 1 dia.</summary>
+internal sealed class AgentRateLimitCounterConfiguration : IEntityTypeConfiguration<AgentRateLimitCounter>
+{
+    public void Configure(EntityTypeBuilder<AgentRateLimitCounter> builder)
+    {
+        builder.ToTable("agent_rate_limit_counters", table =>
+            table.HasCheckConstraint("ck_agent_rate_limit_counters_count", "request_count > 0"));
+        builder.HasKey(counter => new { counter.CredentialId, counter.WindowStart });
+        builder.HasIndex(counter => counter.WindowStart);
+
+        builder.HasOne<AgentCredential>()
+            .WithMany()
+            .HasForeignKey(counter => new { counter.OrganizationId, counter.CredentialId })
+            .HasPrincipalKey(credential => new { credential.OrganizationId, credential.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}

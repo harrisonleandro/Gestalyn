@@ -19,6 +19,12 @@ internal static class ResultProblems
             _ => StatusCodes.Status400BadRequest,
         };
 
+        if (error.Code is { } code)
+        {
+            // Rotas de agentes: o código da regra vai para a auditoria da operação (ADR-016, D10).
+            controller.HttpContext.RequestServices.GetService<Agents.AgentOperationContext>()?.DenyByRule(code);
+        }
+
         return controller.Problem(statusCode: statusCode, title: error.Message);
     }
 }

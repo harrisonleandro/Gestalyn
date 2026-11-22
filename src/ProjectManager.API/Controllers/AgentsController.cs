@@ -13,7 +13,7 @@ namespace ProjectManager.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/organizations/{organizationId:guid}/agents")]
-public sealed class AgentsController(IAgentService agents, ITenantContext tenantContext) : ControllerBase
+public sealed class AgentsController(IAgentService agents, IAgentOperationService operations, ITenantContext tenantContext) : ControllerBase
 {
     private ActiveMembership Actor => tenantContext.Membership
         ?? throw new InvalidOperationException("Associação não resolvida.");
@@ -75,6 +75,18 @@ public sealed class AgentsController(IAgentService agents, ITenantContext tenant
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListCredentialsAsync(Guid agentId, CancellationToken cancellationToken) =>
         ToResponse(await agents.ListCredentialsAsync(agentId, cancellationToken));
+
+    /// <summary>
+    /// Operações do agente (ADR-016, D10), da mais recente para a mais antiga, inclusive as recusadas. Nunca trazem
+    /// token, cabeçalhos ou corpos.
+    /// </summary>
+    [HttpGet("{agentId:guid}/operations")]
+    [OrganizationPermission(OrganizationPermissions.AgentsManage)]
+    [ProducesResponseType<Application.Common.PagedResult<AgentOperationItem>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListOperationsAsync(Guid agentId, [FromQuery] AgentOperationListQuery query, CancellationToken cancellationToken) =>
+        ToResponse(await operations.ListAsync(agentId, query, cancellationToken));
 
     /// <summary>Cria uma credencial. O token completo vem só nesta resposta (<c>Cache-Control: no-store</c>).</summary>
     [HttpPost("{agentId:guid}/credentials")]

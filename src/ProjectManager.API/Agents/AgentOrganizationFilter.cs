@@ -32,6 +32,8 @@ internal sealed class AgentOrganizationFilter : IAuthorizationFilter
 
         if (Mismatches(httpContext, agent.OrganizationId))
         {
+            httpContext.RequestServices.GetRequiredService<AgentOperationContext>()
+                .Deny(Domain.Agents.AgentAuthorizationResult.OrganizationMismatch, "organization_mismatch");
             var factory = httpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
             context.Result = new ObjectResult(factory.CreateProblemDetails(httpContext, StatusCodes.Status404NotFound, "Recurso não encontrado."))
             {

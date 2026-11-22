@@ -16,7 +16,8 @@ public enum ErrorKind
     Validation,
 }
 
-public sealed record ResultError(ErrorKind Kind, string Message);
+/// <summary>Erro esperado. <paramref name="Code"/> identifica a regra (por exemplo, <c>agent_cannot_approve</c>), quando houver.</summary>
+public sealed record ResultError(ErrorKind Kind, string Message, string? Code = null);
 
 /// <summary>Resultado de um caso de uso: sucesso ou um erro esperado (nunca exceções para fluxo de negócio).</summary>
 public class Result
@@ -33,7 +34,7 @@ public class Result
 
     public static Result<T> Success<T>(T value) => new(value, null);
 
-    public static Result<T> Failure<T>(ErrorKind kind, string message) => new(default, new ResultError(kind, message));
+    public static Result<T> Failure<T>(ErrorKind kind, string message, string? code = null) => new(default, new ResultError(kind, message, code));
 }
 
 public sealed class Result<T> : Result

@@ -51,6 +51,9 @@ else
 
 app.UseRateLimiter();
 app.UseAuthentication();
+// Rotas de agentes: limite de falhas por IP, autenticação do agente, rate limiting da credencial e auditoria
+// de cada requisição (ADR-016, D3, D10 e D11).
+app.UseMiddleware<ProjectManager.API.Agents.AgentRequestMiddleware>();
 // Organização ativa: depende do usuário autenticado e da rota; antes da autorização dos endpoints.
 app.UseMiddleware<ActiveOrganizationMiddleware>();
 app.UseAuthorization();

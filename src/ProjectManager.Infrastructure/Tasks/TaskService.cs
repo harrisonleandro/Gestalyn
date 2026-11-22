@@ -438,7 +438,7 @@ internal sealed partial class TaskService(
 
         if (!access.IsPerson)
         {
-            return Result.Failure<TaskDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage);
+            return Result.Failure<TaskDetails>(ErrorKind.Forbidden, ProjectAccessGrant.PeopleOnlyMessage, "people_only");
         }
 
         var found = await FindWritableTaskAsync(taskId, cancellationToken, includeAssignments: true);
@@ -789,9 +789,9 @@ internal sealed partial class TaskService(
                 TransitionVerdict.CannotApproveOwnWork => Result.Failure<TaskDetails>(
                     ErrorKind.Forbidden, "Quem é responsável pela tarefa não pode aprovar o próprio trabalho neste projeto."),
                 TransitionVerdict.AgentCannotApprove => Result.Failure<TaskDetails>(
-                    ErrorKind.Forbidden, "Agentes não executam transições que exigem aprovação. Uma pessoa precisa aprovar."),
+                    ErrorKind.Forbidden, "Agentes não executam transições que exigem aprovação. Uma pessoa precisa aprovar.", "agent_cannot_approve"),
                 TransitionVerdict.AgentCannotEnterDone => Result.Failure<TaskDetails>(
-                    ErrorKind.Forbidden, "Agentes não concluem tarefas. Leve a tarefa à revisão; uma pessoa conclui."),
+                    ErrorKind.Forbidden, "Agentes não concluem tarefas. Leve a tarefa à revisão; uma pessoa conclui.", "agent_cannot_enter_done"),
                 _ => Result.Failure<TaskDetails>(
                     ErrorKind.Conflict, $"A tarefa depende de {openDependencies} tarefa(s) ainda não concluída(s)."),
             };

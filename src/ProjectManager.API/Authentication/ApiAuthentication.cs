@@ -15,6 +15,14 @@ internal static class ApiAuthentication
 {
     public static IServiceCollection AddApiAuthentication(this IServiceCollection services)
     {
+        // Auditoria e limite de falhas por IP das requisições de agentes (ADR-016, D10 e D11).
+        services.AddScoped<Agents.AgentOperationContext>();
+        services.AddSingleton<Agents.AgentAuthFailureLimiter>();
+        services.AddOptions<Agents.AgentAuthFailureOptions>()
+            .BindConfiguration(Agents.AgentAuthFailureOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{Agents.AgentAuthFailureOptions.SectionName}'.")
+            .ValidateOnStart();
+
         // O JWT é o esquema padrão; o de agentes é adicional e só vale nas rotas com a política Agent (ADR-016).
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer()

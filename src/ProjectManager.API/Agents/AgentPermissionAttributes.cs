@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using ProjectManager.Application.Abstractions.MultiTenancy;
 using ProjectManager.Application.Projects;
+using ProjectManager.Domain.Agents;
 
 namespace ProjectManager.API.Agents;
 
@@ -57,6 +58,25 @@ public abstract class AgentResourcePermissionAttribute(string scope, string rout
         ArgumentNullException.ThrowIfNull(httpContext);
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentNullException.ThrowIfNull(requirement);
+
+        var operation = httpContext.RequestServices.GetRequiredService<AgentOperationContext>();
+        switch (decision.Outcome)
+        {
+            case AgentAccessOutcome.AgentDisabled:
+                operation.Deny(AgentAuthorizationResult.AgentDisabled, "agent_disabled");
+                break;
+            case AgentAccessOutcome.ProjectNotVisible:
+                operation.Deny(AgentAuthorizationResult.ProjectNotVisible, "project_not_visible");
+                break;
+            case AgentAccessOutcome.ScopeMissing:
+                operation.Deny(AgentAuthorizationResult.ScopeMissing, "scope_missing");
+                break;
+            case AgentAccessOutcome.Allowed:
+                break;
+            default:
+                operation.Deny(AgentAuthorizationResult.PermissionMissing, "permission_missing");
+                break;
+        }
 
         return decision.Outcome switch
         {

@@ -99,6 +99,27 @@ public static class DependencyInjection
         services.AddScoped<IAgentProjectAccess, AgentProjectAccessResolver>();
         services.AddScoped<IAgentIdempotencyStore, AgentIdempotencyStore>();
         services.AddScoped<IWorkReportService, WorkReportService>();
+
+        // Auditoria, rate limiting e retenção (ADR-016, D10 a D12).
+        services.AddOptions<AgentRateLimitOptions>()
+            .BindConfiguration(AgentRateLimitOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{AgentRateLimitOptions.SectionName}': o limite deve ser positivo e a janela, de 1 a 3600 segundos.")
+            .ValidateOnStart();
+        services.AddOptions<AgentRetentionOptions>()
+            .BindConfiguration(AgentRetentionOptions.SectionName)
+            .Validate(options => options.IsValid(), $"Configuração inválida em '{AgentRetentionOptions.SectionName}': a retenção das operações não pode ser menor que {Domain.Agents.AgentOperation.MinRetentionDays} dias, o prazo do gatilho do banco.")
+            .ValidateOnStart();
+
+        services.AddSingleton<AgentAuditHealth>();
+        services.AddSingleton<AgentRetentionHealth>();
+        services.AddSingleton<IAgentOperationWriter, AgentOperationWriter>();
+        services.AddScoped<IAgentRateLimiter, AgentRateLimiter>();
+        services.AddScoped<IAgentOperationService, AgentOperationService>();
+        services.AddScoped<AgentRetentionCleaner>();
+        services.AddHostedService<AgentRetentionService>();
+        services.AddHealthChecks()
+            .AddCheck<AgentAuditHealthCheck>(AgentAuditHealthCheck.Name)
+            .AddCheck<AgentRetentionHealthCheck>(AgentRetentionHealthCheck.Name);
     }
 
     private static void AddIdentityServices(this IServiceCollection services)
