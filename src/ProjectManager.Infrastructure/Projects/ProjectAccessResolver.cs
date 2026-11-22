@@ -85,4 +85,15 @@ internal sealed class ProjectAccessResolver(ProjectManagerDbContext dbContext) :
 
         return projectId is null ? null : await FindAsync(membership, projectId.Value, cancellationToken);
     }
+
+    public async Task<ProjectAccessGrant?> FindByWorkReportAsync(ActiveMembership membership, Guid reportId, CancellationToken cancellationToken)
+    {
+        var projectId = await dbContext.WorkReports
+            .AsNoTracking()
+            .Where(report => report.Id == reportId)
+            .Select(report => (Guid?)report.ProjectId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return projectId is null ? null : await FindAsync(membership, projectId.Value, cancellationToken);
+    }
 }

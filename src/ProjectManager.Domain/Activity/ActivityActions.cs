@@ -69,6 +69,8 @@ public static class ActivityActions
     public const string AgentProjectAccessGranted = "agent.project_access_granted";
     public const string AgentProjectAccessUpdated = "agent.project_access_updated";
     public const string AgentProjectAccessRemoved = "agent.project_access_removed";
+
+    public const string WorkReportReceived = "work_report.received";
 }
 
 /// <summary>Tipos de entidade dos eventos.</summary>
@@ -93,4 +95,5 @@ public static class ActivityEntityTypes
     public const string Agent = "agent";
     public const string AgentCredential = "agent_credential";
     public const string AgentProjectAccess = "agent_project_access";
+    public const string WorkReport = "work_report";
 }

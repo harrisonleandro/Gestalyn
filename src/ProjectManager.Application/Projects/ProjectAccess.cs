@@ -81,4 +81,7 @@ public interface IProjectAccess
 
     /// <summary>Acesso ao projeto da decisão (ADR-014).</summary>
     Task<ProjectAccessGrant?> FindByDecisionAsync(ActiveMembership membership, Guid decisionId, CancellationToken cancellationToken);
+
+    /// <summary>Acesso ao projeto do relatório de trabalho de um agente (ADR-016, D8).</summary>
+    Task<ProjectAccessGrant?> FindByWorkReportAsync(ActiveMembership membership, Guid reportId, CancellationToken cancellationToken);
 }

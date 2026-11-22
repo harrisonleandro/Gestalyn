@@ -348,7 +348,8 @@ Todos ficam sob `/api/v1/agents`, com a política `Agent`. Os oito da seção 5.
   ```
 
   - `approvalRequired` vale `true` ou `false` se existe uma transição direta do estado atual até o sugerido, conforme ela exija aprovação.
-  - Vale `null` sem estado sugerido ou sem transição direta, e então `suggestedTransition` é `"none"`.
+  - Vale `null` sem estado sugerido ou sem transição direta, e então `suggestedTransition` é `"none"`. Com transição direta, `suggestedTransition` é `"direct"` (valor fixado na etapa 9).
+  - Tarefa de outro projeto, tarefa inexistente e estado sugerido de outro workflow são erros de validação (400); projeto arquivado, 409 (etapa 9).
   - Se o estado sugerido for da categoria `Done`, a conclusão será sempre de uma pessoa (D5).
 - **Leitura por pessoas** (`project.read`):
   - `GET /api/v1/projects/{id}/reports`;
@@ -735,6 +736,7 @@ docs/security/AGENTES.md                              Modelo de ameaças e uso d
 | 6 | Concluída em 2026-11-18 | Ver abaixo |
 | 7 | Concluída em 2026-11-19 | Ver abaixo |
 | 8 | Concluída em 2026-11-19 | Ver abaixo |
+| 9 | Concluída em 2026-11-22 | Ver abaixo |
 
 ### Etapa 1: políticas explícitas
 
@@ -1164,3 +1166,53 @@ A revisão técnica independente do pacote das etapas 1 a 4 manteve a arquitetur
   - repetição depois de remover o acesso, 404; depois de revogar a credencial, 401;
   - nenhum erro e nenhum token no log; o agente de verificação foi desativado.
 - **Ainda não feito:** `AgentOperation`, rate limiting, `last_used_at`, limite por IP e retenção (etapa 10, obrigatórios). A limpeza dos registros de idempotência vencidos chega com a retenção.
+
+### Etapa 9: relatórios de trabalho e leitura por pessoas
+
+- **`WorkReport`** (domínio, tabela `work_reports`, migração `AddWorkReports`):
+  - organização, projeto, tarefa opcional, agente e credencial;
+  - **declarado:** resumo (2.000), alterações em Markdown (20.000), até 200 arquivos (500 cada), testes (comando e contagens não negativas) e commit (SHA de 40 ou 64 caracteres hexadecimais, guardado em minúsculas, e repositório);
+  - **retrato do recebimento:** estado da tarefa e estado sugerido, com ID e nome do momento, sem FK (o workflow pode mudar depois), e o ID da requisição;
+  - **no banco:** FKs compostas para projeto, tarefa (do mesmo projeto), agente e credencial; `CHECK` das contagens, do SHA, da quantidade de arquivos e da coerência dos retratos; gatilho que recusa `UPDATE`, `DELETE` e `TRUNCATE`, sem exceção de retenção.
+- **`POST /api/v1/agents/reports`** (`reports:write` e `tasks.write`, `Idempotency-Key`):
+  - valida o projeto (arquivado: 409), a tarefa (de outro projeto ou inexistente: 400) e o estado sugerido (de outro workflow: 400);
+  - grava o relatório e o evento `work_report.received`, com o ator agente, no mesmo `SaveChanges`;
+  - **não muda o estado da tarefa**;
+  - responde 201 com o recibo da D8: `accepted`, `activityCreated`, `taskStatus`, `approvalRequired` e `suggestedTransition` (`direct` ou `none`), e os cinco níveis: declarado, aceito, `testsExecuted` e `ciConfirmed` como `notVerified`, e `humanApproval` (`pending`, ou `notApplicable` sem tarefa).
+- **Leitura por pessoas** (`WorkReportsController`, `project.read`):
+  - `GET /api/v1/projects/{projectId}/reports` e `GET /api/v1/tasks/{taskId}/reports`, paginadas, sem o texto longo;
+  - `GET /api/v1/reports/{reportId}` com o cabeçalho de organização e `[ReportPermission]`, no modelo de `[TaskPermission]` (`IProjectAccess.FindByWorkReportAsync`);
+  - **aprovação humana:** calculada na leitura. É a primeira entrada do histórico da tarefa posterior ao relatório, feita por uma pessoa e com destino em Concluída, com quem aprovou e quando.
+- **Testes novos:**
+  - `WorkReportRoutesTests` (7):
+    - níveis separados, recibo completo e tarefa inalterada (estado e versão); leitura completa pela pessoa e nas duas listas;
+    - `approvalRequired`: `false` e `true` pela transição direta, `null` sem transição direta e sem tarefa;
+    - aprovação humana: mudança da pessoa que não vai para Concluída não conta; a conclusão depois do relatório conta, com quem e quando; o relatório enviado depois da conclusão fica pendente;
+    - 13 recusas (validação, Observador, escopo ausente, projeto sem concessão) e projeto arquivado, sem nenhum relatório gravado;
+    - `UPDATE`, `DELETE` e `TRUNCATE` recusados pelo banco (23000), numa transação sempre desfeita;
+    - leitura restrita à organização e ao projeto;
+    - repetição com a mesma chave devolve o mesmo recibo, sem segundo relatório;
+  - `WorkReportRulesTests` (unitários, 11): SHA, limites da declaração, retrato e minúsculas;
+  - `ActivityCoverageTests`: `POST /api/v1/agents/reports` com `work_report.received`.
+- **Validação:**
+  - build em Release: 0 avisos e 0 erros;
+  - `dotnet ef migrations has-pending-model-changes`: nenhuma mudança pendente;
+  - `dotnet test`: **513/513** (243 unitários, 44 de componentes, 226 de integração);
+  - antes da etapa: 495/495.
+- **Mutações:** 7 de 8 detectadas:
+  - tarefa sem o filtro do projeto;
+  - estado sugerido sem o filtro do projeto;
+  - `approvalRequired` sem exigir a transição a partir do estado atual;
+  - gatilho sem `DELETE`;
+  - "pendente" no lugar de "não se aplica" sem tarefa;
+  - aprovação sem exigir que seja posterior ao relatório;
+  - aprovação sem exigir a categoria Concluída. Esta sobrevivia à primeira versão do teste, que foi reforçado.
+- **Mutação equivalente** (documentada): aceitar entradas de agentes na aprovação humana não muda nada, porque agentes nunca entram em Concluída (D5, em `TransitionRules`).
+- **Execução real** (API local, banco de desenvolvimento com a migração aplicada):
+  - relatório 201, aceito, com a tarefa em "A fazer", `approvalRequired: false` para "Em andamento", `suggestedTransition: direct` e os cinco níveis separados;
+  - repetição com a mesma chave: 201, `Idempotency-Replayed: true`, mesmo ID;
+  - tarefa inalterada (estado e versão);
+  - tarefa inexistente e SHA inválido: 400;
+  - leitura pela pessoa: 200, autor `Agent`, aprovação humana pendente; as duas listas trazem o relatório; sem o cabeçalho de organização, 400;
+  - depois de revogar a credencial, 401; nenhum erro e nenhum token no log.
+- **Ainda não feito:** a tabela `work_report_verifications` (Fase 12) e as telas de relatórios (etapa 11). Continuam obrigatórios na etapa 10: `AgentOperation`, rate limiting, `last_used_at`, limite por IP e retenção.

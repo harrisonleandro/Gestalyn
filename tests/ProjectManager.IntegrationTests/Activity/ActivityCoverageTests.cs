@@ -215,6 +215,8 @@ public sealed class ActivityCoverageTests : IDisposable
             () => AsAgentAsync(agentToken, HttpMethod.Patch, $"/api/v1/agents/tasks/{agentTask.Id}", new { title = "Ajustada pelo agente", expectedVersion = 1 }));
         await ExpectAsync("POST /api/v1/agents/tasks/{taskId:guid}/transitions", "task.transitioned",
             () => AsAgentAsync(agentToken, HttpMethod.Post, $"/api/v1/agents/tasks/{agentTask.Id}/transitions", new { toStateId = todo.Id, expectedVersion = 2 }));
+        await ExpectAsync("POST /api/v1/agents/reports", "work_report.received",
+            () => AsAgentAsync(agentToken, HttpMethod.Post, "/api/v1/agents/reports", new { projectId = project.Id, taskId = agentTask.Id, summary = "Relatório do agente" }));
 
         // Saídas: da equipe, do projeto (arquivamento) e da organização.
         await ExpectAsync("DELETE /api/v1/projects/{projectId:guid}/members/{userId:guid}", "project.member_removed", HttpMethod.Delete, $"{p}/members/{member.Id}");

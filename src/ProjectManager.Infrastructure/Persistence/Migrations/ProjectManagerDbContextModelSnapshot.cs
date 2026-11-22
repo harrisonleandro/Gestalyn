@@ -623,6 +623,140 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                     b.ToTable("idempotency_records", (string)null);
                 });
 
+            modelBuilder.Entity("ProjectManager.Domain.Agents.WorkReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AgentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("agent_id");
+
+                    b.Property<string>("Changes")
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("changes");
+
+                    b.Property<string>("CommitRepository")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("commit_repository");
+
+                    b.Property<string>("CommitSha")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("commit_sha");
+
+                    b.Property<Guid>("CredentialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("credential_id");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_id");
+
+                    b.Property<Guid?>("SuggestedStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("suggested_state_id");
+
+                    b.Property<string>("SuggestedStateName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("suggested_state_name");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("summary");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<Guid?>("TaskStateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_state_id");
+
+                    b.Property<string>("TaskStateName")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("task_state_name");
+
+                    b.Property<string>("TestsCommand")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("tests_command");
+
+                    b.Property<int?>("TestsFailed")
+                        .HasColumnType("integer")
+                        .HasColumnName("tests_failed");
+
+                    b.Property<int?>("TestsPassed")
+                        .HasColumnType("integer")
+                        .HasColumnName("tests_passed");
+
+                    b.Property<int?>("TestsSkipped")
+                        .HasColumnType("integer")
+                        .HasColumnName("tests_skipped");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.PrimitiveCollection<string[]>("_files")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("files");
+
+                    b.HasKey("Id")
+                        .HasName("pk_work_reports");
+
+                    b.HasIndex("OrganizationId", "AgentId")
+                        .HasDatabaseName("ix_work_reports_organization_id_agent_id");
+
+                    b.HasIndex("OrganizationId", "CredentialId")
+                        .HasDatabaseName("ix_work_reports_organization_id_credential_id");
+
+                    b.HasIndex("ProjectId", "ReceivedAt")
+                        .HasDatabaseName("ix_work_reports_project_id_received_at");
+
+                    b.HasIndex("TaskId", "ReceivedAt")
+                        .HasDatabaseName("ix_work_reports_task_id_received_at");
+
+                    b.HasIndex("OrganizationId", "ProjectId", "TaskId")
+                        .HasDatabaseName("ix_work_reports_organization_id_project_id_task_id");
+
+                    b.ToTable("work_reports", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_work_reports_commit_sha", "commit_sha IS NULL OR commit_sha ~ '^[0-9a-f]{40}([0-9a-f]{24})?$'");
+
+                            t.HasCheckConstraint("ck_work_reports_files", "cardinality(files) <= 200 AND array_position(files, NULL) IS NULL");
+
+                            t.HasCheckConstraint("ck_work_reports_suggested_state", "(suggested_state_id IS NULL) = (suggested_state_name IS NULL)");
+
+                            t.HasCheckConstraint("ck_work_reports_task_state", "(task_id IS NULL) = (task_state_id IS NULL) AND (task_state_id IS NULL) = (task_state_name IS NULL)");
+
+                            t.HasCheckConstraint("ck_work_reports_tests_non_negative", "coalesce(tests_passed, 0) >= 0 AND coalesce(tests_failed, 0) >= 0 AND coalesce(tests_skipped, 0) >= 0");
+                        });
+                });
+
             modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2565,6 +2699,40 @@ namespace ProjectManager.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_idempotency_records_agent_credentials_organization_id_crede");
+                });
+
+            modelBuilder.Entity("ProjectManager.Domain.Agents.WorkReport", b =>
+                {
+                    b.HasOne("ProjectManager.Domain.Agents.Agent", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "AgentId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_reports_agents_organization_id_agent_id");
+
+                    b.HasOne("ProjectManager.Domain.Agents.AgentCredential", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "CredentialId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_reports_agent_credentials_organization_id_credential_id");
+
+                    b.HasOne("ProjectManager.Domain.Projects.Project", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId")
+                        .HasPrincipalKey("OrganizationId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_reports_projects_organization_id_project_id");
+
+                    b.HasOne("ProjectManager.Domain.Tasks.ProjectTask", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId", "ProjectId", "TaskId")
+                        .HasPrincipalKey("OrganizationId", "ProjectId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_work_reports_tasks_organization_id_project_id_task_id");
                 });
 
             modelBuilder.Entity("ProjectManager.Domain.Documents.Decision", b =>

@@ -21,6 +21,7 @@ namespace ProjectManager.API.Agents;
 public sealed class AgentWritesController(
     ITaskService tasks,
     IActivityService activities,
+    IWorkReportService reports,
     IAgentProjectAccess agentAccess,
     ITenantContext tenantContext) : ControllerBase
 {
@@ -124,6 +125,33 @@ public sealed class AgentWritesController(
         var result = await activities.CreateLogAsync(projectId, request.ToLogRequest(), cancellationToken);
         return result.Succeeded
             ? Created(new Uri($"/api/v1/agents/projects/{projectId}/context", UriKind.Relative), result.Value)
+            : this.ToProblem(result.Error!);
+    }
+
+    /// <summary>
+    /// Envia um relatório de trabalho (ADR-016, D8). Tudo é declaração do agente: a resposta separa os níveis
+    /// (declarado, aceito, testes, CI e aprovação humana) e o relatório não muda o estado da tarefa.
+    /// </summary>
+    [HttpPost("reports")]
+    [AgentIdempotent(AgentScopes.ReportsWrite)]
+    [ProducesResponseType<WorkReportReceipt>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> SubmitReportAsync(SubmitWorkReportRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (await AuthorizeProjectAsync(request.ProjectId!.Value, AgentRequirement.ReportsWrite, cancellationToken) is { } denied)
+        {
+            return denied;
+        }
+
+        var result = await reports.SubmitAsync(Access, request, cancellationToken);
+        return result.Succeeded
+            ? Created(new Uri($"/api/v1/reports/{result.Value!.ReportId}", UriKind.Relative), result.Value)
             : this.ToProblem(result.Error!);
     }
 

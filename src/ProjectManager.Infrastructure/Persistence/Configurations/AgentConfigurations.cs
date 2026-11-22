@@ -159,3 +159,66 @@ internal sealed class IdempotencyRecordConfiguration : IEntityTypeConfiguration<
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+/// <summary>
+/// Relatórios de trabalho (ADR-016, D8): imutáveis e permanentes. O gatilho da migração recusa <c>UPDATE</c>,
+/// <c>DELETE</c> e <c>TRUNCATE</c>, sem exceção de retenção. A tarefa, se houver, é do mesmo projeto (FK composta).
+/// Os estados ficam como retrato (ID e nome do momento), sem FK: o workflow pode mudar depois.
+/// </summary>
+internal sealed class WorkReportConfiguration : IEntityTypeConfiguration<WorkReport>
+{
+    public void Configure(EntityTypeBuilder<WorkReport> builder)
+    {
+        builder.ToTable("work_reports", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_work_reports_tests_non_negative",
+                "coalesce(tests_passed, 0) >= 0 AND coalesce(tests_failed, 0) >= 0 AND coalesce(tests_skipped, 0) >= 0");
+            table.HasCheckConstraint("ck_work_reports_commit_sha", "commit_sha IS NULL OR commit_sha ~ '^[0-9a-f]{40}([0-9a-f]{24})?$'");
+            table.HasCheckConstraint("ck_work_reports_files", $"cardinality(files) <= {WorkReport.MaxFiles} AND array_position(files, NULL) IS NULL");
+            table.HasCheckConstraint(
+                "ck_work_reports_task_state",
+                "(task_id IS NULL) = (task_state_id IS NULL) AND (task_state_id IS NULL) = (task_state_name IS NULL)");
+            table.HasCheckConstraint("ck_work_reports_suggested_state", "(suggested_state_id IS NULL) = (suggested_state_name IS NULL)");
+        });
+        builder.ConfigureEntityBase();
+
+        builder.Property(report => report.Summary).HasMaxLength(WorkReport.SummaryMaxLength).IsRequired();
+        builder.Property(report => report.Changes).HasMaxLength(WorkReport.ChangesMaxLength);
+        builder.Property<string[]>("_files").HasColumnName("files").IsRequired();
+        builder.Ignore(report => report.Files);
+        builder.Property(report => report.TestsCommand).HasMaxLength(WorkReport.TestsCommandMaxLength);
+        builder.Property(report => report.CommitSha).HasMaxLength(64);
+        builder.Property(report => report.CommitRepository).HasMaxLength(WorkReport.CommitRepositoryMaxLength);
+        builder.Property(report => report.TaskStateName).HasMaxLength(WorkReport.StateNameMaxLength);
+        builder.Property(report => report.SuggestedStateName).HasMaxLength(WorkReport.StateNameMaxLength);
+        builder.Property(report => report.RequestId).HasMaxLength(Domain.Activity.ActivityActor.RequestIdMaxLength);
+
+        builder.HasIndex(report => new { report.ProjectId, report.ReceivedAt });
+        builder.HasIndex(report => new { report.TaskId, report.ReceivedAt });
+
+        builder.HasOne<Project>()
+            .WithMany()
+            .HasForeignKey(report => new { report.OrganizationId, report.ProjectId })
+            .HasPrincipalKey(project => new { project.OrganizationId, project.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Domain.Tasks.ProjectTask>()
+            .WithMany()
+            .HasForeignKey(report => new { report.OrganizationId, report.ProjectId, report.TaskId })
+            .HasPrincipalKey(task => new { task.OrganizationId, task.ProjectId, task.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Agent>()
+            .WithMany()
+            .HasForeignKey(report => new { report.OrganizationId, report.AgentId })
+            .HasPrincipalKey(agent => new { agent.OrganizationId, agent.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<AgentCredential>()
+            .WithMany()
+            .HasForeignKey(report => new { report.OrganizationId, report.CredentialId })
+            .HasPrincipalKey(credential => new { credential.OrganizationId, credential.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
